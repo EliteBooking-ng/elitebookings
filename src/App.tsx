@@ -17,7 +17,9 @@ import {
   ArrowRight,
   ArrowLeft,
   Calendar,
-  Clock
+  Clock,
+  Mail,
+  Phone
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
@@ -73,6 +75,8 @@ export default function App() {
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
   const [showBookingOptions, setShowBookingOptions] = useState<any | null>(null);
   const [bookingStep, setBookingStep] = useState<1 | 2>(1); // 1 = Date/Time, 2 = WhatsApp Options
+  const [showEmailPopup, setShowEmailPopup] = useState(false);
+  const [userPhoneNumber, setUserPhoneNumber] = useState('');
   const [checkinDate, setCheckinDate] = useState<Date | null>(null);
   const [checkinHour, setCheckinHour] = useState<string>('12');
   const [checkinMinute, setCheckinMinute] = useState<string>('00');
@@ -104,6 +108,8 @@ export default function App() {
       setCheckoutPeriod('PM');
 
       setCurrentMonth(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1));
+      setShowEmailPopup(false);
+      setUserPhoneNumber('');
     }
   }, [showBookingOptions]);
 
@@ -597,6 +603,54 @@ export default function App() {
     setSelectedCar(null);
     setStep(1);
     setFormData({ location: '', dates: '', guests: '', preferences: '' });
+  };
+
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userPhoneNumber.trim()) return;
+
+    const subject = `Elite Booking Enquiry: ${showBookingOptions.name}`;
+    const body = `Hello Elite Bookings Team,
+
+I would like to make an elite booking enquiry. Below are the details of the booking:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROPERTY / ASSET DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Name: ${showBookingOptions.name}
+Location: ${showBookingOptions.location}
+${showBookingOptions.price ? `Rate: ₦${showBookingOptions.price}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOOKING TIMELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}
+Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLIENT CONTACT INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phone Number: ${userPhoneNumber}
+
+I look forward to your confirmation and payment details.
+
+Best regards.`;
+
+    const mailtoUrl = `mailto:Elitebooking.ng@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // Trigger mail client
+    window.location.href = mailtoUrl;
+
+    // Trigger success effects
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+
+    // Reset states
+    setShowEmailPopup(false);
+    setShowBookingOptions(null);
   };
 
   const HotelImageSlider = ({ images, name }: { images: string[], name: string }) => {
@@ -1210,7 +1264,47 @@ export default function App() {
                   <X className="w-6 h-6" />
                 </button>
                 
-                {bookingStep === 1 ? (
+                {showEmailPopup ? (
+                  <div className="text-center font-sans">
+                    <h3 className="text-2xl font-serif text-charcoal mb-2">Almost Done!</h3>
+                    <p className="text-charcoal/60 text-sm mb-6">Provide your phone number to complete your booking enquiry via email.</p>
+
+                    <form onSubmit={handleEmailSubmit} className="space-y-6">
+                      <div className="text-left font-sans">
+                        <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-gold mb-2">My Mobile Phone Number</label>
+                        <div className="relative">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
+                          <input
+                            required
+                            type="tel"
+                            placeholder="e.g. +234 801 234 5678"
+                            className="w-full bg-charcoal/5 border border-charcoal/10 rounded-xl py-3.5 pl-11 pr-4 focus:outline-none focus:border-gold transition-colors text-sm font-semibold text-charcoal"
+                            value={userPhoneNumber}
+                            onChange={(e) => setUserPhoneNumber(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 pt-4">
+                        <button
+                          type="submit"
+                          className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer"
+                        >
+                          <Mail className="w-5 h-5" />
+                          <span>Send Booking via Email</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailPopup(false)}
+                          className="w-full bg-charcoal/5 border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10 hover:text-charcoal py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <ChevronLeft className="w-4 h-4" /> Go Back
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                ) : bookingStep === 1 ? (
                   <div className="flex flex-col h-full">
                     <div className="text-center mb-6">
                       <h3 className="text-2xl font-serif text-charcoal mb-1">Select Dates &amp; Times</h3>
@@ -1389,6 +1483,18 @@ export default function App() {
                         </svg>
                         <span>Connect on WhatsApp</span>
                       </a>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserPhoneNumber('');
+                          setShowEmailPopup(true);
+                        }}
+                        className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer"
+                      >
+                        <Mail className="w-5 h-5" />
+                        <span>Connect via Email</span>
+                      </button>
                       
                       <button
                         type="button"
