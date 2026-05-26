@@ -348,6 +348,134 @@ export default function App() {
         'https://lh3.googleusercontent.com/d/1_QjzozOTFjdhUxbG0cX5xo-LCxJTXbOo'
       ],
       description: 'Experience cozy comfort and outstanding service at 1708 Hotel, located on Ogunka Erewu Road.'
+    },
+    {
+      id: 'londa-hotel',
+      name: 'Londa Hotel',
+      location: '24b ebara oroazi rd Rumuepirikom',
+      price: '33,000',
+      tiers: [
+        { name: 'Silver', price: '58,000' },
+        { name: 'Top Tier', price: '41,000' },
+        { name: 'Bronze', price: '38,000' },
+        { name: 'Basic', price: '33,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1k5bGXTY_ZK-L4t4jy4bxaQfkum9dd-H8',
+        'https://lh3.googleusercontent.com/d/1gCQXhsLVmGPN_FGkdWEUxkf3Zz8cmJo5',
+        'https://lh3.googleusercontent.com/d/1Fy9L6n1rUnf_LYgu6aKE3FoDlaBH3b7V'
+      ],
+      description: 'Relax in stylish, refined surroundings at Londa Hotel, featuring exceptional service and a range of accommodation options on Ebara Oroazi Road.'
+    },
+    {
+      id: 'boutique-1804',
+      name: '1804 Boutique Hotel',
+      location: 'Ekekahia rd rumuola',
+      price: '22,500',
+      tiers: [
+        { name: 'Diamond', price: '48,500' },
+        { name: 'Exclusive', price: '43,600' },
+        { name: 'Silver', price: '42,000' },
+        { name: 'Top Tier', price: '28,000' },
+        { name: 'Bronze', price: '25,000' },
+        { name: 'Basic', price: '22,500' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1sIBEJ11-EXfdsiDdGw-Adl2zBYfcfT8e',
+        'https://lh3.googleusercontent.com/d/1qfaE1AGhOftteQLlDk83J01M7movd5Qc',
+        'https://lh3.googleusercontent.com/d/1YHDhz-Bgfd3erKJZ4yIXWf3UgJlfJG-Y',
+        'https://lh3.googleusercontent.com/d/1ZCuTR3lAY1oxw9g4FBbcHS-2jUMhQZU6'
+      ],
+      description: 'Discover unparalleled boutique hospitality at 1804 Boutique Hotel. Located along Ekekahia Road in Rumuola, we offer unique, high-end accommodations tailored to satisfy discerning travelers.'
+    },
+    {
+      id: 'nima-suit-hotel',
+      name: 'Nima Suit Hotel',
+      location: '9 onukolo rd off woji road trans',
+      price: '16,000',
+      tiers: [
+        { name: 'Top Tier', price: '20,000' },
+        { name: 'Bronze', price: '17,000' },
+        { name: 'Basic', price: '16,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1r1xhh2c5h3A7p7P81RdwxdH9LPkfTbUT',
+        'https://lh3.googleusercontent.com/d/1pUltQ8TVydcnvqC3lYXXTyy95YUJMmhn',
+        'https://lh3.googleusercontent.com/d/1WWaWaXzcuCL44ucKlORPQxCHoqwYMLVw'
+      ],
+      description: 'Experience supreme hospitality and a relaxing stay at Nima Suit Hotel, located perfectly in a peaceful setting off Woji Road.'
+    },
+    {
+      id: 'the-gibs-hotel',
+      name: 'The Gibs Hotel',
+      location: 'No 9 shell location rd off tombia extension gra phase 3',
+      price: '78,000',
+      tiers: [
+        { name: 'Diamond', price: '410,000' },
+        { name: 'Top Tier', price: '138,000' },
+        { name: 'Bronze', price: '118,000' },
+        { name: 'Basic', price: '78,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1NL5t0blHcVhh9vLkbPeTnePWmhMty-fq',
+        'https://lh3.googleusercontent.com/d/1AW3rCOF8WxzBtjHX2P66XylOoGNWHXcT',
+        'https://lh3.googleusercontent.com/d/1V0R1vT2kNKM1etFf6hK-dnypwVmzGonX',
+        'https://lh3.googleusercontent.com/d/1W67alILrNRrRQKO6O0fWWE6L7ttGlP52'
+      ],
+      description: 'Experience refined luxury at The Gibs Hotel, nestled in the upscale GRA Phase 3 off Tombia Extension. Enjoy impeccable service, elegant suites, and a truly high-class experience.'
+    },
+    {
+      id: 'hano-hotels-suites',
+      name: 'Hano Hotels & Suites',
+      location: 'Phase orogbum crescent GRA',
+      price: '93,000',
+      tiers: [
+        { name: 'Diamond', price: '164,000' },
+        { name: 'Exclusive', price: '129,000' },
+        { name: 'Silver', price: '103,000' },
+        { name: 'Top Tier', price: '93,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1i0pvZ7HBX6i1pwFWxXVCYBEdRTxSOZmx',
+        'https://lh3.googleusercontent.com/d/15QvDkyA0_-Y_dPEFKJ_gNdqjgv_ltC7r',
+        'https://lh3.googleusercontent.com/d/1umD5hJvaY41KE25U9DfXYPQYV2X3xjMj',
+        'https://lh3.googleusercontent.com/d/1-EczEjPhD4HvCGCKFzdG3l0IxUNHlbbY'
+      ],
+      description: 'Indulge in sophisticated luxury at Hano Hotels & Suites, located on Orogbum Crescent in the prestigious GRA area. Offering pristine rooms and an executive feel, it is ideal for business and leisure travellers alike.'
+    },
+    {
+      id: 'berenice-hotel',
+      name: 'Berenice Hotel',
+      location: '5 Ahoada east west rd rumuodara',
+      price: '15,000',
+      tiers: [
+        { name: 'Bronze', price: '21,000' },
+        { name: 'Basic', price: '15,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/14vkG8-SuNceKTqZpanRWAGrrNrnf-rCe',
+        'https://lh3.googleusercontent.com/d/1aJRW45w4DnPGXwkHFB3oEblhQin63F5c',
+        'https://lh3.googleusercontent.com/d/1KraeAN4dzKjPI0hj6Me4yX9LZ2MONMFp'
+      ],
+      description: 'Enjoy a warm hospitality and comfortable stay at Berenice Hotel, conveniently located on the Ahoada East-West Road in Rumuodara. Perfect for travelers seeking excellent service and relaxing accommodations.'
+    },
+    {
+      id: 'meritz-hotels-suites',
+      name: 'Meritz Hotels & suites',
+      location: '1A acron avenue stadium rd',
+      price: '53,700',
+      tiers: [
+        { name: 'Top Tier', price: '63,900' },
+        { name: 'Bronze', price: '58,450' },
+        { name: 'Basic', price: '53,700' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1oo8ZC0xWB71xzHaN-VEE6H09YN7A29IM',
+        'https://lh3.googleusercontent.com/d/1iD1ajb_RZ8RrdAr6gtntL5TA4wFqJIV7',
+        'https://lh3.googleusercontent.com/d/1532t91eC4Ad_Letli8o3zfP_04PugWwX',
+        'https://lh3.googleusercontent.com/d/1QEDSkLO0vl0GCyuKrMp4gkynTf6aQo17'
+      ],
+      description: 'Discover stylish accommodations and top-class hospitality at Meritz Hotels & Suites, located on 1A Acron Avenue near Stadium Road. Featuring cozy premium rooms and dedicated service perfect for any visit.'
     }
   ];
 
