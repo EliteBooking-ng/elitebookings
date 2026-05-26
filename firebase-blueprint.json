@@ -27,9 +27,29 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["sessionId", "senderType", "text", "timestamp"]
+    },
+    "Enquiry": {
+      "title": "Enquiry",
+      "description": "An automated booking enquiry from a customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyName": { "type": "string" },
+        "propertyLocation": { "type": "string" },
+        "price": { "type": "string" },
+        "checkin": { "type": "string" },
+        "checkout": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["propertyName", "propertyLocation", "checkin", "checkout", "clientPhone", "createdAt"]
     }
   },
   "firestore": {
+    "/enquiries/{enquiryId}": {
+      "schema": "Enquiry",
+      "description": "Collection of automated booking enquiries."
+    },
     "/chat_sessions/{sessionId}": {
       "schema": "ChatSession",
       "description": "Collection of chat sessions."

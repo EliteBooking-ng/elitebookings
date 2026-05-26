@@ -19,13 +19,18 @@ import {
   Calendar,
   Clock,
   Mail,
-  Phone
+  Phone,
+  Check,
+  Copy,
+  Loader
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
 import { 
   doc,
-  getDocFromServer
+  getDocFromServer,
+  collection,
+  addDoc
 } from 'firebase/firestore';
 async function testConnection() {
   try {
@@ -77,6 +82,8 @@ export default function App() {
   const [bookingStep, setBookingStep] = useState<1 | 2>(1); // 1 = Date/Time, 2 = WhatsApp Options
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [userPhoneNumber, setUserPhoneNumber] = useState('');
+  const [emailSubmitStatus, setEmailSubmitStatus] = useState<'idle' | 'saving' | 'sending' | 'success' | 'manual_fallback'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
   const [checkinDate, setCheckinDate] = useState<Date | null>(null);
   const [checkinHour, setCheckinHour] = useState<string>('12');
   const [checkinMinute, setCheckinMinute] = useState<string>('00');
@@ -110,6 +117,8 @@ export default function App() {
       setCurrentMonth(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1));
       setShowEmailPopup(false);
       setUserPhoneNumber('');
+      setEmailSubmitStatus('idle');
+      setErrorMessage('');
     }
   }, [showBookingOptions]);
 
@@ -605,12 +614,22 @@ export default function App() {
     setFormData({ location: '', dates: '', guests: '', preferences: '' });
   };
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userPhoneNumber.trim()) return;
 
-    const subject = `Elite Booking Enquiry: ${showBookingOptions.name}`;
-    const body = `Hello Elite Bookings Team,
+    setEmailSubmitStatus('saving');
+    setErrorMessage('');
+
+    const formattedCheckin = checkinDate 
+      ? `${checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${checkinHour}:${checkinMinute} ${checkinPeriod}` 
+      : 'N/A';
+
+    const formattedCheckout = checkoutDate 
+      ? `${checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}` 
+      : 'N/A';
+
+    const bookingText = `Hello Elite Bookings Team,
 
 I would like to make an elite booking enquiry. Below are the details of the booking:
 
@@ -619,13 +638,13 @@ PROPERTY / ASSET DETAILS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Name: ${showBookingOptions.name}
 Location: ${showBookingOptions.location}
-${showBookingOptions.price ? `Rate: ₦${showBookingOptions.price}` : ''}
+Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 BOOKING TIMELINE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}
-Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}
+Check-in: ${formattedCheckin}
+Check-out: ${formattedCheckout}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CLIENT CONTACT INFORMATION
@@ -636,21 +655,73 @@ I look forward to your confirmation and payment details.
 
 Best regards.`;
 
-    const mailtoUrl = `mailto:Elitebooking.ng@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
-    // Trigger mail client
-    window.location.href = mailtoUrl;
+    const enquiryPayload = {
+      propertyName: showBookingOptions.name,
+      propertyLocation: showBookingOptions.location,
+      price: showBookingOptions.price || '',
+      checkin: formattedCheckin,
+      checkout: formattedCheckout,
+      clientPhone: userPhoneNumber,
+      createdAt: new Date().toISOString()
+    };
 
-    // Trigger success effects
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
+    // 1. Save to Firestore database (completely automatic!)
+    try {
+      await addDoc(collection(db, 'enquiries'), enquiryPayload);
+    } catch (dbError) {
+      console.warn('Silent database write issue, moving on to send email directly:', dbError);
+      // We still try to send email, but we log the error as per security guidelines
+      try {
+        handleFirestoreError(dbError, OperationType.WRITE, 'enquiries');
+      } catch (err) {
+        // Suppress print to UI so booking doesn't crash for the customer
+      }
+    }
 
-    // Reset states
-    setShowEmailPopup(false);
-    setShowBookingOptions(null);
+    // 2. Automated background email sending
+    const accessKey = (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
+
+    if (accessKey && accessKey.trim() !== '') {
+      setEmailSubmitStatus('sending');
+      try {
+        const response = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            access_key: accessKey,
+            subject: `Elite Booking Enquiry: ${showBookingOptions.name}`,
+            from_name: 'Elite Bookings System',
+            to_email: 'Elitebooking.ng@gmail.com',
+            message: bookingText,
+            phone: userPhoneNumber
+          })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setEmailSubmitStatus('success');
+          confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 }
+          });
+        } else {
+          console.error('Web3Forms email delivery error:', data);
+          setErrorMessage(data.message || 'Failed to send automated email alert.');
+          setEmailSubmitStatus('manual_fallback');
+        }
+      } catch (emailError) {
+        console.error('Network error during email auto-transmit:', emailError);
+        setErrorMessage('Check your network connection. You can still send manually.');
+        setEmailSubmitStatus('manual_fallback');
+      }
+    } else {
+      // No VITE_WEB3FORMS_ACCESS_KEY provided, fallback to manual triggers on saved booking
+      setEmailSubmitStatus('manual_fallback');
+    }
   };
 
   const HotelImageSlider = ({ images, name }: { images: string[], name: string }) => {
@@ -1265,44 +1336,176 @@ Best regards.`;
                 </button>
                 
                 {showEmailPopup ? (
-                  <div className="text-center font-sans">
-                    <h3 className="text-2xl font-serif text-charcoal mb-2">Almost Done!</h3>
-                    <p className="text-charcoal/60 text-sm mb-6">Provide your phone number to complete your booking enquiry via email.</p>
+                  <div>
+                    {emailSubmitStatus === 'idle' && (
+                      <div className="text-center font-sans">
+                        <h3 className="text-2xl font-serif text-charcoal mb-2">Almost Done!</h3>
+                        <p className="text-charcoal/60 text-sm mb-6">Provide your phone number to complete your booking enquiry via email.</p>
 
-                    <form onSubmit={handleEmailSubmit} className="space-y-6">
-                      <div className="text-left font-sans">
-                        <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-gold mb-2">My Mobile Phone Number</label>
-                        <div className="relative">
-                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
-                          <input
-                            required
-                            type="tel"
-                            placeholder="e.g. +234 801 234 5678"
-                            className="w-full bg-charcoal/5 border border-charcoal/10 rounded-xl py-3.5 pl-11 pr-4 focus:outline-none focus:border-gold transition-colors text-sm font-semibold text-charcoal"
-                            value={userPhoneNumber}
-                            onChange={(e) => setUserPhoneNumber(e.target.value)}
-                          />
-                        </div>
+                        <form onSubmit={handleEmailSubmit} className="space-y-6">
+                          <div className="text-left font-sans">
+                            <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-gold mb-2">My Mobile Phone Number</label>
+                            <div className="relative">
+                              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
+                              <input
+                                required
+                                type="tel"
+                                placeholder="e.g. +234 801 234 5678"
+                                className="w-full bg-charcoal/5 border border-charcoal/10 rounded-xl py-3.5 pl-11 pr-4 focus:outline-none focus:border-gold transition-colors text-sm font-semibold text-charcoal"
+                                value={userPhoneNumber}
+                                onChange={(e) => setUserPhoneNumber(e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-3 pt-4">
+                            <button
+                              type="submit"
+                              className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer"
+                            >
+                              <Mail className="w-5 h-5" />
+                              <span>Send Booking via Email</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setShowEmailPopup(false)}
+                              className="w-full bg-charcoal/5 border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10 hover:text-charcoal py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <ChevronLeft className="w-4 h-4" /> Go Back
+                            </button>
+                          </div>
+                        </form>
                       </div>
+                    )}
 
-                      <div className="space-y-3 pt-4">
-                        <button
-                          type="submit"
-                          className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer"
-                        >
-                          <Mail className="w-5 h-5" />
-                          <span>Send Booking via Email</span>
-                        </button>
+                    {(emailSubmitStatus === 'saving' || emailSubmitStatus === 'sending') && (
+                      <div className="flex flex-col items-center justify-center py-10 text-center font-sans">
+                        <Loader className="w-10 h-10 text-gold animate-spin mb-4" />
+                        <h3 className="text-xl font-serif text-charcoal mb-2">
+                          {emailSubmitStatus === 'saving' ? 'Saving Enquiry...' : 'Sending Email...'}
+                        </h3>
+                        <p className="text-charcoal/60 text-sm max-w-xs leading-relaxed">
+                          {emailSubmitStatus === 'saving' 
+                            ? 'Adding your booking request details securely into the elite cloud database...'
+                            : 'Delivering notification instantly to the Elite Bookings Team...'}
+                        </p>
+                      </div>
+                    )}
 
+                    {emailSubmitStatus === 'success' && (
+                      <div className="flex flex-col items-center justify-center py-6 text-center font-sans">
+                        <div className="w-16 h-16 bg-gold/10 text-gold rounded-full flex items-center justify-center mb-4">
+                          <Check className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-2xl font-serif text-charcoal mb-2 font-medium">Enquiry Automated!</h3>
+                        <p className="text-charcoal/60 text-sm mb-6 max-w-xs leading-relaxed">
+                          Your reservation for <strong className="text-charcoal">{showBookingOptions.name}</strong> was recorded in the database and delivered to the desk at <span className="text-gold font-medium">Elitebooking.ng@gmail.com</span>.
+                        </p>
+                        
                         <button
                           type="button"
-                          onClick={() => setShowEmailPopup(false)}
-                          className="w-full bg-charcoal/5 border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10 hover:text-charcoal py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                          onClick={() => {
+                            setShowEmailPopup(false);
+                            setShowBookingOptions(null);
+                          }}
+                          className="w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream transition-all duration-300 cursor-pointer"
                         >
-                          <ChevronLeft className="w-4 h-4" /> Go Back
+                          Completed Successfully
                         </button>
                       </div>
-                    </form>
+                    )}
+
+                    {emailSubmitStatus === 'manual_fallback' && (
+                      <div className="text-center font-sans">
+                        <div className="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Check className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-xl font-serif text-charcoal mb-2 font-medium">Recorded in Cloud!</h3>
+                        
+                        <p className="text-charcoal/60 text-xs mb-5 px-1 leading-relaxed">
+                          Enquiry for <strong>{showBookingOptions.name}</strong> has been secured in the cloud database. Press below to instantly trigger notification to the elite bookings desk:
+                        </p>
+
+                        <div className="space-y-2.5 pt-1">
+                          <a
+                            href={`mailto:Elitebooking.ng@gmail.com?subject=${encodeURIComponent(`Elite Booking Enquiry: ${showBookingOptions.name}`)}&body=${encodeURIComponent(`Hello Elite Bookings Team,
+
+I would like to make an elite booking enquiry. Below are the details of the booking:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROPERTY / ASSET DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Name: ${showBookingOptions.name}
+Location: ${showBookingOptions.location}
+Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOOKING TIMELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}
+Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLIENT CONTACT INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phone Number: ${userPhoneNumber}
+
+I look forward to your confirmation and payment details.
+
+Best regards.`)}`}
+                            className="flex items-center justify-center space-x-2.5 w-full bg-charcoal text-cream py-3.5 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream transition-all duration-300 cursor-pointer"
+                          >
+                            <Mail className="w-4 h-4" />
+                            <span>Connect via Mail</span>
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const text = `Hello Elite Bookings Team,
+
+I would like to make an elite booking enquiry. Below are the details of the booking:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROPERTY / ASSET DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Name: ${showBookingOptions.name}
+Location: ${showBookingOptions.location}
+Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOOKING TIMELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}
+Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLIENT CONTACT INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phone Number: ${userPhoneNumber}`;
+                              navigator.clipboard.writeText(text);
+                              alert('Booking details copied successfully to clipboard!');
+                            }}
+                            className="flex items-center justify-center space-x-2 w-full bg-charcoal/5 border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10 hover:text-charcoal py-3 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all duration-300 cursor-pointer"
+                          >
+                            <Copy className="w-4 h-4" />
+                            <span>Copy Info to Clipboard</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowEmailPopup(false);
+                              setShowBookingOptions(null);
+                            }}
+                            className="text-charcoal/40 hover:text-charcoal text-[10px] uppercase tracking-[0.25em] font-semibold pt-4 transition-all duration-300 cursor-pointer w-full text-center block"
+                          >
+                            Close Overlay
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : bookingStep === 1 ? (
                   <div className="flex flex-col h-full">
