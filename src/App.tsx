@@ -9,41 +9,22 @@ import {
   Hotel, 
   Home, 
   Car, 
-  ChevronRight, 
   ChevronLeft, 
-  Calendar, 
+  ChevronRight,
   MapPin, 
-  Users, 
   Sparkles,
   X,
   ArrowRight,
-  MessageCircle,
-  Send,
-  Settings,
-  Bell,
-  LogOut,
-  LogIn,
-  Search,
-  Star,
-  ArrowLeft
+  ArrowLeft,
+  Calendar,
+  Clock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { db, auth } from './firebase';
+import { db } from './firebase';
 import { 
-  collection, 
-  addDoc, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  serverTimestamp,
   doc,
-  setDoc,
-  updateDoc,
-  limit
+  getDocFromServer
 } from 'firebase/firestore';
-import { signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getDocFromServer } from 'firebase/firestore';
-
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -64,44 +45,13 @@ enum OperationType {
   WRITE = 'write',
 }
 
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId: string | undefined;
-    email: string | null | undefined;
-    emailVerified: boolean | undefined;
-    isAnonymous: boolean | undefined;
-    tenantId: string | null | undefined;
-    providerInfo: {
-      providerId: string;
-      displayName: string | null;
-      email: string | null;
-      photoUrl: string | null;
-    }[];
-  }
-}
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
+  const errInfo = {
     error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
     operationType,
     path
-  }
+  };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
@@ -122,19 +72,47 @@ export default function App() {
   const [selectedShortlet, setSelectedShortlet] = useState<any | null>(null);
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
   const [showBookingOptions, setShowBookingOptions] = useState<any | null>(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatSessionId, setChatSessionId] = useState<string | null>(localStorage.getItem('chatSessionId'));
-  const [messages, setMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [chatError, setChatError] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const [isAdminMode, setIsAdminMode] = useState(false);
-  const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [allSessions, setAllSessions] = useState<any[]>([]);
-  const [activeAdminSession, setActiveAdminSession] = useState<string | null>(null);
+  const [bookingStep, setBookingStep] = useState<1 | 2>(1); // 1 = Date/Time, 2 = WhatsApp Options
+  const [checkinDate, setCheckinDate] = useState<Date | null>(null);
+  const [checkinHour, setCheckinHour] = useState<string>('12');
+  const [checkinMinute, setCheckinMinute] = useState<string>('00');
+  const [checkinPeriod, setCheckinPeriod] = useState<string>('PM');
+  const [checkoutDate, setCheckoutDate] = useState<Date | null>(null);
+  const [checkoutHour, setCheckoutHour] = useState<string>('12');
+  const [checkoutMinute, setCheckoutMinute] = useState<string>('00');
+  const [checkoutPeriod, setCheckoutPeriod] = useState<string>('PM');
+  const [activeDateTab, setActiveDateTab] = useState<'checkin' | 'checkout'>('checkin');
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+
+  useEffect(() => {
+    if (showBookingOptions) {
+      setBookingStep(1);
+      setActiveDateTab('checkin');
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setCheckinDate(tomorrow);
+      setCheckinHour('12');
+      setCheckinMinute('00');
+      setCheckinPeriod('PM');
+
+      setCheckoutDate(null);
+      setCheckoutHour('12');
+      setCheckoutMinute('00');
+      setCheckoutPeriod('PM');
+
+      setCurrentMonth(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1));
+    }
+  }, [showBookingOptions]);
+
+  const handleCheckinDateChange = (date: Date) => {
+    setCheckinDate(date);
+    if (checkoutDate && date >= checkoutDate) {
+      setCheckoutDate(null);
+    }
+  };
   const [guestId, setGuestId] = useState<string>(() => {
     const existing = localStorage.getItem('guestId');
     if (existing) return existing;
@@ -157,8 +135,9 @@ export default function App() {
       location: '73 Ken Saro-Wiwa Rd, Port Harcourt, Rivers',
       price: '30,000',
       images: [
-        'https://www.hotelscombined.com/rimg/himg/fa/fa/17/expedia_group-2284512-195964036-218492.jpg?width=968&height=607&crop=true',
-        'https://echelonheights.com/media/1479380492714A3780.jpg'
+        'https://echelonheights.com/media/1479380492714A3780.jpg',
+        'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1d/19/5f/94/echelon-heights-hotel.jpg?w=1200&h=1200&s=1',
+        'https://www.hotelscombined.com/rimg/himg/fa/fa/17/expedia_group-2284512-195964036-218492.jpg?width=968&height=607&crop=true'
       ],
       description: 'Experience unparalleled luxury and comfort in the heart of Port Harcourt.'
     },
@@ -168,15 +147,14 @@ export default function App() {
       location: '4 Worlu St, D-line, Port Harcourt, Rivers',
       price: '50,000',
       images: [
-        'https://images.timbu.com/hotels-ng/supplier_4i4vg01nc4_3_900x550.jpg',
-        'https://media-cdn.tripadvisor.com/media/photo-s/0c/7e/43/c2/landmark-hotels-port.jpg',
-        'https://landmarkhotels.com.ng/wp-content/uploads/2020/04/DJI_0157.jpg'
+        'https://landmarkhotels.com.ng/wp-content/uploads/2020/04/DJI_0157.jpg',
+        'https://media-cdn.tripadvisor.com/media/photo-s/0c/7e/43/c2/landmark-hotels-port.jpg'
       ],
       description: 'A landmark of hospitality offering world-class amenities and service.'
     },
     {
       id: 'dmatel',
-      name: 'Dmatel Gold hotel',
+      name: 'Dmatel Gold Hotel',
       location: '91 Stadium Rd, Rumuomasi, Port Harcourt, Rivers',
       price: '40,000',
       images: [
@@ -189,17 +167,24 @@ export default function App() {
       id: 'heliconia',
       name: 'Heliconia Hotel',
       location: 'Eastern Bypass, Ogbunabali, Amadi, Rivers',
-      price: '80,000',
+      price: '58,000',
+      tiers: [
+        { name: 'Exclusive', price: '211,000' },
+        { name: 'Silver', price: '148,000' },
+        { name: 'Top Tier', price: '76,000' },
+        { name: 'Bronze', price: '66,000' },
+        { name: 'Basic', price: '58,000' }
+      ],
       images: [
-        'https://images.trvl-media.com/lodging/84000000/83080000/83078400/83078322/fc1cd831.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
         'https://www.heliconiaparkhotels.com/port-harcourt/assets/img/restaurant1.jpg',
-        'https://q-xx.bstatic.com/xdata/images/hotel/max500/373718300.jpg?k=0fe93c496556445f6b1985ee117ba035240f6fbb917963331b21bdff437c1fb4&o='
+        'https://q-xx.bstatic.com/xdata/images/hotel/max500/373718300.jpg?k=0fe93c496556445f6b1985ee117ba035240f6fbb917963331b21bdff437c1fb4&o=',
+        'https://images.trvl-media.com/lodging/84000000/83080000/83078400/83078322/fc1cd831.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill'
       ],
       description: 'A serene and luxurious retreat offering exceptional hospitality and comfort.'
     },
     {
       id: 'leadwort',
-      name: 'Leadwort hotel',
+      name: 'Leadwort Hotel',
       location: 'Oriji St, 2 Chief Chukwuka Amadi St, Airport Road, Port Harcourt, Rivers',
       price: '45,000',
       images: [
@@ -219,6 +204,150 @@ export default function App() {
         'https://casoni.com.ng/wp-content/uploads/2021/11/25-788x504-1.jpg'
       ],
       description: 'A premium destination for business and leisure travelers in Port Harcourt.'
+    },
+    {
+      id: 'marvel-hotel',
+      name: 'Marvel Hotel',
+      location: 'Phase 2, 153 Tombia St, New GRA',
+      price: '100,000',
+      images: [
+        'https://images.trvl-media.com/lodging/126000000/125080000/125075600/125075556/b5637f90.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/126000000/125080000/125075600/125075556/ffa8ca8f.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://www.nacobooking.com/media/property_images/2_yJFjA7g.jpg'
+      ],
+      description: 'Experience refined luxury and world-class service in the heart of New GRA.'
+    },
+    {
+      id: 'ss3-odi',
+      name: 'SS3 Odi',
+      location: '10 odi street old GRA',
+      price: '99,000',
+      tiers: [
+        { name: 'Gold', price: '220,000' },
+        { name: 'Diamond', price: '160,000' },
+        { name: 'Exclusive', price: '141,000' },
+        { name: 'Silver', price: '125,400' },
+        { name: 'Top Tier', price: '119,400' },
+        { name: 'Bronze', price: '111,000' },
+        { name: 'Basic', price: '99,000' }
+      ],
+      images: [
+        'https://images.timbu.com/hotels-ng/supplier_m6stkkavzk_2_900x550.jpg',
+        'https://images.trvl-media.com/lodging/38000000/37860000/37851300/37851288/3d34102a.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/38000000/37860000/37851300/37851288/b5500453.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill'
+      ],
+      description: 'Exquisite luxury at SS3 Odi. Select from our range of premium tiers for an unforgettable experience.'
+    },
+    {
+      id: 'julirose-hotel',
+      name: 'Julirose Hotel & Suites',
+      location: 'Sim Fubara Close, Abuja Campus, Uniport',
+      price: '80,000',
+      tiers: [
+        { name: 'Diamond', price: '300,000' },
+        { name: 'Exclusive', price: '220,000' },
+        { name: 'Bronze', price: '100,000' },
+        { name: 'Basic', price: '80,000' }
+      ],
+      images: [
+        'https://images.trvl-media.com/lodging/125000000/124490000/124485200/124485132/d8e31402.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/126000000/125030000/125024200/125024132/2e57424e.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/126000000/125030000/125024200/125024132/1bf5f3a2.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/125000000/124490000/124485200/124485132/b5f7666c.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/125000000/124490000/124485200/124485132/3fe0f5ee.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill'
+      ],
+      description: 'Experience premium luxury and academic proximity at Julirose Hotel & Suites, located conveniently near Uniport.'
+    },
+    {
+      id: 'miami-hotel',
+      name: 'Miami Hotel & Lounge',
+      location: '7 Trans Woji Road, Elenlenwo',
+      price: '38,000',
+      tiers: [
+        { name: 'Exclusive', price: '83,000' },
+        { name: 'Silver', price: '63,000' },
+        { name: 'Top Tier', price: '58,000' },
+        { name: 'Bronze', price: '48,000' },
+        { name: 'Basic', price: '38,000' }
+      ],
+      images: [
+        'https://www.crystalbeds.com.ng/images/960x490/2025-01-17.jpg',
+        'https://www.crystalbeds.com.ng/images/960x490/Screenshot_20250919-145713.png'
+      ],
+      description: 'Discover relaxation and vibrant nightlife at Miami Hotel & Lounge, perfectly situated on Trans Woji Road.'
+    },
+    {
+      id: 'bonn-boutique',
+      name: 'Bonn Boutique hotel & Lounge',
+      location: '2 Love Close off Aganorlu Street, Ada-George Road, Mgbuoba',
+      price: '23,000',
+      tiers: [
+        { name: 'Exclusive', price: '73,000' },
+        { name: 'Silver', price: '48,000' },
+        { name: 'Top Tier', price: '43,000' },
+        { name: 'Bronze', price: '28,000' },
+        { name: 'Basic', price: '23,000' }
+      ],
+      images: [
+        'https://images.trvl-media.com/lodging/119000000/118240000/118236400/118236362/4b19dff8.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/119000000/118240000/118236400/118236362/w771h510x1y0-c3ddfb44.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/119000000/118240000/118236400/118236362/d3460250.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill'
+      ],
+      description: 'A stylish boutique hotel offering a blend of comfort and elegance on Ada-George Road.'
+    },
+    {
+      id: 'doncont-hotel',
+      name: 'Doncont Hotel',
+      location: 'No.2 Orugbum Crescent off Woji Road, GRA Phase 2',
+      price: '123,000',
+      tiers: [
+        { name: 'Gold', price: '205,000' },
+        { name: 'Diamond', price: '143,000' },
+        { name: 'Exclusive', price: '123,000' }
+      ],
+      images: [
+        'https://images.trvl-media.com/lodging/111000000/110810000/110806700/110806677/9cb18bd1.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill',
+        'https://images.trvl-media.com/lodging/111000000/110810000/110806700/110806677/a2471259.jpg?impolicy=resizecrop&rw=575&rh=575&ra=fill'
+      ],
+      description: 'Experience luxury and comfort at Doncont Hotel, ideally located in the prestigious GRA Phase 2.'
+    },
+    {
+      id: 'villa-toscana-luxe',
+      name: 'Villa Toscana Luxe Hotel',
+      location: 'No. 20 Orogbum Crescent, GRA phase 2, port harcourt.',
+      price: '93,000',
+      tiers: [
+        { name: 'Super Deluxe', price: '710,000' },
+        { name: 'Deluxe', price: '355,000' },
+        { name: 'Gold', price: '255,000' },
+        { name: 'Diamond', price: '164,000' },
+        { name: 'Exclusive', price: '143,000' },
+        { name: 'Silver', price: '113,000' },
+        { name: 'Top Tier', price: '103,000' },
+        { name: 'Bronze', price: '98,000' },
+        { name: 'Basic', price: '93,000' }
+      ],
+      images: [
+        'https://www.villatoscanahotels.com/wp-content/uploads/2023/07/Villa-Toscana-Hotel-Port-Harcourt-1.jpg',
+        'https://cf.bstatic.com/xdata/images/hotel/max1024x768/467889133.jpg?k=63a6c1886a25472086f82abd8478d3480acf9dc4d81d5e492456e6cc4bc60397&o=&hp=1',
+        'https://www.villatoscanahotels.com/wp-content/uploads/2023/07/Flavour-Suite-Villa-Toscana-Hotel-Port-Harcourt-4.jpg',
+        'https://www.villatoscanahotels.com/wp-content/uploads/2023/07/Twin-Suite-Villa-Toscana-Hotel-Port-Harcourt-7.jpeg.webp'
+      ],
+      description: 'Experience luxury at its finest at Villa Toscana Luxe Hotel, located in the prestigious GRA Phase 2.'
+    },
+    {
+      id: 'hotel-1708',
+      name: '1708 Hotel',
+      location: '3 Ogunka Erewu Road',
+      price: '53,000',
+      tiers: [
+        { name: 'Silver', price: '58,000' },
+        { name: 'Top Tier', price: '53,000' }
+      ],
+      images: [
+        'https://cf.bstatic.com/xdata/images/hotel/max1024x768/724381730.jpg?k=6265314bb5b299ca3d962310f72438f948ae71f4220a3b123962b4384cd067f2&o=&hp=1'
+      ],
+      description: 'Experience cozy comfort and outstanding service at 1708 Hotel, located on Ogunka Erewu Road.'
     }
   ];
 
@@ -257,7 +386,6 @@ export default function App() {
       price: '',
       images: [
         'https://images.dealersync.com/2174/Photos/826466/20220510223658719_IMG_6371.jpg?_=743cb49fa9df567a3ddcfc880d45e73cbc146174',
-        'https://images.carloaded.com/large/jjvPZz3LxLIlu8PyhWr43Ta5ifBJg0B7s0AOSGcrMoQfa2wNL9.jpeg',
         'https://img.nigeriacarmart.com/upload/25/8p/iz7d/2015-lexus-gx-gx-460-jd.webp'
       ],
       description: 'Commanding presence and peerless luxury. Perfect for navigating the city in absolute comfort.'
@@ -269,8 +397,7 @@ export default function App() {
       price: '',
       images: [
         'https://www.autocollectionofmurfreesboro.com/imagetag/17619/main/l/Used-2018-Land-Rover-Range-Rover-Velar-P380-FIRST-EDITION-W94K-MSRP!!-1718852884.jpg',
-        'https://images.cars.ng/images/cars-ng/product_ca603791s_foreign_used_2018_range_rover_velar_p250_s_for_sale_in_lagos_1771920743850_5gi5jj_5eeb1c_4_500x500.jpg',
-        'https://images.cars.ng/images/cars-ng/product_ca603791s_foreign_used_2018_range_rover_velar_p250_s_for_sale_in_lagos_1771920743850_5gi5jj_0e5cf9_8_500x500.jpg'
+        'https://images.cars.ng/images/cars-ng/product_ca603791s_foreign_used_2018_range_rover_velar_p250_s_for_sale_in_lagos_1771920743850_5gi5jj_5eeb1c_4_500x500.jpg'
       ],
       description: 'The ultimate blend of reliability and luxury. Ideal for both city drives and longer journeys.'
     },
@@ -303,7 +430,7 @@ export default function App() {
       title: 'Hotels',
       subtitle: 'Luxury Stays',
       icon: <Hotel className="w-6 h-6" />,
-      image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
+      image: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1d/19/5f/94/echelon-heights-hotel.jpg?w=1200&h=1200&s=1',
       description: 'Curated collection of the world\'s most prestigious hotels and resorts.'
     },
     {
@@ -311,7 +438,7 @@ export default function App() {
       title: 'Shortlet',
       subtitle: 'Private Estates',
       icon: <Home className="w-6 h-6" />,
-      image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800',
+      image: 'https://a0.muscache.com/im/pictures/hosting/Hosting-U3RheVN1cHBseUxpc3Rpbmc6MTM5NDIyMDExODcwNjgxMDEwNA%3D%3D/original/5b86c7d8-050a-4693-9b41-02e03f96caeb.jpeg',
       description: 'Exclusive access to architectural masterpieces and hidden villas.'
     },
     {
@@ -319,7 +446,7 @@ export default function App() {
       title: 'Car Rentals',
       subtitle: 'Private Fleet',
       icon: <Car className="w-6 h-6" />,
-      image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=800',
+      image: 'https://images.dealersync.com/2174/Photos/826466/20220510223658719_IMG_6371.jpg?_=743cb49fa9df567a3ddcfc880d45e73cbc146174',
       description: 'A fleet of exceptional vehicles for your most refined journeys.'
     }
   ];
@@ -332,241 +459,7 @@ export default function App() {
   const handleNext = () => setStep(s => s + 1);
   const handleBack = () => setStep(s => s - 1);
 
-  useEffect(() => {
-    onAuthStateChanged(auth, (u) => {
-      if (u) {
-        console.log('Auth State: User is signed in', u.uid);
-        setUser(u);
-        // Check if this is the admin email
-        const email = u.email?.toLowerCase();
-        const allowedAdmins = ['lobeskki7@gmail.com', 'lobeski7@gmail.com'];
-        if (email && allowedAdmins.includes(email)) {
-          console.log('Admin access granted for:', email);
-        }
-      } else {
-        console.log('Auth State: No authenticated user, using guest ID:', guestId);
-      }
-    });
-  }, [guestId]);
 
-  // Admin: Listen to all sessions
-  useEffect(() => {
-    const email = user?.email?.toLowerCase();
-    const allowedAdmins = ['lobeskki7@gmail.com', 'lobeski7@gmail.com'];
-    const isAdmin = email && allowedAdmins.includes(email);
-    
-    if (!isAdmin || !isAdminMode) return;
-
-    const q = query(collection(db, 'chat_sessions'), orderBy('updatedAt', 'desc'), limit(50));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      
-      // Check for new messages to play sound/notify
-      if (allSessions.length > 0 && sessions.length > 0) {
-        const latestNew = sessions[0];
-        const latestOld = allSessions[0];
-        if (latestNew.updatedAt?.toMillis() > latestOld.updatedAt?.toMillis() && latestNew.lastMessage !== latestOld.lastMessage) {
-          playNotificationSound();
-          showBrowserNotification('New Message', latestNew.lastMessage);
-        }
-      }
-      
-      setAllSessions(sessions);
-    });
-
-    return () => unsubscribe();
-  }, [user, isAdminMode, allSessions]);
-
-  const playNotificationSound = () => {
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
-    audio.play().catch(e => console.log('Audio play blocked'));
-  };
-
-  const showBrowserNotification = (title: string, body: string) => {
-    if (Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '/favicon.ico' });
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission();
-    }
-  };
-
-  const handleAdminLogin = async () => {
-    if (isLoggingIn) return;
-    
-    setLoginError(null);
-    setIsLoggingIn(true);
-    
-    const provider = new GoogleAuthProvider();
-    // Force select account to ensure the popup has content and doesn't close immediately
-    provider.setCustomParameters({ prompt: 'select_account' });
-
-    try {
-      console.log('Initiating Admin Login Popup...');
-      
-      // Check if we are in an iframe on mobile, which often blocks popups
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const isInIframe = window.self !== window.top;
-      
-      if (isMobile && isInIframe) {
-        console.warn('Mobile iframe detected - popups may fail');
-        // We can't easily fix this without redirect, but we can warn the user
-      }
-
-      const result = await signInWithPopup(auth, provider);
-      const email = result.user.email?.toLowerCase();
-      
-      console.log('Admin login attempt with email:', email);
-      
-      const allowedAdmins = ['lobeskki7@gmail.com', 'lobeski7@gmail.com'];
-      
-      if (email && allowedAdmins.includes(email)) {
-        console.log('Admin access granted for:', email);
-        setIsAdminMode(true);
-        setShowAdminLoginModal(false);
-      } else {
-        console.warn('Admin access denied for:', email);
-        setLoginError(`Access Denied: ${email} does not have concierge privileges.`);
-        await signOut(auth);
-      }
-    } catch (error: any) {
-      console.error('Admin login failed:', error);
-      if (error.code === 'auth/popup-blocked') {
-        setLoginError('Popup Blocked: Please allow popups for this site in your browser settings, then try again.');
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        setLoginError('Login cancelled. Please try again.');
-      } else if (error.code === 'auth/internal-error') {
-        setLoginError('Network Error: Please check your internet connection and try again.');
-      } else {
-        setLoginError(`Login failed: ${error.message || 'Unknown error'}. (Code: ${error.code || 'unknown'})`);
-      }
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogout = () => {
-    signOut(auth);
-    setIsAdminMode(false);
-    setUser(null);
-  };
-
-  useEffect(() => {
-    if (!chatSessionId) return;
-
-    const path = `chat_sessions/${chatSessionId}/messages`;
-    const q = query(
-      collection(db, 'chat_sessions', chatSessionId, 'messages'),
-      orderBy('timestamp', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setMessages(msgs);
-    }, (error) => {
-      console.error('Chat sync error:', error);
-      // Don't throw here to avoid crashing the UI
-    });
-
-    return () => unsubscribe();
-  }, [chatSessionId]);
-
-  const startChat = async (item: any) => {
-    if (isSending) return;
-    
-    setIsChatOpen(true);
-    setShowBookingOptions(null);
-    setIsSending(true);
-    setChatError(null);
-    
-    console.log('Starting chat for item:', item.name);
-    
-    try {
-      // Use authenticated UID or guest ID
-      const currentUid = user?.uid || guestId;
-
-      let sessionId = chatSessionId;
-      if (!sessionId) {
-        console.log('Creating new chat session...');
-        const docRef = await addDoc(collection(db, 'chat_sessions'), {
-          customerName: 'Guest',
-          customerEmail: 'guest@example.com',
-          lastMessage: `Inquiry about ${item.name}`,
-          status: 'active',
-          uid: currentUid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        sessionId = docRef.id;
-        setChatSessionId(sessionId);
-        localStorage.setItem('chatSessionId', sessionId);
-        console.log('New session created:', sessionId);
-      }
-      
-      console.log('Sending initial message to session:', sessionId);
-      await addDoc(collection(db, 'chat_sessions', sessionId, 'messages'), {
-        text: `Hello, I'm interested in booking ${item.name}.`,
-        senderType: 'customer',
-        uid: currentUid,
-        timestamp: serverTimestamp()
-      });
-      console.log('Initial message sent');
-    } catch (error) {
-      console.error('Failed to start chat:', error);
-      setChatError('Concierge sync failed. Please try typing your message below.');
-      
-      // If it's a permission error, it might be a stale session
-      if (error instanceof Error && (error.message.includes('permission') || error.message.includes('not-found'))) {
-        console.log('Clearing stale session ID');
-        localStorage.removeItem('chatSessionId');
-        setChatSessionId(null);
-      }
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !chatSessionId || isSending) return;
-
-    const text = newMessage;
-    setNewMessage('');
-    setIsSending(true);
-    setChatError(null);
-
-    console.log('Attempting to send message to session:', chatSessionId);
-
-    try {
-      const messageData = {
-        text,
-        senderType: 'customer',
-        uid: user?.uid || guestId,
-        timestamp: serverTimestamp()
-      };
-      
-      await addDoc(collection(db, 'chat_sessions', chatSessionId, 'messages'), messageData);
-
-      await updateDoc(doc(db, 'chat_sessions', chatSessionId), {
-        lastMessage: text,
-        updatedAt: serverTimestamp()
-      });
-      
-      console.log('Message sent successfully');
-    } catch (error) {
-      console.error('Detailed send error:', error);
-      setNewMessage(text); // Restore message
-      setChatError('Message failed to send. Please check your connection.');
-      
-      // If it's a permission error, it might be that the session ID is invalid/expired
-      if (error instanceof Error && error.message.includes('permission')) {
-        setChatError('Session expired. Please refresh and try again.');
-      }
-    } finally {
-      setIsSending(false);
-    }
-  };
 
   const reset = () => {
     setSelectedCategory(null);
@@ -623,210 +516,126 @@ export default function App() {
     );
   };
 
-  const email = user?.email?.toLowerCase();
-  const allowedAdmins = ['lobeskki7@gmail.com', 'lobeski7@gmail.com'];
-  const isAdmin = email && allowedAdmins.includes(email);
+  const renderCalendar = (mode: 'checkin' | 'checkout') => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay();
 
-  if (isAdminMode && isAdmin) {
+    const days = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push(null);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      days.push(new Date(year, month, d));
+    }
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const handleMonthChange = (direction: 'prev' | 'next') => {
+      setCurrentMonth(prev => {
+        const newMonth = new Date(prev);
+        if (direction === 'prev') {
+          newMonth.setMonth(newMonth.getMonth() - 1);
+        } else {
+          newMonth.setMonth(newMonth.getMonth() + 1);
+        }
+        return newMonth;
+      });
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     return (
-      <div className="min-h-screen bg-cream flex flex-col">
-        {/* Admin Header */}
-        <header className="bg-charcoal p-6 flex justify-between items-center text-cream sticky top-0 z-50">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-full bg-gold/20 flex items-center justify-center text-gold">
-              <Settings className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-serif">Concierge Dashboard</h1>
-              <p className="text-[10px] uppercase tracking-widest text-gold font-bold">Admin Panel</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2 bg-cream/10 px-4 py-2 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs font-medium uppercase tracking-wider">Live</span>
-            </div>
-            <button 
-              onClick={handleLogout}
-              className="flex items-center space-x-2 text-cream/60 hover:text-cream transition-colors text-xs uppercase tracking-widest font-bold"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </button>
-          </div>
-        </header>
+      <div className="w-full">
+        {/* Month Navigation */}
+        <div className="flex justify-between items-center mb-6">
+          <button 
+            type="button"
+            onClick={() => handleMonthChange('prev')}
+            className="p-2 border border-charcoal/10 rounded-full hover:bg-gold/10 hover:border-gold transition-colors text-charcoal cursor-pointer flex items-center justify-center"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <h4 className="font-serif text-charcoal font-medium text-base md:text-lg leading-none">
+            {monthNames[month]} {year}
+          </h4>
+          <button 
+            type="button"
+            onClick={() => handleMonthChange('next')}
+            className="p-2 border border-charcoal/10 rounded-full hover:bg-gold/10 hover:border-gold transition-colors text-charcoal cursor-pointer flex items-center justify-center"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
 
-        <div className="flex-grow flex overflow-hidden h-[calc(100vh-88px)]">
-          {/* Sessions List */}
-          <div className="w-1/3 border-r border-charcoal/10 overflow-y-auto bg-white">
-            <div className="p-6 border-b border-charcoal/5 bg-cream/20">
-              <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-charcoal/40 mb-4">Active Conversations</h2>
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/30" />
-                <input 
-                  type="text" 
-                  placeholder="Search sessions..." 
-                  className="w-full bg-white border border-charcoal/10 rounded-full py-3 pl-12 pr-6 text-sm focus:ring-2 focus:ring-gold/20 focus:outline-none"
-                />
-              </div>
-            </div>
-            <div className="divide-y divide-charcoal/5">
-              {allSessions.length === 0 ? (
-                <div className="p-12 text-center">
-                  <MessageCircle className="w-12 h-12 text-charcoal/10 mx-auto mb-4" />
-                  <p className="text-charcoal/40 text-sm">No active sessions yet.</p>
-                </div>
-              ) : (
-                allSessions.map((session) => (
-                  <button 
-                    key={session.id}
-                    onClick={() => {
-                      setActiveAdminSession(session.id);
-                      setChatSessionId(session.id);
-                    }}
-                    className={`w-full p-6 text-left hover:bg-cream/30 transition-colors flex items-start space-x-4 ${activeAdminSession === session.id ? 'bg-cream/50 border-l-4 border-gold' : ''}`}
-                  >
-                    <div className="w-12 h-12 rounded-full bg-charcoal/5 flex items-center justify-center text-charcoal/40 flex-shrink-0">
-                      <Users className="w-6 h-6" />
-                    </div>
-                    <div className="flex-grow min-w-0">
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-bold text-charcoal truncate text-sm uppercase tracking-wider">{session.customerName || 'Anonymous Guest'}</h3>
-                        <span className="text-[9px] text-charcoal/40 whitespace-nowrap">
-                          {session.updatedAt?.toDate ? session.updatedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-charcoal/60 truncate italic">"{session.lastMessage}"</p>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
+        {/* Days of Week Header */}
+        <div className="grid grid-cols-7 gap-1 text-center mb-3">
+          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+            <span key={day} className="text-[10px] uppercase font-mono tracking-wider font-semibold text-charcoal/40">
+              {day}
+            </span>
+          ))}
+        </div>
 
-          {/* Chat Window */}
-          <div className="flex-grow flex flex-col bg-cream/10">
-            {activeAdminSession ? (
-              <>
-                <div className="p-6 bg-white border-b border-charcoal/10 flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center text-gold">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-serif text-lg text-charcoal">
-                        {allSessions.find(s => s.id === activeAdminSession)?.customerName || 'Guest'}
-                      </h3>
-                      <p className="text-[10px] uppercase tracking-widest text-charcoal/40 font-bold">Session ID: {activeAdminSession}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <button className="p-2 text-charcoal/40 hover:text-charcoal transition-colors">
-                      <Star className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 text-charcoal/40 hover:text-charcoal transition-colors">
-                      <Bell className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1.5 text-center">
+          {days.map((date, idx) => {
+            if (!date) {
+              return <div key={`empty-${idx}`} className="aspect-square" />;
+            }
 
-                <div className="flex-grow overflow-y-auto p-8 space-y-6">
-                  {messages.map((msg) => (
-                    <div 
-                      key={msg.id} 
-                      className={`flex ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-[70%] p-5 rounded-3xl text-sm shadow-sm ${
-                        msg.senderType === 'admin' 
-                          ? 'bg-gold text-cream rounded-tr-none' 
-                          : 'bg-white text-charcoal border border-charcoal/5 rounded-tl-none'
-                      }`}>
-                        {msg.text}
-                        <div className={`text-[9px] mt-2 opacity-50 ${msg.senderType === 'admin' ? 'text-right' : 'text-left'}`}>
-                          {msg.timestamp?.toDate ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sending...'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            const targetDate = mode === 'checkin' ? checkinDate : checkoutDate;
+            const isSelected = targetDate && 
+              date.getDate() === targetDate.getDate() &&
+              date.getMonth() === targetDate.getMonth() &&
+              date.getFullYear() === targetDate.getFullYear();
 
-                <div className="p-6 bg-white border-t border-charcoal/10">
-                  <div className="relative">
-                    <input 
-                      type="text"
-                      placeholder="Type your reply as Concierge..."
-                      className="w-full bg-cream/30 border-none rounded-full py-5 pl-8 pr-16 focus:ring-2 focus:ring-gold/20 focus:outline-none text-sm"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={async (e) => {
-                        if (e.key === 'Enter' && newMessage.trim() && !isSending) {
-                          const text = newMessage;
-                          setNewMessage('');
-                          setIsSending(true);
-                          try {
-                            await addDoc(collection(db, 'chat_sessions', activeAdminSession, 'messages'), {
-                              text,
-                              senderType: 'admin',
-                              timestamp: serverTimestamp()
-                            });
-                            await updateDoc(doc(db, 'chat_sessions', activeAdminSession), {
-                              lastMessage: text,
-                              updatedAt: serverTimestamp()
-                            });
-                          } catch (err) {
-                            console.error('Admin send error:', err);
-                            setNewMessage(text);
-                          } finally {
-                            setIsSending(false);
-                          }
-                        }
-                      }}
-                    />
-                    <button 
-                      disabled={isSending || !newMessage.trim()}
-                      onClick={async () => {
-                        if (!newMessage.trim() || isSending) return;
-                        const text = newMessage;
-                        setNewMessage('');
-                        setIsSending(true);
-                        try {
-                          await addDoc(collection(db, 'chat_sessions', activeAdminSession, 'messages'), {
-                            text,
-                            senderType: 'admin',
-                            timestamp: serverTimestamp()
-                          });
-                          await updateDoc(doc(db, 'chat_sessions', activeAdminSession), {
-                            lastMessage: text,
-                            updatedAt: serverTimestamp()
-                          });
-                        } catch (err) {
-                          console.error('Admin send error:', err);
-                          setNewMessage(text);
-                        } finally {
-                          setIsSending(false);
-                        }
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 bg-charcoal text-cream rounded-full flex items-center justify-center hover:bg-gold transition-colors shadow-lg"
-                    >
-                      <Send className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex-grow flex flex-col items-center justify-center text-center p-12">
-                <div className="w-24 h-24 rounded-full bg-gold/10 flex items-center justify-center text-gold mb-6">
-                  <MessageCircle className="w-12 h-12" />
-                </div>
-                <h3 className="text-2xl font-serif text-charcoal mb-2">Select a Conversation</h3>
-                <p className="text-charcoal/40 max-w-xs">Choose a guest from the list on the left to start providing luxury concierge support.</p>
-              </div>
-            )}
-          </div>
+            let isPast = date < today;
+            if (mode === 'checkout' && checkinDate) {
+              const checkinCompare = new Date(checkinDate);
+              checkinCompare.setHours(0, 0, 0, 0);
+              isPast = isPast || date < checkinCompare;
+            }
+
+            return (
+              <button
+                key={`day-${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${idx}`}
+                type="button"
+                disabled={isPast}
+                onClick={() => {
+                  if (mode === 'checkin') {
+                    handleCheckinDateChange(date);
+                    setTimeout(() => {
+                      setActiveDateTab('checkout');
+                    }, 180);
+                  } else {
+                    setCheckoutDate(date);
+                  }
+                }}
+                className={`
+                  aspect-square flex items-center justify-center rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer
+                  ${isPast 
+                    ? 'text-charcoal/20 cursor-not-allowed hover:bg-transparent' 
+                    : isSelected 
+                      ? 'bg-gold text-white font-bold scale-105 shadow-md shadow-gold/25' 
+                      : 'text-charcoal hover:bg-gold/10 hover:text-gold'
+                  }
+                `}
+              >
+                {date.getDate()}
+              </button>
+            );
+          })}
         </div>
       </div>
     );
-  }
+  };
+
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-gold/30">
@@ -941,7 +750,7 @@ export default function App() {
                   className="group cursor-pointer relative overflow-hidden rounded-3xl aspect-[16/9] w-full max-w-3xl bg-charcoal shadow-2xl shadow-gold/10"
                 >
                   <img 
-                    src="https://images.unsplash.com/photo-1590073242678-70ee3fc28e8e?auto=format&fit=crop&q=80&w=1200" 
+                    src="https://media.premiumtimesng.com/wp-content/files/2019/11/Port-Harcourt-Rivers-State.jpg" 
                     alt="Port Harcourt"
                     className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-1000 ease-out"
                     referrerPolicy="no-referrer"
@@ -1002,9 +811,21 @@ export default function App() {
                             {hotel.location}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Per Night</span>
-                          <span className="text-2xl font-serif text-charcoal">₦{hotel.price}</span>
+                        <div className="text-right flex flex-col items-end">
+                          <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">From</span>
+                          <span className="text-3xl font-serif text-charcoal block mb-6">₦{hotel.price}</span>
+                          
+                          {(hotel as any).tiers && (
+                            <div className="w-full min-w-[180px] space-y-2.5 pt-6 border-t border-charcoal/5">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-charcoal/30 font-bold mb-4">Available Tiers</p>
+                              {(hotel as any).tiers.map((tier: any) => (
+                                <div key={tier.name} className="flex justify-between items-center gap-6">
+                                  <span className="text-[10px] uppercase tracking-widest text-charcoal/50 font-bold">{tier.name}</span>
+                                  <span className="text-sm font-serif text-gold">₦{tier.price}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md">
@@ -1240,7 +1061,7 @@ export default function App() {
         {/* Booking Options Modal */}
         <AnimatePresence>
           {showBookingOptions && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-charcoal/40 backdrop-blur-sm">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1252,196 +1073,210 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white rounded-3xl p-8 md:p-12 max-w-md w-full shadow-2xl"
+                className="relative bg-white rounded-3xl p-6 md:p-10 max-w-lg w-full shadow-2xl z-10 overflow-hidden"
               >
                 <button 
                   onClick={() => setShowBookingOptions(null)}
-                  className="absolute top-6 right-6 text-charcoal/40 hover:text-charcoal transition-colors"
+                  className="absolute top-6 right-6 text-charcoal/40 hover:text-charcoal transition-colors z-20"
                 >
                   <X className="w-6 h-6" />
                 </button>
-                <div className="text-center">
-                  <h3 className="text-2xl font-serif text-charcoal mb-2">Booking Options</h3>
-                  <p className="text-charcoal/60 text-sm mb-8">How would you like to proceed with your booking for {showBookingOptions.name}?</p>
-                  
-                  <div className="space-y-4">
-                    <a 
-                      href={`https://wa.me/2347072253857?text=${encodeURIComponent(`Hello, I would like to book ${showBookingOptions.name}.\n\nLocation: ${showBookingOptions.location}${showBookingOptions.price ? `\nPrice: ₦${showBookingOptions.price}` : ''}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center space-x-3 w-full bg-[#25D366] text-white py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:opacity-90 transition-opacity"
-                    >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                      <span>WhatsApp</span>
-                    </a>
-                    <button 
-                      onClick={() => startChat(showBookingOptions)}
-                      className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors"
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                      <span>Live Chat</span>
-                    </button>
+                
+                {bookingStep === 1 ? (
+                  <div className="flex flex-col h-full">
+                    <div className="text-center mb-6">
+                      <h3 className="text-2xl font-serif text-charcoal mb-1">Select Dates &amp; Times</h3>
+                      <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out dates and times for {showBookingOptions.name}</p>
+                    </div>
+
+                    {/* Tabs for Check-in / Check-out */}
+                    <div className="flex bg-charcoal/5 p-1 rounded-xl mb-6">
+                      <button
+                        type="button"
+                        onClick={() => setActiveDateTab('checkin')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer
+                          ${activeDateTab === 'checkin'
+                            ? 'bg-white text-charcoal shadow-sm'
+                            : 'text-charcoal/60 hover:text-charcoal'
+                          }
+                        `}
+                      >
+                        Check-in
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveDateTab('checkout')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer
+                          ${activeDateTab === 'checkout'
+                            ? 'bg-white text-charcoal shadow-sm'
+                            : 'text-charcoal/60 hover:text-charcoal'
+                          }
+                        `}
+                      >
+                        Check-out
+                      </button>
+                    </div>
+
+                    <div className="mb-6">
+                      {renderCalendar(activeDateTab)}
+                    </div>
+
+                    {/* Time Selector */}
+                    <div className="mb-6 border-t border-charcoal/5 pt-5">
+                      <label className="block text-center mb-3">
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-gold font-bold flex items-center justify-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" /> {activeDateTab === 'checkin' ? 'Check-in Time' : 'Check-out Time'}
+                        </span>
+                      </label>
+                      <div className="flex justify-center items-center gap-2">
+                        {/* Hour */}
+                        <div className="relative">
+                          <select
+                            value={activeDateTab === 'checkin' ? checkinHour : checkoutHour}
+                            onChange={(e) => activeDateTab === 'checkin' ? setCheckinHour(e.target.value) : setCheckoutHour(e.target.value)}
+                            className="appearance-none bg-charcoal/5 hover:bg-charcoal/10 transition-colors border border-charcoal/10 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-gold text-charcoal pr-8 cursor-pointer"
+                          >
+                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-charcoal/40 text-[10px]">▼</div>
+                        </div>
+
+                        <span className="text-charcoal/40 font-bold">:</span>
+
+                        {/* Minute */}
+                        <div className="relative">
+                          <select
+                            value={activeDateTab === 'checkin' ? checkinMinute : checkoutMinute}
+                            onChange={(e) => activeDateTab === 'checkin' ? setCheckinMinute(e.target.value) : setCheckoutMinute(e.target.value)}
+                            className="appearance-none bg-charcoal/5 hover:bg-charcoal/10 transition-colors border border-charcoal/10 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-gold text-charcoal pr-8 cursor-pointer"
+                          >
+                            {['00', '15', '30', '45'].map(m => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-charcoal/40 text-[10px]">▼</div>
+                        </div>
+
+                        {/* Period AM/PM */}
+                        <div className="relative">
+                          <select
+                            value={activeDateTab === 'checkin' ? checkinPeriod : checkoutPeriod}
+                            onChange={(e) => activeDateTab === 'checkin' ? setCheckinPeriod(e.target.value) : setCheckoutPeriod(e.target.value)}
+                            className="appearance-none bg-charcoal/5 hover:bg-charcoal/10 transition-colors border border-charcoal/10 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-gold text-charcoal pr-8 cursor-pointer"
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-charcoal/40 text-[10px]">▼</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Selected Summary & Next Button */}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3 bg-gold/5 border border-gold/15 rounded-xl p-3.5 text-center">
+                        <div>
+                          <p className="text-[10px] text-gold uppercase tracking-wider font-bold mb-0.5">Check-in</p>
+                          <p className="text-[11px] font-semibold text-charcoal">
+                            {checkinDate ? checkinDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Select'} at {checkinHour}:{checkinMinute} {checkinPeriod}
+                          </p>
+                        </div>
+                        <div className="border-l border-gold/15">
+                          <p className="text-[10px] text-gold uppercase tracking-wider font-bold mb-0.5">Check-out</p>
+                          <p className={`text-[11px] font-semibold ${checkoutDate ? 'text-charcoal' : 'text-red-500 font-bold animate-pulse'}`}>
+                            {checkoutDate 
+                              ? `${checkoutDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}` 
+                              : 'Selection Required'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setBookingStep(2)}
+                        disabled={!checkinDate || !checkoutDate}
+                        className={`w-full py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-2 transition-all duration-300
+                          ${(checkinDate && checkoutDate) 
+                            ? 'bg-charcoal text-cream hover:bg-gold hover:shadow-lg hover:shadow-gold/20 cursor-pointer' 
+                            : 'bg-charcoal/20 text-charcoal/40 cursor-not-allowed'
+                          }
+                        `}
+                      >
+                        <span>Next: Confirm Booking</span> <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="text-center">
+                    <h3 className="text-2xl font-serif text-charcoal mb-2">Booking Summary</h3>
+                    <p className="text-charcoal/60 text-sm mb-6">Confirm your elite booking details for <span className="font-semibold text-charcoal">{showBookingOptions.name}</span></p>
+
+                    <div className="bg-charcoal/5 border border-charcoal/10 rounded-2xl p-6 mb-8 text-left space-y-4">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 block mb-0.5">Property / Asset</span>
+                        <span className="text-base font-serif text-charcoal font-medium">{showBookingOptions.name}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 border-t border-charcoal/10 pt-4">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 block mb-0.5">Check-in</span>
+                          <span className="text-xs font-bold text-charcoal block">
+                            {checkinDate ? checkinDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                          </span>
+                          <span className="text-[11px] text-charcoal/60 mt-0.5 block">{checkinHour}:{checkinMinute} {checkinPeriod}</span>
+                        </div>
+                        <div className="border-l border-charcoal/10 pl-4">
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 block mb-0.5">Check-out</span>
+                          <span className="text-xs font-bold text-charcoal block">
+                            {checkoutDate ? checkoutDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                          </span>
+                          <span className="text-[11px] text-charcoal/60 mt-0.5 block">{checkoutHour}:{checkoutMinute} {checkoutPeriod}</span>
+                        </div>
+                      </div>
+                      {showBookingOptions.price && (
+                        <div className="border-t border-charcoal/10 pt-4 flex justify-between items-center">
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 block">Rate starting from</span>
+                          <span className="text-base font-serif font-semibold text-gold">₦{showBookingOptions.price}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <a 
+                        href={`https://wa.me/2347072253857?text=${encodeURIComponent(
+                          `Hello, I would like to book ${showBookingOptions.name}.\n\n` +
+                          `📅 Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}\n` +
+                          `🔑 Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}\n` +
+                          `📍 Location: ${showBookingOptions.location}` +
+                          `${showBookingOptions.price ? `\n💳 Base Price: ₦${showBookingOptions.price}` : ''}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center space-x-3 w-full bg-[#25D366] text-white py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:opacity-90 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300"
+                      >
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.35-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        <span>Connect on WhatsApp</span>
+                      </a>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setBookingStep(1)}
+                        className="w-full bg-charcoal/5 border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10 hover:text-charcoal py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <ChevronLeft className="w-4 h-4" /> Change Dates & Time
+                      </button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </div>
           )}
         </AnimatePresence>
 
-        {/* Admin Login Modal */}
-        <AnimatePresence>
-          {showAdminLoginModal && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-charcoal/90 backdrop-blur-sm"
-            >
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-cream w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative"
-              >
-                <button 
-                  onClick={() => setShowAdminLoginModal(false)}
-                  className="absolute top-6 right-6 p-2 text-charcoal/20 hover:text-charcoal transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-
-                <div className="p-12 text-center">
-                  <div className="w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center text-gold mx-auto mb-8">
-                    <Settings className="w-10 h-10" />
-                  </div>
-                  <h2 className="text-3xl font-serif text-charcoal mb-4">Concierge Access</h2>
-                  <p className="text-charcoal/60 text-sm mb-10 leading-relaxed">
-                    Please sign in with your authorized Google account to access the luxury concierge dashboard.
-                    <span className="block mt-2 text-[10px] text-gold font-bold italic">
-                      Mobile users: If the popup doesn't appear, ensure you are using Chrome or Safari and have disabled "Block Pop-ups" in your browser settings.
-                    </span>
-                  </p>
-
-                  {loginError && (
-                    <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-medium leading-relaxed">
-                      {loginError}
-                    </div>
-                  )}
-
-                  <button 
-                    onClick={handleAdminLogin}
-                    disabled={isLoggingIn}
-                    className="w-full bg-charcoal text-cream py-5 rounded-full font-bold uppercase tracking-widest text-xs flex items-center justify-center space-x-3 hover:bg-gold transition-all shadow-xl disabled:opacity-50"
-                  >
-                    {isLoggingIn ? (
-                      <div className="w-4 h-4 border-2 border-cream border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <LogIn className="w-4 h-4" />
-                        <span>Sign in with Google</span>
-                      </>
-                    )}
-                  </button>
-
-                  <p className="mt-8 text-[10px] text-charcoal/30 uppercase tracking-[0.2em] font-bold">
-                    Authorized Personnel Only
-                  </p>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Floating Chat Button & Box */}
-        <div className="fixed bottom-8 right-8 z-[110]">
-          <AnimatePresence>
-            {isChatOpen && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                className="absolute bottom-20 right-0 w-[350px] md:w-[400px] h-[500px] bg-white rounded-3xl shadow-2xl border border-charcoal/5 flex flex-col overflow-hidden"
-              >
-                {/* Chat Header */}
-                <div className="bg-charcoal p-6 flex justify-between items-center text-cream">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center text-gold">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-serif text-lg leading-none">Concierge Chat</h4>
-                      <span className="text-[10px] uppercase tracking-widest text-gold font-bold">Online</span>
-                    </div>
-                  </div>
-                  <button onClick={() => setIsChatOpen(false)} className="text-cream/60 hover:text-cream transition-colors">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Messages Area */}
-                <div className="flex-grow overflow-y-auto p-6 space-y-4 bg-cream/30 scroll-smooth">
-                  {messages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                      <MessageCircle className="w-12 h-12 text-charcoal/10 mb-4" />
-                      <p className="text-charcoal/40 text-sm">Start a conversation with our luxury concierge team.</p>
-                    </div>
-                  ) : (
-                    messages.map((msg) => (
-                      <div 
-                        key={msg.id} 
-                        className={`flex ${msg.senderType === 'customer' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${
-                          msg.senderType === 'customer' 
-                            ? 'bg-charcoal text-cream rounded-tr-none' 
-                            : 'bg-white text-charcoal shadow-sm border border-charcoal/5 rounded-tl-none'
-                        }`}>
-                          {msg.text}
-                          {msg.timestamp && (
-                            <div className={`text-[9px] mt-1 opacity-40 ${msg.senderType === 'customer' ? 'text-right' : 'text-left'}`}>
-                              {msg.timestamp.toDate ? new Date(msg.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sending...'}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Input Area */}
-                <div className="p-4 bg-white border-t border-charcoal/5">
-                  {chatError && (
-                    <div className="mb-2 text-[10px] text-red-500 text-center font-bold uppercase tracking-wider">
-                      {chatError}
-                    </div>
-                  )}
-                  <div className="relative">
-                    <input 
-                      disabled={isSending}
-                      type="text"
-                      placeholder={isSending ? "Sending..." : "Type your message..."}
-                      className="w-full bg-cream/50 border-none rounded-full py-4 pl-6 pr-14 focus:ring-2 focus:ring-gold/20 focus:outline-none text-sm disabled:opacity-50"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    />
-                    <button 
-                      disabled={isSending || !newMessage.trim()}
-                      onClick={sendMessage}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-gold text-cream rounded-full flex items-center justify-center hover:bg-charcoal transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSending ? (
-                        <div className="w-4 h-4 border-2 border-cream border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </main>
 
       <footer className="p-12 border-t border-charcoal/10 flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
@@ -1449,17 +1284,8 @@ export default function App() {
           &copy; 2026 Elite Bookings Luxury Travel. All rights reserved.
         </div>
         <div className="flex items-center space-x-12 text-[12px] uppercase tracking-[0.3em] text-charcoal/80 font-bold">
-          <button 
-            onClick={() => setShowAdminLoginModal(true)}
-            className="text-[10px] text-charcoal/20 hover:text-gold transition-colors uppercase tracking-widest"
-          >
-            Concierge Login
-          </button>
           <div className="flex items-center space-x-6">
             <span className="text-[11px] text-charcoal/60 font-bold uppercase tracking-widest">Connect:</span>
-            <a href="https://wa.me/2347072253857" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors transform hover:scale-110" title="WhatsApp">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            </a>
             <a href="https://www.tiktok.com/@elitebooking.ng" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors transform hover:scale-110" title="TikTok">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.03 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-3.48.01-6.96.01-10.44z"/></svg>
             </a>
