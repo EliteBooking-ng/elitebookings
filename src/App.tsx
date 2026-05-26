@@ -681,6 +681,25 @@ Best regards.`;
     // 2. Automated background email sending
     const accessKey = (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
 
+    const triggerMailtoDirectly = () => {
+      const subject = `Elite Booking Enquiry: ${showBookingOptions.name}`;
+      const mailtoUrl = `mailto:Elitebooking.ng@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bookingText)}`;
+      
+      // Auto-trigger native mail composer
+      window.location.href = mailtoUrl;
+
+      // Delightful feedback
+      confetti({
+        particleCount: 120,
+        spread: 75,
+        origin: { y: 0.6 }
+      });
+
+      // Instantly dismiss modal and clean state
+      setShowEmailPopup(false);
+      setShowBookingOptions(null);
+    };
+
     if (accessKey && accessKey.trim() !== '') {
       setEmailSubmitStatus('sending');
       try {
@@ -710,17 +729,15 @@ Best regards.`;
           });
         } else {
           console.error('Web3Forms email delivery error:', data);
-          setErrorMessage(data.message || 'Failed to send automated email alert.');
-          setEmailSubmitStatus('manual_fallback');
+          triggerMailtoDirectly();
         }
       } catch (emailError) {
         console.error('Network error during email auto-transmit:', emailError);
-        setErrorMessage('Check your network connection. You can still send manually.');
-        setEmailSubmitStatus('manual_fallback');
+        triggerMailtoDirectly();
       }
     } else {
-      // No VITE_WEB3FORMS_ACCESS_KEY provided, fallback to manual triggers on saved booking
-      setEmailSubmitStatus('manual_fallback');
+      // Direct instant redirection to the mail client - exactly as requested!
+      triggerMailtoDirectly();
     }
   };
 
@@ -1416,96 +1433,7 @@ Best regards.`;
                       </div>
                     )}
 
-                    {emailSubmitStatus === 'manual_fallback' && (
-                      <div className="text-center font-sans">
-                        <div className="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Check className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-xl font-serif text-charcoal mb-2 font-medium">Recorded in Cloud!</h3>
-                        
-                        <p className="text-charcoal/60 text-xs mb-5 px-1 leading-relaxed">
-                          Enquiry for <strong>{showBookingOptions.name}</strong> has been secured in the cloud database. Press below to instantly trigger notification to the elite bookings desk:
-                        </p>
 
-                        <div className="space-y-2.5 pt-1">
-                          <a
-                            href={`mailto:Elitebooking.ng@gmail.com?subject=${encodeURIComponent(`Elite Booking Enquiry: ${showBookingOptions.name}`)}&body=${encodeURIComponent(`Hello Elite Bookings Team,
-
-I would like to make an elite booking enquiry. Below are the details of the booking:
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PROPERTY / ASSET DETAILS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Name: ${showBookingOptions.name}
-Location: ${showBookingOptions.location}
-Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-BOOKING TIMELINE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}
-Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLIENT CONTACT INFORMATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Phone Number: ${userPhoneNumber}
-
-I look forward to your confirmation and payment details.
-
-Best regards.`)}`}
-                            className="flex items-center justify-center space-x-2.5 w-full bg-charcoal text-cream py-3.5 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream transition-all duration-300 cursor-pointer"
-                          >
-                            <Mail className="w-4 h-4" />
-                            <span>Connect via Mail</span>
-                          </a>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const text = `Hello Elite Bookings Team,
-
-I would like to make an elite booking enquiry. Below are the details of the booking:
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PROPERTY / ASSET DETAILS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Name: ${showBookingOptions.name}
-Location: ${showBookingOptions.location}
-Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-BOOKING TIMELINE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}
-Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CLIENT CONTACT INFORMATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Phone Number: ${userPhoneNumber}`;
-                              navigator.clipboard.writeText(text);
-                              alert('Booking details copied successfully to clipboard!');
-                            }}
-                            className="flex items-center justify-center space-x-2 w-full bg-charcoal/5 border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10 hover:text-charcoal py-3 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all duration-300 cursor-pointer"
-                          >
-                            <Copy className="w-4 h-4" />
-                            <span>Copy Info to Clipboard</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowEmailPopup(false);
-                              setShowBookingOptions(null);
-                            }}
-                            className="text-charcoal/40 hover:text-charcoal text-[10px] uppercase tracking-[0.25em] font-semibold pt-4 transition-all duration-300 cursor-pointer w-full text-center block"
-                          >
-                            Close Overlay
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : bookingStep === 1 ? (
                   <div className="flex flex-col h-full">
