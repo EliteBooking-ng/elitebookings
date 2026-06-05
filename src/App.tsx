@@ -22,7 +22,11 @@ import {
   Phone,
   Check,
   Copy,
-  Loader
+  Loader,
+  Search,
+  Sliders,
+  Filter,
+  ArrowUp
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
@@ -78,7 +82,371 @@ export default function App() {
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
   const [selectedShortlet, setSelectedShortlet] = useState<any | null>(null);
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
+
+  // Luxury unified search states and helper functions
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const getFilteredHotels = () => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return phHotels;
+    return phHotels.filter(hotel => 
+      hotel.name.toLowerCase().includes(query) ||
+      hotel.location.toLowerCase().includes(query) ||
+      hotel.description.toLowerCase().includes(query) ||
+      'hotels'.includes(query) ||
+      'stays'.includes(query)
+    );
+  };
+
+  const getFilteredShortlets = () => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return phShortlets;
+    return phShortlets.filter(shortlet => 
+      shortlet.name.toLowerCase().includes(query) ||
+      shortlet.location.toLowerCase().includes(query) ||
+      shortlet.description.toLowerCase().includes(query) ||
+      'shortlets'.includes(query) ||
+      'estates'.includes(query) ||
+      'apartments'.includes(query) ||
+      'villas'.includes(query) ||
+      'homes'.includes(query)
+    );
+  };
+
+  const getFilteredCars = () => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return phCars;
+    return phCars.filter(car => 
+      car.name.toLowerCase().includes(query) ||
+      car.location.toLowerCase().includes(query) ||
+      car.description.toLowerCase().includes(query) ||
+      'cars'.includes(query) ||
+      'rentals'.includes(query) ||
+      'fleet'.includes(query) ||
+      'drive'.includes(query) ||
+      'vehicles'.includes(query) ||
+      'transport'.includes(query) ||
+      'truck'.includes(query) ||
+      'bus'.includes(query)
+    );
+  };
+
+  const renderSearchBar = (currentCategory: 'stays' | 'homes' | 'drive') => {
+    const catLabels = {
+      stays: { singular: 'hotel', plural: 'hotels' },
+      homes: { singular: 'shortlet', plural: 'shortlets' },
+      drive: { singular: 'car rental', plural: 'car rentals' }
+    };
+
+    return (
+      <div className="w-full mb-10 bg-white border border-charcoal/5 rounded-[2rem] p-6 md:p-8 shadow-2xl shadow-gold/5 font-sans">
+        <div className="flex flex-col gap-4">
+          <label className="block text-[10px] uppercase tracking-[0.25em] font-medium text-gold mb-1">
+            Search Port Harcourt Listings
+          </label>
+          <div className="relative w-full">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/40" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search ${catLabels[currentCategory].plural}, other categories, or sub-locations (e.g. GRA, Stadium Rd)...`}
+              className="w-full bg-charcoal/[0.03] border border-charcoal/10 rounded-2xl py-4 pl-14 pr-12 focus:outline-none focus:border-gold transition-colors text-sm font-medium text-charcoal placeholder-charcoal/30 shadow-inner"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 bg-charcoal/10 hover:bg-charcoal/20 text-charcoal/75 rounded-full transition-colors cursor-pointer"
+                title="Clear Search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 mt-2">
+            <span className="text-[10px] uppercase tracking-widest font-semibold text-charcoal/40 mr-1.5 flex items-center gap-1">
+              <Sliders className="w-3.5 h-3.5 text-gold" /> Filter Tags:
+            </span>
+            
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wider uppercase transition-all duration-300 ${
+                !searchQuery
+                  ? 'bg-gold text-cream shadow-sm'
+                  : 'bg-charcoal/[0.03] text-charcoal hover:bg-charcoal/10'
+              }`}
+            >
+              All {catLabels[currentCategory].plural}
+            </button>
+
+            {currentCategory === 'stays' && [
+              { label: 'GRA Port Harcourt', value: 'GRA' },
+              { label: 'Rumudara', value: 'rumuodara' },
+              { label: 'Stadium Road', value: 'stadium' },
+              { label: 'Echelon', value: 'Echelon' }
+            ].map(tag => (
+              <button
+                key={tag.label}
+                type="button"
+                onClick={() => setSearchQuery(tag.value)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
+                  searchQuery.toLowerCase() === tag.value.toLowerCase()
+                    ? 'bg-charcoal text-cream shadow-sm'
+                    : 'bg-charcoal/[0.03] text-charcoal hover:bg-charcoal/10'
+                }`}
+              >
+                #{tag.label}
+              </button>
+            ))}
+
+            {currentCategory === 'homes' && [
+              { label: 'GRA Sani Abacha', value: 'Sani Abacha' },
+              { label: 'Studio Room', value: 'Studio' },
+              { label: 'Diamond Blue', value: 'Diamond' }
+            ].map(tag => (
+              <button
+                key={tag.label}
+                type="button"
+                onClick={() => setSearchQuery(tag.value)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
+                  searchQuery.toLowerCase() === tag.value.toLowerCase()
+                    ? 'bg-charcoal text-cream shadow-sm'
+                    : 'bg-charcoal/[0.03] text-charcoal hover:bg-charcoal/10'
+                }`}
+              >
+                #{tag.label}
+              </button>
+            ))}
+
+            {currentCategory === 'drive' && [
+              { label: 'Lexus GX 460', value: 'GX' },
+              { label: 'Range Rover Velar', value: 'Velar' },
+              { label: 'Luxury Bus', value: 'bus' },
+              { label: 'Delivery Trucks', value: 'truck' }
+            ].map(tag => (
+              <button
+                key={tag.label}
+                type="button"
+                onClick={() => setSearchQuery(tag.value)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
+                  searchQuery.toLowerCase() === tag.value.toLowerCase()
+                    ? 'bg-charcoal text-cream shadow-sm'
+                    : 'bg-charcoal/[0.03] text-charcoal hover:bg-charcoal/10'
+                }`}
+              >
+                #{tag.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderOtherCategoryMatches = (activeCat: 'stays' | 'homes' | 'drive') => {
+    if (!searchQuery.trim()) return null;
+
+    const query = searchQuery.trim();
+    const otherHotels = activeCat !== 'stays' ? getFilteredHotels() : [];
+    const otherShortlets = activeCat !== 'homes' ? getFilteredShortlets() : [];
+    const otherCars = activeCat !== 'drive' ? getFilteredCars() : [];
+
+    const totalMatches = otherHotels.length + otherShortlets.length + otherCars.length;
+    if (totalMatches === 0) return null;
+
+    return (
+      <div className="mt-20 border-t border-charcoal/10 pt-16">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+          <div>
+            <span className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold block mb-2">Extended Exploration</span>
+            <h3 className="text-3xl font-serif text-charcoal font-light">
+              Matched in Other Categories
+            </h3>
+            <p className="text-xs text-charcoal/50 mt-1">
+              We found premium luxury match options in other elite categories for &ldquo;{query}&rdquo;.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-10">
+          {otherHotels.map((hotel) => (
+            <motion.div
+              key={`other-hotel-${hotel.id}`}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/80 border border-charcoal/5 rounded-[2rem] overflow-hidden shadow-lg flex flex-col md:flex-row group hover:shadow-2xl hover:bg-white transition-all duration-500"
+            >
+              <div className="md:w-2/5 relative overflow-hidden aspect-video md:aspect-auto h-[240px] md:h-auto font-sans">
+                <HotelImageSlider images={hotel.images} name={hotel.name} />
+                <span className="absolute top-4 left-4 bg-charcoal text-cream text-[9px] uppercase tracking-[0.25em] font-bold px-3 py-1.5 rounded-full z-10 shadow-md">
+                  Hotel Stay
+                </span>
+              </div>
+              <div className="md:w-3/5 p-8 flex flex-col justify-center font-sans">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h4 className="text-2xl font-serif text-charcoal mb-1">{hotel.name}</h4>
+                    <div className="flex items-center text-charcoal/40 text-xs">
+                      <MapPin className="w-3.5 h-3.5 mr-1 text-gold" />
+                      {hotel.location}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">From</span>
+                    <span className="text-xl font-serif text-charcoal">₦{hotel.price}</span>
+                  </div>
+                </div>
+                <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-6 line-clamp-2">
+                  {hotel.description}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button 
+                    onClick={() => {
+                      setSelectedCategory('stays');
+                      setBookingType('booking');
+                      setShowBookingOptions(hotel);
+                    }}
+                    className="bg-charcoal text-cream px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors shadow-md inline-block cursor-pointer"
+                  >
+                    Book Hotel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setSelectedCategory('stays');
+                      setBookingType('reservation');
+                      setShowBookingOptions(hotel);
+                    }}
+                    className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer"
+                  >
+                    Reserve
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+
+          {otherShortlets.map((shortlet) => (
+            <motion.div
+              key={`other-shortlet-${shortlet.id}`}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/80 border border-charcoal/5 rounded-[2rem] overflow-hidden shadow-lg flex flex-col md:flex-row group hover:shadow-2xl hover:bg-white transition-all duration-500"
+            >
+              <div className="md:w-2/5 relative overflow-hidden aspect-video md:aspect-auto h-[240px] md:h-auto font-sans">
+                <HotelImageSlider images={shortlet.images} name={shortlet.name} />
+                <span className="absolute top-4 left-4 bg-gold text-cream text-[9px] uppercase tracking-[0.25em] font-bold px-3 py-1.5 rounded-full z-10 shadow-md">
+                  Shortlet Suite
+                </span>
+              </div>
+              <div className="md:w-3/5 p-8 flex flex-col justify-center font-sans font-sans">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h4 className="text-2xl font-serif text-charcoal mb-1">{shortlet.name}</h4>
+                    <div className="flex items-center text-charcoal/40 text-xs">
+                      <MapPin className="w-3.5 h-3.5 mr-1 text-gold" />
+                      {shortlet.location}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">Per Night</span>
+                    <span className="text-xl font-serif text-charcoal">₦{shortlet.price}</span>
+                  </div>
+                </div>
+                <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-6 line-clamp-2">
+                  {shortlet.description}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button 
+                    onClick={() => {
+                      setSelectedCategory('homes');
+                      setBookingType('booking');
+                      setShowBookingOptions(shortlet);
+                    }}
+                    className="bg-charcoal text-cream px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors shadow-md inline-block cursor-pointer font-sans"
+                  >
+                    Book Shortlet
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setSelectedCategory('homes');
+                      setBookingType('reservation');
+                      setShowBookingOptions(shortlet);
+                    }}
+                    className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
+                  >
+                    Reserve
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+
+          {otherCars.map((car) => (
+            <motion.div
+              key={`other-car-${car.id}`}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/80 border border-charcoal/5 rounded-[2rem] overflow-hidden shadow-lg flex flex-col md:flex-row group hover:shadow-2xl hover:bg-white transition-all duration-500"
+            >
+              <div className="md:w-2/5 relative overflow-hidden aspect-video md:aspect-auto h-[240px] md:h-auto font-sans">
+                <HotelImageSlider images={car.images} name={car.name} />
+                <span className="absolute top-4 left-4 bg-cream border border-gold/40 text-gold text-[9px] uppercase tracking-[0.25em] font-bold px-3 py-1.5 rounded-full z-10 shadow-md">
+                  Luxury Fleet
+                </span>
+              </div>
+              <div className="md:w-3/5 p-8 flex flex-col justify-center font-sans font-sans">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h4 className="text-2xl font-serif text-charcoal mb-1">{car.name}</h4>
+                    <div className="flex items-center text-charcoal/40 text-xs">
+                      <MapPin className="w-3.5 h-3.5 mr-1 text-gold" />
+                      {car.location}
+                    </div>
+                  </div>
+                  {car.price && (
+                    <div className="text-right font-sans">
+                      <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">Per Day</span>
+                      <span className="text-xl font-serif text-charcoal">₦{car.price}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-6 line-clamp-2">
+                  {car.description}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button 
+                    onClick={() => {
+                      setSelectedCategory('drive');
+                      setBookingType('booking');
+                      setShowBookingOptions(car);
+                    }}
+                    className="bg-charcoal text-cream px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors shadow-md inline-block cursor-pointer font-sans"
+                  >
+                    Rent Vehicle
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setSelectedCategory('drive');
+                      setBookingType('reservation');
+                      setShowBookingOptions(car);
+                    }}
+                    className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
+                  >
+                    Reserve
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    );
+  };
   const [showBookingOptions, setShowBookingOptions] = useState<any | null>(null);
+  const [bookingType, setBookingType] = useState<'booking' | 'reservation'>('booking');
   const [bookingStep, setBookingStep] = useState<1 | 2>(1); // 1 = Date/Time, 2 = WhatsApp Options
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [userPhoneNumber, setUserPhoneNumber] = useState('');
@@ -97,6 +465,22 @@ export default function App() {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
+
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowBackToTop(true);
+      } else {
+        setShowBackToTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   useEffect(() => {
     if (showBookingOptions) {
@@ -451,10 +835,9 @@ export default function App() {
         { name: 'Top Tier', price: '93,000' }
       ],
       images: [
-        'https://lh3.googleusercontent.com/d/1i0pvZ7HBX6i1pwFWxXVCYBEdRTxSOZmx',
-        'https://lh3.googleusercontent.com/d/15QvDkyA0_-Y_dPEFKJ_gNdqjgv_ltC7r',
-        'https://lh3.googleusercontent.com/d/1umD5hJvaY41KE25U9DfXYPQYV2X3xjMj',
-        'https://lh3.googleusercontent.com/d/1-EczEjPhD4HvCGCKFzdG3l0IxUNHlbbY'
+        'https://lh3.googleusercontent.com/d/1ac0cL7t2EzqyhjxBpjyezB4g7Noz47qJ',
+        'https://lh3.googleusercontent.com/d/1ES5XUzbSqk_Pb5FmaIJPJvgrNRTTL58H',
+        'https://lh3.googleusercontent.com/d/1OVaK1BkNS_ac3QAGrz-cAfe-JOu0E6TX'
       ],
       description: 'Indulge in sophisticated luxury at Hano Hotels & Suites, located on Orogbum Crescent in the prestigious GRA area. Offering pristine rooms and an executive feel, it is ideal for business and leisure travellers alike.'
     },
@@ -491,6 +874,105 @@ export default function App() {
         'https://lh3.googleusercontent.com/d/1QEDSkLO0vl0GCyuKrMp4gkynTf6aQo17'
       ],
       description: 'Discover stylish accommodations and top-class hospitality at Meritz Hotels & Suites, located on 1A Acron Avenue near Stadium Road. Featuring cozy premium rooms and dedicated service perfect for any visit.'
+    },
+    {
+      id: 'transit-care-hotels',
+      name: 'Transit care hotels',
+      location: 'Presidential housing estate 17 circular rd new GRA',
+      price: '23,000',
+      tiers: [
+        { name: 'Top Tier', price: '43,000' },
+        { name: 'Bronze', price: '33,000' },
+        { name: 'Basic', price: '23,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1bTB8puP9r51xZL6z-vDg20yn6FJrSBu6',
+        'https://lh3.googleusercontent.com/d/1mTApfA1RXs6UDvtiZHofWwgIAjH3gW3Q',
+        'https://lh3.googleusercontent.com/d/1TKWVI3NSdYZ1dXNiY3TcFqqbkpH8amzc',
+        'https://lh3.googleusercontent.com/d/1iFfFNmZmzE8ZoOLRq8X_MCb5W0nJEjPD',
+        'https://lh3.googleusercontent.com/d/1h84YuYN0rVl2bP0eT28tI37GhmvzRagx'
+      ],
+      description: 'Experience supreme rest and elegant comfort at Transit Care Hotels, strategically located inside the Presidential housing estate on 17 Circular Road, New GRA. We blend professional hospitality with cozy living blocks and premium amenities.'
+    },
+    {
+      id: 'visa-karena-hotel',
+      name: 'Visa Karena Hotel',
+      location: '3D Wonodi Street, Olu Obasanjo Rd',
+      price: '105,000',
+      tiers: [
+        { name: 'Diamond', price: '248,000' },
+        { name: 'Exclusive', price: '138,000' },
+        { name: 'Silver', price: '118,000' },
+        { name: 'Top Tier', price: '105,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1vvnEU3Fv01BlJ6x5N6IXiIChusomghMq',
+        'https://lh3.googleusercontent.com/d/13xDGaFKEH6kq1qgZaKNE4f_odz4dXgfF',
+        'https://lh3.googleusercontent.com/d/1Y9RXR-DLajKVPae-rrhvRGKeS9OLuLkf',
+        'https://lh3.googleusercontent.com/d/19jiU14Oee1TEuA9EIdMp5EEcUveVTEvK'
+      ],
+      description: 'Welcome to Visa Karena Hotel, situated on 3d Wonodi Street off Olu Obasanjo Road. Unwind in top-tier rooms, exquisite silver suites, high-end exclusive facilities, and premium diamond apartments engineered for supreme luxury and convenience.'
+    },
+    {
+      id: 'city-view-hotel',
+      name: 'City View Hotel',
+      location: 'No 15/17 Akwaka Avenue off Oroazi Market Road, Opposite Sonabel Medical Center, Rumueme Mile 4',
+      price: '30,875',
+      tiers: [
+        { name: 'Super Deluxe', price: '228,000' },
+        { name: 'Deluxe', price: '170,250' },
+        { name: 'Gold', price: '115,500' },
+        { name: 'Diamond', price: '64,325' },
+        { name: 'Exclusive', price: '48,175' },
+        { name: 'Silver', price: '42,025' },
+        { name: 'Top Tier', price: '36,450' },
+        { name: 'Bronze', price: '33,105' },
+        { name: 'Basic', price: '30,875' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1JdW_DEreRwb96aOYeXj-xj_Th6-vonz_',
+        'https://lh3.googleusercontent.com/d/1Wm18HPIheRyko5BDig30ffkeipJQmf8u',
+        'https://lh3.googleusercontent.com/d/1ZvNO6Vf7-EAAeiTSjoeANZ_OoF2k46GL',
+        'https://lh3.googleusercontent.com/d/1siW6OYKxdpndnucPTAPIlx8ucEodegdL'
+      ],
+      description: 'Experience stunning city vistas and refined comfort at City View Hotel, located in the peaceful neighborhood of Rumueme Mile 4. With a vast selection of exquisitely furnished rooms spanning from cozy Basic quarters to masterfully designed Super Deluxe suites, we offer unmatched rest, wonderful service, and top-class hospitality.'
+    },
+    {
+      id: 'macdestly-hotel',
+      name: 'MacDestly Hotel',
+      location: 'Plot 234/235 Oriprisam Nemi Avenue, off LNG Road, opposite Flourish Filling Station, Amadi-Ama',
+      price: '73,000',
+      tiers: [
+        { name: 'Gold', price: '205,000' },
+        { name: 'Silver', price: '83,000' },
+        { name: 'Top Tier', price: '73,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1_txd5DpltiW5abIDkg8Chd5e-pVE2ZTs',
+        'https://lh3.googleusercontent.com/d/1xEwpj9GNaAN_Kr0VPMl7TnMG8OJicAwI',
+        'https://lh3.googleusercontent.com/d/1jXiVAwKRHk9OOFjec4p7c-cbQ05-tGLy',
+        'https://lh3.googleusercontent.com/d/1NVXN8oyWe0zxr-PqdE9me1-tr3-so1UX'
+      ],
+      description: 'Experience prestige and tranquility at MacDestly Hotel, beautifully situated at Plot 234/235 Oriprisam Nemi Avenue, off LNG Road, opposite Flourish Filling Station, Amadi-Ama. We provide refined hospitality in top-tier rooms, luxurious silver suites, and magnificent gold residencies with personalized premium services.'
+    },
+    {
+      id: 'salt-wood-hotel',
+      name: 'Salt Wood Hotel',
+      location: '#8 Egweme Street, Okuru-Ama / Abuloma Road, off Peter Odili Rd',
+      price: '48,000',
+      tiers: [
+        { name: 'Gold', price: '68,000 (Wkdy) / ₦74,000 (Wknd)' },
+        { name: 'Diamond', price: '63,000 (Wkdy) / ₦68,000 (Wknd)' },
+        { name: 'Exclusive', price: '58,000 (Wkdy) / ₦63,000 (Wknd)' },
+        { name: 'Silver', price: '53,000 (Wkdy) / ₦58,000 (Wknd)' },
+        { name: 'Top Tier', price: '48,000 (Wkdy) / ₦53,000 (Wknd)' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1TJ11a8wgXBcbYgDbUptLLbT2RlB62QR6',
+        'https://lh3.googleusercontent.com/d/1POEur99qMMvV-bo89O-UlS2UnToSoCrv',
+        'https://lh3.googleusercontent.com/d/1g-G9PPCD46gCKacLbGLfYW3tkRqLbrX-'
+      ],
+      description: 'Find serene, nature-inspired comfort at Salt Wood Hotel, perfectly nestled at #8 Egweme Street off Peter Odili Road. Offering beautiful interior design and customizable weekday/weekend pricing structures for our Gold, Diamond, Exclusive, Silver, and Top Tier rooms.'
     }
   ];
 
@@ -629,9 +1111,12 @@ export default function App() {
       ? `${checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}` 
       : 'N/A';
 
+    const kindLabel = bookingType === 'reservation' ? 'reservation' : 'booking';
+    const capKindLabel = bookingType === 'reservation' ? 'Reservation' : 'Booking';
+
     const bookingText = `Hello Elite Bookings Team,
 
-I would like to make an elite booking enquiry. Below are the details of the booking:
+I would like to make an elite ${kindLabel} enquiry. Below are the details of the ${kindLabel}:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PROPERTY / ASSET DETAILS
@@ -641,7 +1126,7 @@ Location: ${showBookingOptions.location}
 Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-BOOKING TIMELINE
+${capKindLabel.toUpperCase()} TIMELINE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Check-in: ${formattedCheckin}
 Check-out: ${formattedCheckout}
@@ -651,7 +1136,7 @@ CLIENT CONTACT INFORMATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Phone Number: ${userPhoneNumber}
 
-I look forward to your confirmation and payment details.
+I look forward to your confirmation and details.
 
 Best regards.`;
 
@@ -662,6 +1147,7 @@ Best regards.`;
       checkin: formattedCheckin,
       checkout: formattedCheckout,
       clientPhone: userPhoneNumber,
+      type: bookingType,
       createdAt: new Date().toISOString()
     };
 
@@ -682,7 +1168,7 @@ Best regards.`;
     const accessKey = (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
 
     const triggerMailtoDirectly = () => {
-      const subject = `Elite Booking Enquiry: ${showBookingOptions.name}`;
+      const subject = `Elite ${capKindLabel} Enquiry: ${showBookingOptions.name}`;
       const mailtoUrl = `mailto:Elitebooking.ng@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bookingText)}`;
       
       // Auto-trigger native mail composer
@@ -1054,65 +1540,104 @@ Best regards.`;
               className="w-full max-w-6xl mt-12 mb-24 relative"
             >
               <button 
-                onClick={() => setSelectedLocation(null)}
-                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
+                onClick={() => {
+                  setSelectedLocation(null);
+                  setSearchQuery('');
+                }}
+                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to locations
               </button>
 
-              <div className="grid grid-cols-1 gap-12">
-                {phHotels.map((hotel, idx) => (
-                  <motion.div
-                    key={hotel.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
-                  >
-                    <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto">
-                      <HotelImageSlider images={hotel.images} name={hotel.name} />
-                    </div>
-                    <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{hotel.name}</h3>
-                          <div className="flex items-center text-charcoal/40 text-sm">
-                            <MapPin className="w-4 h-4 mr-2 text-gold" />
-                            {hotel.location}
+              <div className="mb-10 text-center md:text-left">
+                <span className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold block mb-2 font-sans">Our Stays</span>
+                <h2 className="text-4xl md:text-5xl font-serif text-charcoal font-light">
+                  Luxury Hotels &amp; Suites
+                </h2>
+                <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
+                  Curated premium rooms and executive spaces in Port Harcourt.
+                </p>
+              </div>
+
+              {renderSearchBar('stays')}
+
+              {getFilteredHotels().length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-[2rem] border border-charcoal/5 shadow-2xl shadow-gold/5 font-sans mb-12">
+                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50 animate-pulse" />
+                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">No Matching Hotels Found</h1>
+                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4">
+                    We couldn&rsquo;t find any hotels matching &ldquo;{searchQuery}&rdquo;. Try using other search keywords or explore other categories below.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-12">
+                  {getFilteredHotels().map((hotel, idx) => (
+                    <motion.div
+                      key={hotel.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
+                    >
+                      <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
+                        <HotelImageSlider images={hotel.images} name={hotel.name} />
+                      </div>
+                      <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
+                        <div className="flex justify-between items-start mb-6">
+                          <div>
+                            <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{hotel.name}</h3>
+                            <div className="flex items-center text-charcoal/40 text-sm">
+                              <MapPin className="w-4 h-4 mr-2 text-gold" />
+                              {hotel.location}
+                            </div>
+                          </div>
+                          <div className="text-right flex flex-col items-end">
+                            <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">From</span>
+                            <span className="text-3xl font-serif text-charcoal block mb-6">₦{hotel.price}</span>
+                            
+                            {(hotel as any).tiers && (
+                              <div className="w-full min-w-[180px] space-y-2.5 pt-6 border-t border-charcoal/5 font-sans">
+                                <p className="text-[10px] uppercase tracking-[0.2em] text-charcoal/30 font-bold mb-4">Available Tiers</p>
+                                {(hotel as any).tiers.map((tier: any) => (
+                                  <div key={tier.name} className="flex justify-between items-center gap-6">
+                                    <span className="text-[10px] uppercase tracking-widest text-charcoal/50 font-bold">{tier.name}</span>
+                                    <span className="text-sm font-serif text-gold">₦{tier.price}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className="text-right flex flex-col items-end">
-                          <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">From</span>
-                          <span className="text-3xl font-serif text-charcoal block mb-6">₦{hotel.price}</span>
-                          
-                          {(hotel as any).tiers && (
-                            <div className="w-full min-w-[180px] space-y-2.5 pt-6 border-t border-charcoal/5">
-                              <p className="text-[10px] uppercase tracking-[0.2em] text-charcoal/30 font-bold mb-4">Available Tiers</p>
-                              {(hotel as any).tiers.map((tier: any) => (
-                                <div key={tier.name} className="flex justify-between items-center gap-6">
-                                  <span className="text-[10px] uppercase tracking-widest text-charcoal/50 font-bold">{tier.name}</span>
-                                  <span className="text-sm font-serif text-gold">₦{tier.price}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                        <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md">
+                          {hotel.description}
+                        </p>
+                        <div className="flex flex-wrap gap-4">
+                          <button 
+                            onClick={() => {
+                              setBookingType('booking');
+                              setShowBookingOptions(hotel);
+                            }}
+                            className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
+                          >
+                            Book Now
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setBookingType('reservation');
+                              setShowBookingOptions(hotel);
+                            }}
+                            className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
+                          >
+                            Make a Reservation
+                          </button>
                         </div>
                       </div>
-                      <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md">
-                        {hotel.description}
-                      </p>
-                      <div className="flex flex-wrap gap-4">
-                        <button 
-                          onClick={() => setShowBookingOptions(hotel)}
-                          className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block"
-                        >
-                          Book Now
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {renderOtherCategoryMatches('stays')}
             </motion.section>
           ) : (selectedCategory === 'homes' && selectedLocation && !selectedShortlet) ? (
             <motion.section 
@@ -1123,53 +1648,92 @@ Best regards.`;
               className="w-full max-w-6xl mt-12 mb-24 relative"
             >
               <button 
-                onClick={() => setSelectedLocation(null)}
-                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
+                onClick={() => {
+                  setSelectedLocation(null);
+                  setSearchQuery('');
+                }}
+                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to locations
               </button>
 
-              <div className="grid grid-cols-1 gap-12">
-                {phShortlets.map((shortlet, idx) => (
-                  <motion.div
-                    key={shortlet.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
-                  >
-                    <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto">
-                      <HotelImageSlider images={shortlet.images} name={shortlet.name} />
-                    </div>
-                    <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{shortlet.name}</h3>
-                          <div className="flex items-center text-charcoal/40 text-sm">
-                            <MapPin className="w-4 h-4 mr-2 text-gold" />
-                            {shortlet.location}
+              <div className="mb-10 text-center md:text-left">
+                <span className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold block mb-2 font-sans">Our Apartments</span>
+                <h2 className="text-4xl md:text-5xl font-serif text-charcoal font-light">
+                  Private Shortlet Estates
+                </h2>
+                <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
+                  Architectural masterpieces and high-end living in Port Harcourt.
+                </p>
+              </div>
+
+              {renderSearchBar('homes')}
+
+              {getFilteredShortlets().length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-[2rem] border border-charcoal/5 shadow-2xl shadow-gold/5 font-sans mb-12">
+                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50 animate-pulse" />
+                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">No Matching Shortlets Found</h1>
+                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4">
+                    We couldn&rsquo;t find any shortlets matching &ldquo;{searchQuery}&rdquo;. Try using other search keywords or explore other categories below.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-12">
+                  {getFilteredShortlets().map((shortlet, idx) => (
+                    <motion.div
+                      key={shortlet.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
+                    >
+                      <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
+                        <HotelImageSlider images={shortlet.images} name={shortlet.name} />
+                      </div>
+                      <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
+                        <div className="flex justify-between items-start mb-6 font-sans">
+                          <div>
+                            <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{shortlet.name}</h3>
+                            <div className="flex items-center text-charcoal/40 text-sm">
+                              <MapPin className="w-4 h-4 mr-2 text-gold" />
+                              {shortlet.location}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Per Night</span>
+                            <span className="text-2xl font-serif text-charcoal">₦{shortlet.price}</span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Per Night</span>
-                          <span className="text-2xl font-serif text-charcoal">₦{shortlet.price}</span>
+                        <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md font-sans">
+                          {shortlet.description}
+                        </p>
+                        <div className="flex flex-wrap gap-4 font-sans">
+                          <button 
+                            onClick={() => {
+                              setBookingType('booking');
+                              setShowBookingOptions(shortlet);
+                            }}
+                            className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
+                          >
+                            Book Now
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setBookingType('reservation');
+                              setShowBookingOptions(shortlet);
+                            }}
+                            className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
+                          >
+                            Make a Reservation
+                          </button>
                         </div>
                       </div>
-                      <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md">
-                        {shortlet.description}
-                      </p>
-                      <div className="flex flex-wrap gap-4">
-                        <button 
-                          onClick={() => setShowBookingOptions(shortlet)}
-                          className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block"
-                        >
-                          Book Now
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {renderOtherCategoryMatches('homes')}
             </motion.section>
           ) : (selectedCategory === 'drive' && selectedLocation && !selectedCar) ? (
             <motion.section 
@@ -1180,57 +1744,96 @@ Best regards.`;
               className="w-full max-w-6xl mt-12 mb-24 relative"
             >
               <button 
-                onClick={() => setSelectedLocation(null)}
-                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
+                onClick={() => {
+                  setSelectedLocation(null);
+                  setSearchQuery('');
+                }}
+                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to locations
               </button>
 
-              <div className="grid grid-cols-1 gap-12">
-                {phCars.map((car, idx) => (
-                  <motion.div
-                    key={car.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
-                  >
-                    <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto">
-                      <HotelImageSlider images={car.images} name={car.name} />
-                    </div>
-                    <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{car.name}</h3>
-                          <div className="flex items-center text-charcoal/40 text-sm">
-                            <MapPin className="w-4 h-4 mr-2 text-gold" />
-                            {car.location}
+              <div className="mb-10 text-center md:text-left">
+                <span className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold block mb-2 font-sans">Our Fleet</span>
+                <h2 className="text-4xl md:text-5xl font-serif text-charcoal font-light">
+                  Car Rentals &amp; Private Fleet
+                </h2>
+                <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
+                  Premium luxury saloons and off-road SUVs for exquisite journeys.
+                </p>
+              </div>
+
+              {renderSearchBar('drive')}
+
+              {getFilteredCars().length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-[2rem] border border-charcoal/5 shadow-2xl shadow-gold/5 font-sans mb-12">
+                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50 animate-pulse" />
+                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">No Matching Cars Found</h1>
+                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4">
+                    We couldn&rsquo;t find any rental vehicles matching &ldquo;{searchQuery}&rdquo;. Try using other search keywords or explore other categories below.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-12">
+                  {getFilteredCars().map((car, idx) => (
+                    <motion.div
+                      key={car.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
+                    >
+                      <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
+                        <HotelImageSlider images={car.images} name={car.name} />
+                      </div>
+                      <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
+                        <div className="flex justify-between items-start mb-6 font-sans">
+                          <div>
+                            <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{car.name}</h3>
+                            <div className="flex items-center text-charcoal/40 text-sm">
+                              <MapPin className="w-4 h-4 mr-2 text-gold" />
+                              {car.location}
+                            </div>
+                          </div>
+                          <div className="text-right font-sans">
+                            {car.price && (
+                              <>
+                                <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Per Day</span>
+                                <span className="text-2xl font-serif text-charcoal">₦{car.price}</span>
+                              </>
+                            )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          {car.price && (
-                            <>
-                              <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Per Day</span>
-                              <span className="text-2xl font-serif text-charcoal">₦{car.price}</span>
-                            </>
-                          )}
+                        <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md font-sans">
+                          {car.description}
+                        </p>
+                        <div className="flex flex-wrap gap-4 font-sans">
+                          <button 
+                            onClick={() => {
+                              setBookingType('booking');
+                              setShowBookingOptions(car);
+                            }}
+                            className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
+                          >
+                            Rent Now
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setBookingType('reservation');
+                              setShowBookingOptions(car);
+                            }}
+                            className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
+                          >
+                            Make a Reservation
+                          </button>
                         </div>
                       </div>
-                      <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md">
-                        {car.description}
-                      </p>
-                      <div className="flex flex-wrap gap-4">
-                        <button 
-                          onClick={() => setShowBookingOptions(car)}
-                          className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block"
-                        >
-                          Rent Now
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {renderOtherCategoryMatches('drive')}
             </motion.section>
           ) : (
             <motion.section 
@@ -1357,7 +1960,7 @@ Best regards.`;
                     {emailSubmitStatus === 'idle' && (
                       <div className="text-center font-sans">
                         <h3 className="text-2xl font-serif text-charcoal mb-2">Almost Done!</h3>
-                        <p className="text-charcoal/60 text-sm mb-6">Provide your phone number to complete your booking enquiry via email.</p>
+                        <p className="text-charcoal/60 text-sm mb-6">Provide your phone number to complete your {bookingType === 'reservation' ? 'reservation' : 'booking'} enquiry via email.</p>
 
                         <form onSubmit={handleEmailSubmit} className="space-y-6">
                           <div className="text-left font-sans">
@@ -1381,7 +1984,7 @@ Best regards.`;
                               className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer"
                             >
                               <Mail className="w-5 h-5" />
-                              <span>Send Booking via Email</span>
+                              <span>{bookingType === 'reservation' ? 'Send Reservation via Email' : 'Send Booking via Email'}</span>
                             </button>
 
                             <button
@@ -1400,11 +2003,11 @@ Best regards.`;
                       <div className="flex flex-col items-center justify-center py-10 text-center font-sans">
                         <Loader className="w-10 h-10 text-gold animate-spin mb-4" />
                         <h3 className="text-xl font-serif text-charcoal mb-2">
-                          {emailSubmitStatus === 'saving' ? 'Saving Enquiry...' : 'Sending Email...'}
+                          {emailSubmitStatus === 'saving' ? (bookingType === 'reservation' ? 'Saving Reservation...' : 'Saving Booking...') : 'Sending Email...'}
                         </h3>
                         <p className="text-charcoal/60 text-sm max-w-xs leading-relaxed">
                           {emailSubmitStatus === 'saving' 
-                            ? 'Adding your booking request details securely into the elite cloud database...'
+                            ? `Adding your ${bookingType === 'reservation' ? 'reservation' : 'booking'} request details securely into the elite cloud database...`
                             : 'Delivering notification instantly to the Elite Bookings Team...'}
                         </p>
                       </div>
@@ -1417,7 +2020,7 @@ Best regards.`;
                         </div>
                         <h3 className="text-2xl font-serif text-charcoal mb-2 font-medium">Enquiry Automated!</h3>
                         <p className="text-charcoal/60 text-sm mb-6 max-w-xs leading-relaxed">
-                          Your reservation for <strong className="text-charcoal">{showBookingOptions.name}</strong> was recorded in the database and delivered to the desk at <span className="text-gold font-medium">Elitebooking.ng@gmail.com</span>.
+                          Your {bookingType === 'reservation' ? 'reservation' : 'booking'} for <strong className="text-charcoal">{showBookingOptions.name}</strong> was recorded in the database and delivered to the desk at <span className="text-gold font-medium">Elitebooking.ng@gmail.com</span>.
                         </p>
                         
                         <button
@@ -1439,7 +2042,7 @@ Best regards.`;
                   <div className="flex flex-col h-full">
                     <div className="text-center mb-6">
                       <h3 className="text-2xl font-serif text-charcoal mb-1">Select Dates &amp; Times</h3>
-                      <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out dates and times for {showBookingOptions.name}</p>
+                      <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out dates and times for your {bookingType === 'reservation' ? 'reservation' : 'booking'} of {showBookingOptions.name}</p>
                     </div>
 
                     {/* Tabs for Check-in / Check-out */}
@@ -1558,14 +2161,14 @@ Best regards.`;
                           }
                         `}
                       >
-                        <span>Next: Confirm Booking</span> <ArrowRight className="w-4 h-4" />
+                        <span>Next: Confirm {bookingType === 'reservation' ? 'Reservation' : 'Booking'}</span> <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <h3 className="text-2xl font-serif text-charcoal mb-2">Booking Summary</h3>
-                    <p className="text-charcoal/60 text-sm mb-6">Confirm your elite booking details for <span className="font-semibold text-charcoal">{showBookingOptions.name}</span></p>
+                    <h3 className="text-2xl font-serif text-charcoal mb-2">{bookingType === 'reservation' ? 'Reservation Summary' : 'Booking Summary'}</h3>
+                    <p className="text-charcoal/60 text-sm mb-6">Confirm your elite {bookingType === 'reservation' ? 'reservation' : 'booking'} details for <span className="font-semibold text-charcoal">{showBookingOptions.name}</span></p>
 
                     <div className="bg-charcoal/5 border border-charcoal/10 rounded-2xl p-6 mb-8 text-left space-y-4">
                       <div>
@@ -1599,7 +2202,7 @@ Best regards.`;
                     <div className="space-y-3">
                       <a 
                         href={`https://wa.me/2347072253857?text=${encodeURIComponent(
-                          `Hello, I would like to book ${showBookingOptions.name}.\n\n` +
+                          `Hello, I would like to ${bookingType === 'reservation' ? 'make a reservation for' : 'book'} ${showBookingOptions.name}.\n\n` +
                           `📅 Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}\n` +
                           `🔑 Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}\n` +
                           `📍 Location: ${showBookingOptions.location}` +
@@ -1660,6 +2263,23 @@ Best regards.`;
           </div>
         </div>
       </footer>
+
+      {/* Elegant Floating Back to Top Button */}
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.button
+            id="back-to-top-button"
+            initial={{ opacity: 0, scale: 0.8, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 15 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-55 bg-charcoal text-gold hover:bg-gold hover:text-charcoal p-4 rounded-full shadow-[0_8px_32px_rgba(212,175,55,0.25)] border border-gold/30 transition-all duration-300 group cursor-pointer"
+            aria-label="Back to Top"
+          >
+            <ArrowUp className="w-5 h-5 group-hover:-translate-y-1 transition-all duration-300" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
