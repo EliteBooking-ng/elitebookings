@@ -93,6 +93,7 @@ export default function App() {
       hotel.name.toLowerCase().includes(query) ||
       hotel.location.toLowerCase().includes(query) ||
       hotel.description.toLowerCase().includes(query) ||
+      ((hotel as any).note && (hotel as any).note.toLowerCase().includes(query)) ||
       'hotels'.includes(query) ||
       'stays'.includes(query)
     );
@@ -321,7 +322,7 @@ export default function App() {
                     }}
                     className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer"
                   >
-                    Reserve
+                    Check Availability
                   </button>
                 </div>
               </div>
@@ -377,7 +378,7 @@ export default function App() {
                     }}
                     className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
                   >
-                    Reserve
+                    Check Availability
                   </button>
                 </div>
               </div>
@@ -435,7 +436,7 @@ export default function App() {
                     }}
                     className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
                   >
-                    Reserve
+                    Check Availability
                   </button>
                 </div>
               </div>
@@ -544,10 +545,22 @@ export default function App() {
       id: 'landmark',
       name: 'Land Mark Hotel',
       location: '4 Worlu St, D-line, Port Harcourt, Rivers',
-      price: '50,000',
+      price: '69,000',
+      tiers: [
+        { name: 'Super Deluxe', price: '410,000' },
+        { name: 'Deluxe', price: '260,000' },
+        { name: 'Gold', price: '128,000' },
+        { name: 'Diamond', price: '107,000' },
+        { name: 'Exclusive', price: '84,000' },
+        { name: 'Silver', price: '74,000' },
+        { name: 'Top Tier', price: '69,000' }
+      ],
       images: [
         'https://landmarkhotels.com.ng/wp-content/uploads/2020/04/DJI_0157.jpg',
-        'https://media-cdn.tripadvisor.com/media/photo-s/0c/7e/43/c2/landmark-hotels-port.jpg'
+        'https://media-cdn.tripadvisor.com/media/photo-s/0c/7e/43/c2/landmark-hotels-port.jpg',
+        'https://lh3.googleusercontent.com/d/1G2bw3DsIvJsjD9EwGbF0OpV8bmxlCTmb',
+        'https://lh3.googleusercontent.com/d/1Pm8MpSyLlWYeFvopkSiuFwhq3Mx_fPq6',
+        'https://lh3.googleusercontent.com/d/15lf4-X6fTHmbtwEB2hdmfPvmXUmeEqne'
       ],
       description: 'A landmark of hospitality offering world-class amenities and service.'
     },
@@ -973,6 +986,423 @@ export default function App() {
         'https://lh3.googleusercontent.com/d/1g-G9PPCD46gCKacLbGLfYW3tkRqLbrX-'
       ],
       description: 'Find serene, nature-inspired comfort at Salt Wood Hotel, perfectly nestled at #8 Egweme Street off Peter Odili Road. Offering beautiful interior design and customizable weekday/weekend pricing structures for our Gold, Diamond, Exclusive, Silver, and Top Tier rooms.'
+    },
+    {
+      id: 'cskr-hotel',
+      name: 'CSKR Hotel',
+      location: '6b Elekahai Housing Estate, Plot 7/9 Close off Circular Rd',
+      price: '16,000',
+      tiers: [
+        { name: 'Diamond', price: '130,000' },
+        { name: 'Exclusive', price: '85,500' },
+        { name: 'Silver', price: '64,000' },
+        { name: 'Top Tier', price: '43,000' },
+        { name: 'Bronze', price: '22,500' },
+        { name: 'Basic', price: '16,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1TFcgEYu9Hyq6jYamwe6WB0b5R4WGwJyK',
+        'https://lh3.googleusercontent.com/d/1gH1Y8vlOhA1XxMRIXbO5toorUXh87W0g',
+        'https://lh3.googleusercontent.com/d/14Ekt0Vk_ZLSCkyfagalSf9T6aJJHtb64',
+        'https://lh3.googleusercontent.com/d/1WJhTWhSmhlkfx_BQTCxB7YBZqMMNdLkF'
+      ],
+      description: 'Discover quiet elegance at CSKR Hotel, nestled within the secure 6b Elekahai housing estate, Plot 7/9 close off Circular Road. Offering superb premium accommodations with tailored prices for Basic, Bronze, Top Tier, Silver, Exclusive, and Diamond selections designed for ultimate rest and retreat.'
+    },
+    {
+      id: 'golf-prince-hotel',
+      name: 'Golf Prince Hotel',
+      location: '34 Abana Close',
+      price: '41,300',
+      tiers: [
+        { name: 'Silver', price: '59,300' },
+        { name: 'Top Tier', price: '46,300' },
+        { name: 'Bronze', price: '44,300' },
+        { name: 'Basic', price: '41,300' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1WUwjE7UtcTlc6k6KPWutO9HRh38KAqPn',
+        'https://lh3.googleusercontent.com/d/1PvfnlzUmMFR3PzM7OTAAXGciE-YXviv4',
+        'https://lh3.googleusercontent.com/d/1hh8QUqhVJERLRwoZnZdlGnddkK7jXbLV'
+      ],
+      description: 'Experience majestic hospitality and absolute comfort at Golf Prince Hotel, beautifully located at 34 Abana Close. Featuring modern room selections, meticulous high-end services, and perfectly curated rooms from Basic up to Silver suites designed for a premium hospitality experience.'
+    },
+    {
+      id: 'mexiloyd-hotel',
+      name: 'Mexiloyd Hotel',
+      location: '10 Happyland Close, near Golf Estate, Okuru-Ama',
+      price: '29,000',
+      tiers: [
+        { name: 'Silver', price: '79,000' },
+        { name: 'Top Tier', price: '59,000' },
+        { name: 'Bronze', price: '39,000' },
+        { name: 'Basic', price: '29,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1m5jGecZlMfWG86NduCs_ZOqWGtP7nu3m',
+        'https://lh3.googleusercontent.com/d/1Zu0IwXZPwclkBD1AH6UDyDP-eSUVhnp3'
+      ],
+      description: 'Experience unparalleled rest and premium leisure at Mexiloyd Hotel, situated at 10 Happyland Close near Golf Estate in Okuru-Ama. We offer pristine comfort in beautifully furnished rooms ranging from cozy Basic rooms to elite Silver suites, with spectacular hospitality.'
+    },
+    {
+      id: 'de-revelation-hotel',
+      name: 'De Revelation Hotel',
+      location: 'Mummy B Drive by Zenith Bank, 8 Ezimgbu Road, New GRA',
+      price: '18,000',
+      tiers: [
+        { name: 'Top Tier', price: '28,000' },
+        { name: 'Bronze', price: '24,000' },
+        { name: 'Basic', price: '18,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1TvRcfNt-i9dno2hvw0OoSXPdoK999qwX',
+        'https://lh3.googleusercontent.com/d/1VH1t5QjSGr7VPC-CswbfHB3vw0yu2vw9',
+        'https://lh3.googleusercontent.com/d/1vhb0z0EQ6tQ6fa7DoxF-duDbjQ_J4ujC'
+      ],
+      description: 'Experience refined comfort and supreme convenience at De Revelation Hotel, perfectly situated along Mummy B Drive, by Zenith Bank near 8 Ezimgbu Road in New GRA. We offer elegant room environments from our cozy Basic tier up to luxurious Top Tier suites, backed by exquisite local hospitality.'
+    },
+    {
+      id: 'elite-hotel',
+      name: 'Elite Hotel',
+      location: '10 Enugu Estate by Rumuobiokani/Trans-Amadi Roundabout, Old Aba Road',
+      price: '21,000',
+      tiers: [
+        { name: 'Bronze', price: '23,000' },
+        { name: 'Basic', price: '21,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1hfZPlXZZlu4XScXeJLaFQ9rvuV0V9CMF',
+        'https://lh3.googleusercontent.com/d/1yAWECkfkLnur0AiS7y_evl_mZ1xIu3uu'
+      ],
+      description: 'Experience exceptional modern living and perfect strategic convenience at Elite Hotel, remarkably situated at 10 Enugu Estate by the Rumuobiokani/Trans-Amadi Roundabout on Old Aba Road. We offer incredibly designed accommodations perfect for relaxing business retreats and luxury leisure.'
+    },
+    {
+      id: 'goldrush-hotel',
+      name: 'GoldRush Hotel',
+      location: 'Phase 4 Mummy B, 14 Ezimgbu Link Rd, GRA',
+      price: '43,000',
+      tiers: [
+        { name: 'Gold', price: '124,000' },
+        { name: 'Diamond', price: '99,000' },
+        { name: 'Exclusive', price: '84,000' },
+        { name: 'Silver', price: '54,000' },
+        { name: 'Top Tier', price: '51,000' },
+        { name: 'Bronze', price: '46,000' },
+        { name: 'Basic', price: '43,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1i78E1f266qPc2pUpORa_iIjqJq36uBj-',
+        'https://lh3.googleusercontent.com/d/1liCiHOGTKzwuIzxaFVQiAB834MfH8xXY',
+        'https://lh3.googleusercontent.com/d/1u5n3-Eka_3bmMJhWQYvmxl_ICmCly7u3'
+      ],
+      description: 'Experience pristine luxury and unparalleled comfort at GoldRush Hotel, beautifully located at Phase 4 Mummy B, 14 Ezimgbu Link Road, GRA. Enjoy exquisite modern rooms ranging from cosy Basic options to the elite Gold suites, delivered with refined excellence.'
+    },
+    {
+      id: 'empire-boutique-hotel',
+      name: 'Empire Boutique Hotel',
+      location: '5 Suleiman Close off Danjuma Drive, Peter Odili Rd',
+      price: '38,000',
+      tiers: [
+        { name: 'Top Tier', price: '48,000' },
+        { name: 'Bronze', price: '43,000' },
+        { name: 'Basic', price: '38,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1Vp84gomj_gGz1zzqQsslQlpMQkTyMIxl',
+        'https://lh3.googleusercontent.com/d/1r5eNj-KSPd6jjoqenQdFnn5peszsfakb'
+      ],
+      description: 'Experience refined hospitality and bespoke rest at Empire Boutique Hotel, elegantly located at 5 Suleiman Close off Danjuma Drive, Peter Odili Road. Enjoy peaceful accommodation with tailored prices for Basic, Bronze, and high-end Top Tier clients.'
+    },
+    {
+      id: 'luxarna-hotel-spa',
+      name: 'Luxarna Hotel & SPA',
+      location: 'Trunk C Mandela Estate, Plot 13 SARS Rd',
+      price: '26,000',
+      tiers: [
+        { name: 'Silver', price: '54,000' },
+        { name: 'Top Tier', price: '43,000' },
+        { name: 'Bronze', price: '33,000' },
+        { name: 'Basic', price: '26,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1vwFRHkH-N6rRb0v3xdhTgNapMITM8ci6',
+        'https://lh3.googleusercontent.com/d/1RhEvE1WLGNdAuHD3-fKDG_Iz4i7Ilhin',
+        'https://lh3.googleusercontent.com/d/1Wro3YJrS7UEJxY1bSJCHmgQBYfAN6Zrg',
+        'https://lh3.googleusercontent.com/d/1A8NISw5DwrsQB2C6PvR-rHRFzAEBmorF'
+      ],
+      description: 'Experience world-class hospitality, absolute rejuvenation, and high-end serenity at Luxarna Hotel & SPA, ideally situated at Trunk C Mandela Estate, Plot 13 SARS Road. Featuring modern architectural design, premium spa services, and beautifully furnished rooms from cozy Basic up to premier Silver selections.'
+    },
+    {
+      id: 'osborn-la-palm-resort',
+      name: 'Osborn La Palm Resort',
+      location: 'Phase 2, 3 Lord Ugboma Drive, GRA',
+      price: '112,835',
+      tiers: [
+        { name: 'Deluxe', price: '698,225' },
+        { name: 'Gold', price: '620,200' },
+        { name: 'Diamond', price: '313,100' },
+        { name: 'Exclusive', price: '236,075' },
+        { name: 'Silver', price: '128,240' },
+        { name: 'Top Tier', price: '112,835' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1a4tBgTiD1M6iVEn9139LVXqWG77fWN2v',
+        'https://lh3.googleusercontent.com/d/1cMaEImBSM_Bpf4oPagdf8tRX7i10m46h',
+        'https://lh3.googleusercontent.com/d/1QXfxPgPDu71g7raubGojQYldo7VYXDQn',
+        'https://lh3.googleusercontent.com/d/1YT-FHzpSNisvPWqatc8aMJ-RoOd6MWlS'
+      ],
+      description: 'Indulge in magnificent prestige and premium comfort at Osborn La Palm Resort, nested at Phase 2, 3 Lord Ugboma Drive, GRA. Offering unparalleled luxury accommodations ranging from custom Top Tier rooms up to the ultra-exclusive Deluxe suites.'
+    },
+    {
+      id: 'gordonsville-escape-boutique-hotel-spa',
+      name: 'Gordonsville Escape Boutique Hotel & SPA',
+      location: 'Bozgomero Estate, 30 Abuloma Rd, opposite FCMB Bank, Trans Amadi',
+      price: '72,000',
+      tiers: [
+        { name: 'Gold', price: '163,000' },
+        { name: 'Diamond', price: '133,000' },
+        { name: 'Exclusive', price: '113,000' },
+        { name: 'Silver', price: '93,000' },
+        { name: 'Top Tier', price: '72,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1k5r8LRGDP1IWzzWXtcbkRFavsOqqPoGh',
+        'https://lh3.googleusercontent.com/d/1L3PCYUdao_3XL-oeUpG6fLC-s3A1OKH0',
+        'https://lh3.googleusercontent.com/d/1__FCKvGp9g09_VlwruqyK8PPSOnzY5Lf',
+        'https://lh3.googleusercontent.com/d/1SMHOjFcEixVTKiyVdftaNSNTzwZkDgkP'
+      ],
+      description: 'Experience supreme relaxation, modern chic design, and signature therapeutic serenity at Gordonsville Escape Boutique Hotel & SPA, beautifully situated inside Bozgomero Estate, 30 Abuloma Road, opposite FCMB Bank, Trans Amadi. Featuring custom-designed suites from high-end Top Tier up to elite Gold options alongside spectacular spa services.'
+    },
+    {
+      id: 'liberty-house',
+      name: 'Liberty House',
+      location: '41 Alexandra Street, Mgbuoshimiri',
+      price: '23,000',
+      tiers: [
+        { name: 'Diamond', price: '43,000' },
+        { name: 'Exclusive', price: '36,000' },
+        { name: 'Silver', price: '33,000' },
+        { name: 'Top Tier', price: '31,000' },
+        { name: 'Bronze', price: '25,000' },
+        { name: 'Basic', price: '23,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1lt08VX4KS8KeK2-jLrqTY-GYliLl3UZu',
+        'https://lh3.googleusercontent.com/d/1NTjGIyIcMVoBJbnnhDSl6aKBozVBbJ4X',
+        'https://lh3.googleusercontent.com/d/10A3UunyybCchTgQdqhbK2gFzuKCkU-WD'
+      ],
+      description: 'Enjoy exceptionally serene lodging and welcoming premium services at Liberty House, beautifully situated at 41 Alexandra Street, Mgbuoshimiri. Offering cozy and private room tiers ranging from Basic up to Diamond suites for a thoroughly relaxing stay.'
+    },
+    {
+      id: 'de-loccville-place',
+      name: 'De loccville place',
+      location: 'Parkland estate, 6 Hon Gideon Ekeuwei Lane, Peter Odili Rd',
+      price: '33,000',
+      tiers: [
+        { name: 'Exclusive', price: '64,000' },
+        { name: 'Silver', price: '48,000' },
+        { name: 'Top Tier', price: '43,000' },
+        { name: 'Bronze', price: '38,000' },
+        { name: 'Basic', price: '33,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1vouJIu_TnRF3e0lhR14j-hNxbmw8iZNs',
+        'https://lh3.googleusercontent.com/d/1_08zykLITh3d_LhsM-YUO6KpAmM29YV4',
+        'https://lh3.googleusercontent.com/d/1qYVAhpUGPUhZCJENReqKibtqZ2EAHG9q',
+        'https://lh3.googleusercontent.com/d/17Nj4Q1KZA5gilgYaBfTYxa-xf3PHnMIo'
+      ],
+      description: 'Experience unparalleled serenity and upscale convenience at De loccville place, premium lodgings nestled inside Parkland estate at 6 Hon Gideon Ekeuwei Lane, Peter Odili Road. Offering beautifully tailored rooms and suites from cozy Basic options up to our signature Exclusive rooms designed for magnificent stays.'
+    },
+    {
+      id: 'ibk-hotel-suites',
+      name: 'Ibk Hotel and Suites',
+      location: 'Queens Park Estate, House 19, Rd 3B, Eneka Link Rd',
+      price: '38,000',
+      tiers: [
+        { name: 'Exclusive', price: '59,000' },
+        { name: 'Silver', price: '43,000' },
+        { name: 'Top Tier', price: '38,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/12h8wnGQqTRI21GZsSDmUwxljmIAcYfE2',
+        'https://lh3.googleusercontent.com/d/1CEpfYJb9Wp8yO8lFI_1aIUMyO0UOKXPj'
+      ],
+      description: 'Experience ultimate comfort and prestige at Ibk Hotel and Suites, delightfully situated at Queens Park Estate, House 19, Road 3B, Eneka Link Road. We offer high-quality lodgings ranging from premium Top Tier suites to ultra-exclusive selections, setting a high standard of local hospitality.'
+    },
+    {
+      id: 'trulli-hotel',
+      name: 'Trulli Hotel',
+      location: '12b Faith Avenue, Rumuomasi',
+      price: '33,000',
+      tiers: [
+        { name: 'Silver', price: '64,000' },
+        { name: 'Top Tier', price: '48,000' },
+        { name: 'Bronze', price: '38,000' },
+        { name: 'Basic', price: '33,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1bTVwpusnMGspCoEgU5prkc4MHfdG1tjY',
+        'https://lh3.googleusercontent.com/d/1v3icNQXzpWCm4BbmM91HdK2WVncncJrq'
+      ],
+      description: 'Discover contemporary elegance and comfort at Trulli Hotel, perfectly situated at 12b Faith Avenue, Rumuomasi. Experience exceptionally tailored hospitality from cozy Basic rooms to premier Silver suites.'
+    },
+    {
+      id: 'dee-os-hotel',
+      name: "Dee O's Hotel",
+      location: '18 Mini Ezekwu St, Mgbuesilara',
+      price: '26,000',
+      tiers: [
+        { name: 'Top Tier', price: '34,000' },
+        { name: 'Bronze', price: '29,000' },
+        { name: 'Basic', price: '26,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1fflwCC356DUKzt0uMaof1RqfGIRhReRs',
+        'https://lh3.googleusercontent.com/d/1Tgt_6AUcvqHL1tSF0NNbcOiEui9VIFyo'
+      ],
+      description: "Experience premium serenity and comfort at Dee O's Hotel, beautifully situated at 18 Mini Ezekwu St, Mgbuesilara. From cozy Basic options up to elite Top Tier suites, enjoy excellent hospitality designed for a delightful stay."
+    },
+    {
+      id: '9ja-luxury-life-suites',
+      name: '9ja Luxury Life Suites',
+      location: 'Rd 3 Akwaka Rd',
+      price: '21,000',
+      tiers: [
+        { name: 'Top Tier', price: '33,000' },
+        { name: 'Bronze', price: '28,000' },
+        { name: 'Basic', price: '21,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1BFcMjKpfgwh3uHtVZeNGW-G3NfpDtMXS',
+        'https://lh3.googleusercontent.com/d/10g4TcMO3Fh-gchkXGolV_aMKfbmBciu1'
+      ],
+      description: 'Experience premier executive comfort, rich leisure, and elegant style at 9ja Luxury Life Suites, beautifully nested at Road 3 Akwaka Road. Offering beautifully detailed rooms ranging from cozy Basic options to high-end Top Tier accommodations.'
+    },
+    {
+      id: 'bhanek-inn',
+      name: 'Bhanek Inn',
+      location: 'Rumuepirikon',
+      price: '29,000',
+      tiers: [
+        { name: 'Top Tier', price: '48,000' },
+        { name: 'Bronze', price: '38,000' },
+        { name: 'Basic', price: '29,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1USQwiLxNzqcY29yrsBJUI0CPODepuUW0',
+        'https://lh3.googleusercontent.com/d/1C_040hOl-heDOf4_p4uy64IBb3cZC9mW',
+        'https://lh3.googleusercontent.com/d/1x_c9_pX5TdBFzGD_JniRlTfTQaEBlJ5i'
+      ],
+      description: 'Experience premium comfort, elegant style, and unmatched hospitality at Bhanek Inn, beautifully nested in Rumuepirikon. Enjoy exceptional accommodation options from cozy Basic rooms to elite Top Tier suites tailored to perfection.'
+    },
+    {
+      id: 'grand-rivera-hotel',
+      name: 'Grand Rivera hotel',
+      location: 'Plot 534 EL Rd 12, Eagle Island',
+      price: '33,000',
+      tiers: [
+        { name: 'Gold', price: '106,000' },
+        { name: 'Exclusive', price: '74,000' },
+        { name: 'Silver', price: '64,000' },
+        { name: 'Top Tier', price: '54,000' },
+        { name: 'Bronze', price: '43,000' },
+        { name: 'Basic', price: '33,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1rtAIfydpfjWRl1exzfCdP-UvywWMlfV_',
+        'https://lh3.googleusercontent.com/d/1Cn8TXAMGfoMQJiYyQC03yo3HxVWDFI4s',
+        'https://lh3.googleusercontent.com/d/1lKL-Qn77up4UnbKP_t3RMNWTfVynC_uy'
+      ],
+      description: 'Experience refined prestige, majestic relaxation, and premium comfort at Grand Rivera hotel, ideally located at Plot 534 EL Road 12, Eagle Island. Offering beautifully designed accommodations ranging from cozy Basic rooms up to our signature Gold suites for a memorable stay.'
+    },
+    {
+      id: 'whitestone-hotel',
+      name: 'Whitestone Hotel',
+      location: 'Off East West Rd, 1 Ordu Avenue, opp Omega House, Rumuodara',
+      price: '50,950',
+      tiers: [
+        { name: 'Diamond', price: '84,950' },
+        { name: 'Exclusive', price: '73,950' },
+        { name: 'Silver', price: '50,950' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1AzZUUiB1cSjDyrWKzqxdbqIFWNQ5Sjzs',
+        'https://lh3.googleusercontent.com/d/1ruYBsBuXpPRWiGuuoH1Y3ccQApzLtShr',
+        'https://lh3.googleusercontent.com/d/1Fpc8ioBX0B9WORjFxlSmCX8LPV7dRFW_',
+        'https://lh3.googleusercontent.com/d/17NpjAIZe3dQJ5mxDkWjLTZmwvE4K1WFS'
+      ],
+      description: 'Experience refined hospitality, beautiful architectural details, and modern convenience at Whitestone Hotel, remarkably located off East West Road at 1 Ordu Avenue, opposite Omega House, Rumuodara. Ideal for both business retreats and premium luxury leisure.',
+      note: 'All tiers come with complimentary breakfast for 1 person'
+    },
+    {
+      id: 'chrisolik-hotel-ltd',
+      name: 'Chrisolik Hotel Ltd',
+      location: 'Plot 5a off Trans Amadi, adjacent to Market Square and close to Sasun Roundabout, Plot 5 Peter Odili Rd, Trans Amadi',
+      price: '26,000',
+      tiers: [
+        { name: 'Silver', price: '36,000' },
+        { name: 'Top Tier', price: '33,000' },
+        { name: 'Bronze', price: '31,000' },
+        { name: 'Basic', price: '26,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/14x6Vwnu4Xd79BMEqsejGbsn0G0vR6sQQ',
+        'https://lh3.googleusercontent.com/d/1ph9gPlGGAZOMR5tEGeURuPtfcaDeGD5V',
+        'https://lh3.googleusercontent.com/d/1_wEvo1ukTTwwsvVkTkFKGejvW52YOnR1',
+        'https://lh3.googleusercontent.com/d/14XFyjk8wUSrwCyEBJ_wW3sjHgbmXmVUW'
+      ],
+      description: 'Experience unparalleled strategic convenience and superior hospitality at Chrisolik Hotel Ltd, impeccably situated on Plot 5a off Trans Amadi, adjacent to Market Square and close to the Sasun Roundabout (Plot 5, Peter Odili Road). Offering beautifully finished room types from comfortable Basic layouts up to elite Silver suites designed for exquisite visits.'
+    },
+    {
+      id: 'rj-hotel',
+      name: 'RJ hotel',
+      location: 'Mummy B Rd, 16 Justice Mary Odili St, GRA Phase 4, off Ezimgbu Rd',
+      price: '35,000',
+      tiers: [
+        { name: 'Silver', price: '39,000' },
+        { name: 'Basic', price: '35,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1KfU-kry0HZf4BnFzbcpK7t3M0I13Emud',
+        'https://lh3.googleusercontent.com/d/1C-aDQehK7YWVe52Fw2aL2Yw2Tbf8wGR9',
+        'https://lh3.googleusercontent.com/d/1E7V2D5GgBc1SKilLJguNRTmB63Lsux_N'
+      ],
+      description: 'Experience quiet luxury and modern refinement at RJ hotel, situated at Mummy B Road, 16 Justice Mary Odili Street in GRA Phase 4, off Ezimgbu Road. Providing superb comfort with stylishly customized rooms including Cozy Basic and Elegant Silver tiers for an outstanding stay.'
+    },
+    {
+      id: 'dotnova-hotel',
+      name: 'DotNova Hotel',
+      location: 'Ikwerre Rd, Rumuokwuta',
+      price: '18,000',
+      tiers: [
+        { name: 'Bronze', price: '21,000' },
+        { name: 'Basic', price: '18,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/17NG_urh6GnqmtdIz4CLPqS0Xv5AGbp50',
+        'https://lh3.googleusercontent.com/d/12yKli9MJv6DcQ8M444uw6if4mD-9BFg9',
+        'https://lh3.googleusercontent.com/d/1MGbLiTn6RkE4qYdjLUdkTJoaxLBVwDUP'
+      ],
+      description: 'Discover cozy comfort, friendly ambiance, and superior hospitality at DotNova Hotel, perfectly located along Ikwerre Road, Rumuokwuta. Experience remarkably comfortable stays with beautifully tailored tiers from our Cozy Basic options to excellent Bronze accommodations.'
+    },
+    {
+      id: 'proxima-centauri-hotel',
+      name: 'PROXIMA CENTAURI HOTEL',
+      location: 'Ykc 5 Unity Close, Golden Valley Estate, Woji',
+      price: '49,000',
+      tiers: [
+        { name: 'Gold', price: '83,000' },
+        { name: 'Diamond', price: '77,000' },
+        { name: 'Exclusive', price: '66,000' },
+        { name: 'Silver', price: '56,000' },
+        { name: 'Top Tier', price: '49,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1VfKRFR64CD3_0mU5Gz76SG989qC0dLKJ',
+        'https://lh3.googleusercontent.com/d/1CvHzH3DjnE4QK-8iqUC3fanCryGUyf9p',
+        'https://lh3.googleusercontent.com/d/1NFHf7__b_UGTi32Z2LJnmPSVLNbd0SvZ',
+        'https://lh3.googleusercontent.com/d/1G4CAElEH4nUUI4jA5JqsOv3mleZSTGOH'
+      ],
+      description: 'Discover contemporary luxury and stellar comfort at PROXIMA CENTAURI HOTEL, ideally nested inside Golden Valley Estate at YKC 5 Unity Close, Woji. We offer premium options ranging from cozy Top Tier quarters up to our ultra-exclusive Gold suites, all designed for a magnificent stay.'
     }
   ];
 
@@ -1111,8 +1541,8 @@ export default function App() {
       ? `${checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}` 
       : 'N/A';
 
-    const kindLabel = bookingType === 'reservation' ? 'reservation' : 'booking';
-    const capKindLabel = bookingType === 'reservation' ? 'Reservation' : 'Booking';
+    const kindLabel = bookingType === 'reservation' ? 'availability' : 'booking';
+    const capKindLabel = bookingType === 'reservation' ? 'Availability' : 'Booking';
 
     const bookingText = `Hello Elite Bookings Team,
 
@@ -1608,9 +2038,17 @@ Best regards.`;
                             )}
                           </div>
                         </div>
-                        <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md">
+                        <p className={(hotel as any).note ? "text-charcoal/60 font-normal leading-relaxed mb-4 max-w-md" : "text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md"}>
                           {hotel.description}
                         </p>
+                        {(hotel as any).note && (
+                          <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3 max-w-md font-sans">
+                            <Sparkles className="w-4 h-4 text-gold flex-shrink-0 animate-pulse" />
+                            <span className="text-xs text-charcoal/80 font-medium italic">
+                              {(hotel as any).note}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-4">
                           <button 
                             onClick={() => {
@@ -1628,7 +2066,7 @@ Best regards.`;
                             }}
                             className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
                           >
-                            Make a Reservation
+                            Check Availability
                           </button>
                         </div>
                       </div>
@@ -1724,7 +2162,7 @@ Best regards.`;
                             }}
                             className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
                           >
-                            Make a Reservation
+                            Check Availability
                           </button>
                         </div>
                       </div>
@@ -1824,7 +2262,7 @@ Best regards.`;
                             }}
                             className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
                           >
-                            Make a Reservation
+                            Check Availability
                           </button>
                         </div>
                       </div>
@@ -1960,7 +2398,7 @@ Best regards.`;
                     {emailSubmitStatus === 'idle' && (
                       <div className="text-center font-sans">
                         <h3 className="text-2xl font-serif text-charcoal mb-2">Almost Done!</h3>
-                        <p className="text-charcoal/60 text-sm mb-6">Provide your phone number to complete your {bookingType === 'reservation' ? 'reservation' : 'booking'} enquiry via email.</p>
+                        <p className="text-charcoal/60 text-sm mb-6">Provide your phone number to complete your {bookingType === 'reservation' ? 'availability' : 'booking'} enquiry via email.</p>
 
                         <form onSubmit={handleEmailSubmit} className="space-y-6">
                           <div className="text-left font-sans">
@@ -1984,7 +2422,7 @@ Best regards.`;
                               className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer"
                             >
                               <Mail className="w-5 h-5" />
-                              <span>{bookingType === 'reservation' ? 'Send Reservation via Email' : 'Send Booking via Email'}</span>
+                              <span>{bookingType === 'reservation' ? 'Send Availability Request via Email' : 'Send Booking via Email'}</span>
                             </button>
 
                             <button
@@ -2003,11 +2441,11 @@ Best regards.`;
                       <div className="flex flex-col items-center justify-center py-10 text-center font-sans">
                         <Loader className="w-10 h-10 text-gold animate-spin mb-4" />
                         <h3 className="text-xl font-serif text-charcoal mb-2">
-                          {emailSubmitStatus === 'saving' ? (bookingType === 'reservation' ? 'Saving Reservation...' : 'Saving Booking...') : 'Sending Email...'}
+                          {emailSubmitStatus === 'saving' ? (bookingType === 'reservation' ? 'Saving Enquiry...' : 'Saving Booking...') : 'Sending Email...'}
                         </h3>
                         <p className="text-charcoal/60 text-sm max-w-xs leading-relaxed">
                           {emailSubmitStatus === 'saving' 
-                            ? `Adding your ${bookingType === 'reservation' ? 'reservation' : 'booking'} request details securely into the elite cloud database...`
+                            ? `Adding your ${bookingType === 'reservation' ? 'availability' : 'booking'} request details securely into the elite cloud database...`
                             : 'Delivering notification instantly to the Elite Bookings Team...'}
                         </p>
                       </div>
@@ -2020,7 +2458,7 @@ Best regards.`;
                         </div>
                         <h3 className="text-2xl font-serif text-charcoal mb-2 font-medium">Enquiry Automated!</h3>
                         <p className="text-charcoal/60 text-sm mb-6 max-w-xs leading-relaxed">
-                          Your {bookingType === 'reservation' ? 'reservation' : 'booking'} for <strong className="text-charcoal">{showBookingOptions.name}</strong> was recorded in the database and delivered to the desk at <span className="text-gold font-medium">Elitebooking.ng@gmail.com</span>.
+                          Your {bookingType === 'reservation' ? 'availability check request' : 'booking'} for <strong className="text-charcoal">{showBookingOptions.name}</strong> was recorded in the database and delivered to the desk at <span className="text-gold font-medium">Elitebooking.ng@gmail.com</span>.
                         </p>
                         
                         <button
@@ -2042,7 +2480,7 @@ Best regards.`;
                   <div className="flex flex-col h-full">
                     <div className="text-center mb-6">
                       <h3 className="text-2xl font-serif text-charcoal mb-1">Select Dates &amp; Times</h3>
-                      <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out dates and times for your {bookingType === 'reservation' ? 'reservation' : 'booking'} of {showBookingOptions.name}</p>
+                      <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out dates and times to check availability for {showBookingOptions.name}</p>
                     </div>
 
                     {/* Tabs for Check-in / Check-out */}
@@ -2161,14 +2599,14 @@ Best regards.`;
                           }
                         `}
                       >
-                        <span>Next: Confirm {bookingType === 'reservation' ? 'Reservation' : 'Booking'}</span> <ArrowRight className="w-4 h-4" />
+                        <span>Next: Confirm {bookingType === 'reservation' ? 'Availability' : 'Booking'}</span> <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <h3 className="text-2xl font-serif text-charcoal mb-2">{bookingType === 'reservation' ? 'Reservation Summary' : 'Booking Summary'}</h3>
-                    <p className="text-charcoal/60 text-sm mb-6">Confirm your elite {bookingType === 'reservation' ? 'reservation' : 'booking'} details for <span className="font-semibold text-charcoal">{showBookingOptions.name}</span></p>
+                    <h3 className="text-2xl font-serif text-charcoal mb-2">{bookingType === 'reservation' ? 'Availability Summary' : 'Booking Summary'}</h3>
+                    <p className="text-charcoal/60 text-sm mb-6">Confirm your elite {bookingType === 'reservation' ? 'availability' : 'booking'} details for <span className="font-semibold text-charcoal">{showBookingOptions.name}</span></p>
 
                     <div className="bg-charcoal/5 border border-charcoal/10 rounded-2xl p-6 mb-8 text-left space-y-4">
                       <div>
@@ -2202,11 +2640,12 @@ Best regards.`;
                     <div className="space-y-3">
                       <a 
                         href={`https://wa.me/2347072253857?text=${encodeURIComponent(
-                          `Hello, I would like to ${bookingType === 'reservation' ? 'make a reservation for' : 'book'} ${showBookingOptions.name}.\n\n` +
+                          `Hello, I would like to ${bookingType === 'reservation' ? 'check availability for' : 'book'} ${showBookingOptions.name}.\n\n` +
                           `📅 Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}\n` +
                           `🔑 Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}\n` +
                           `📍 Location: ${showBookingOptions.location}` +
-                          `${showBookingOptions.price ? `\n💳 Base Price: ₦${showBookingOptions.price}` : ''}`
+                          `${showBookingOptions.price ? `\n💳 Base Price: ₦${showBookingOptions.price}` : ''}` +
+                          `${showBookingOptions.note ? `\n✨ Note: ${showBookingOptions.note}` : ''}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
