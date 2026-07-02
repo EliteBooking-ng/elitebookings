@@ -88,8 +88,11 @@ export default function App() {
 
   const getFilteredHotels = () => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return phHotels;
-    return phHotels.filter(hotel => 
+    const sourceHotels = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+      ? lagosHotels
+      : phHotels;
+    if (!query) return sourceHotels;
+    return sourceHotels.filter(hotel => 
       hotel.name.toLowerCase().includes(query) ||
       hotel.location.toLowerCase().includes(query) ||
       hotel.description.toLowerCase().includes(query) ||
@@ -101,8 +104,11 @@ export default function App() {
 
   const getFilteredShortlets = () => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return phShortlets;
-    return phShortlets.filter(shortlet => 
+    const sourceShortlets = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+      ? lagosShortlets
+      : phShortlets;
+    if (!query) return sourceShortlets;
+    return sourceShortlets.filter(shortlet => 
       shortlet.name.toLowerCase().includes(query) ||
       shortlet.location.toLowerCase().includes(query) ||
       shortlet.description.toLowerCase().includes(query) ||
@@ -116,8 +122,11 @@ export default function App() {
 
   const getFilteredCars = () => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return phCars;
-    return phCars.filter(car => 
+    const sourceCars = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+      ? lagosCars
+      : phCars;
+    if (!query) return sourceCars;
+    return sourceCars.filter(car => 
       car.name.toLowerCase().includes(query) ||
       car.location.toLowerCase().includes(query) ||
       car.description.toLowerCase().includes(query) ||
@@ -143,7 +152,7 @@ export default function App() {
       <div className="w-full mb-10 bg-white border border-charcoal/5 rounded-[2rem] p-6 md:p-8 shadow-2xl shadow-gold/5 font-sans">
         <div className="flex flex-col gap-4">
           <label className="block text-[10px] uppercase tracking-[0.25em] font-medium text-gold mb-1">
-            Search Port Harcourt Listings
+            Search {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : 'Port Harcourt'} Listings
           </label>
           <div className="relative w-full">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/40" />
@@ -183,12 +192,23 @@ export default function App() {
               All {catLabels[currentCategory].plural}
             </button>
 
-            {currentCategory === 'stays' && [
-              { label: 'GRA Port Harcourt', value: 'GRA' },
-              { label: 'Rumudara', value: 'rumuodara' },
-              { label: 'Stadium Road', value: 'stadium' },
-              { label: 'Echelon', value: 'Echelon' }
-            ].map(tag => (
+            {currentCategory === 'stays' && (
+              selectedLocation && selectedLocation.includes('Lagos') ? [
+                { label: 'Isheri Olofin', value: 'Isheri' },
+                { label: 'Lekki Phase 1', value: 'Lekki' },
+                { label: 'Eti-Osa', value: 'Eti-Osa' },
+                { label: 'Victoria Island', value: 'Victoria' },
+                { label: 'Ikeja', value: 'Ikeja' },
+                { label: 'Ajao Estate', value: 'Ajao' },
+                { label: 'Akowonjo', value: 'Akowonjo' },
+                { label: 'Ojodu', value: 'Ojodu' }
+              ] : [
+                { label: 'GRA Port Harcourt', value: 'GRA' },
+                { label: 'Rumudara', value: 'rumuodara' },
+                { label: 'Stadium Road', value: 'stadium' },
+                { label: 'Echelon', value: 'Echelon' }
+              ]
+            ).map(tag => (
               <button
                 key={tag.label}
                 type="button"
@@ -1406,6 +1426,334 @@ export default function App() {
     }
   ];
 
+  const lagosHotels = [
+    {
+      id: 'mayoral-hotel-suites',
+      name: 'Mayoral Hotel n Suites',
+      location: '14 Aminu Ajibode Avenue, Isheri Olofin, Lagos',
+      price: '21,500',
+      tiers: [
+        { name: 'Diamond', price: '43,500' },
+        { name: 'Exclusive', price: '38,500' },
+        { name: 'Silver', price: '33,500' },
+        { name: 'Top Tier', price: '28,500' },
+        { name: 'Bronze', price: '23,500' },
+        { name: 'Basic', price: '21,500' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/16Joa5DhAFvhxaJUpdTJHAQ9Et2Cgndyt',
+        'https://lh3.googleusercontent.com/d/1_7XUY5Jd-mnDhwlOFKDso6CFrjhxe2Oh',
+        'https://lh3.googleusercontent.com/d/1CYPxmvY8ARU_w_bV2GDUbM-3dBObW5ww',
+        'https://lh3.googleusercontent.com/d/17WHOtWaRY5FcZQAxAAiQt7AoTkDz19rN',
+        'https://lh3.googleusercontent.com/d/1K3iq3GoHX4z2elXo_QGMWWo9HT5vjMol'
+      ],
+      description: 'Experience refined elegance, relaxing comfort, and stellar hospitality at Mayoral Hotel n Suites, perfectly situated at 14 Aminu Ajibode Avenue, Isheri Olofin, Lagos. Unwind in meticulously finished accommodations from our cozy Basic selection to elite Diamond suites designed for a stellar stay.'
+    },
+    {
+      id: 'the-yatch-hotel',
+      name: 'The Yatch Hotel',
+      location: '17 Admiralty Rd, Lekki Phase 1, Lagos',
+      price: '310,000',
+      tiers: [
+        { name: 'Diamond [SEA VIEW]', price: '477,000' },
+        { name: 'Exclusive [SEA VIEW]', price: '453,000' },
+        { name: 'Silver [CITY VIEW]', price: '334,000' },
+        { name: 'Top Tier [CITY VIEW]', price: '310,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1qYP3Bg9EUdWRiEwleNFO9EnH-I8a4NOU',
+        'https://lh3.googleusercontent.com/d/1BFStPP9f73uoOrX10Zcb7PKuBNa-IHmX',
+        'https://lh3.googleusercontent.com/d/1S1Cu-__ahcGTTdS4PZOhgVWV2Bh4Er-1',
+        'https://lh3.googleusercontent.com/d/1txN6JxIXZtnyz2lmZcqKTtIyXH_enz6U'
+      ],
+      description: 'Experience maritime grandeur, sophisticated harbor living, and elite privilege at The Yatch Hotel, phenomenally situated at 17 Admiralty Road, Lekki Phase 1, Lagos. Offering prestigious premium accommodations curated with spectacular City View and breathtaking Sea View options for an unforgettable ultra-luxury voyage.'
+    },
+    {
+      id: 'preserve-hotel',
+      name: 'Preserve Hotel',
+      location: '14 Babatunde Dabiri St, Eti-Osa, Lagos',
+      price: '38,000',
+      tiers: [
+        { name: 'Gold', price: '160,000' },
+        { name: 'Diamond', price: '74,000' },
+        { name: 'Exclusive', price: '64,000' },
+        { name: 'Silver', price: '59,000' },
+        { name: 'Top Tier', price: '48,000' },
+        { name: 'Bronze', price: '43,000' },
+        { name: 'Basic', price: '38,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1KFL0_2A-tDWb-FU1jUqEuTGLxEJ4feQ-',
+        'https://lh3.googleusercontent.com/d/1C-iYDHcq6zsOF32h96OUTq4sZPj-keZV',
+        'https://lh3.googleusercontent.com/d/1aUXm3DY3YUtWMh-OE-ayt8LWJxp_i1xc'
+      ],
+      description: 'Discover serene luxury and exquisite wellness at Preserve Hotel, located at 14 Babatunde Dabiri Street, Eti-Osa, Lagos. Unwind in top-class accommodations meticulously finished from our comfortable Basic rooms to the prestigious executive Gold suites designed for absolute rest.'
+    },
+    {
+      id: 'morning-side-suites',
+      name: 'Morning Side Suites',
+      location: '11b Taslim Elias Cl, Victoria Island, Lagos',
+      price: '74,000',
+      tiers: [
+        { name: 'Exclusive', price: '210,000' },
+        { name: 'Silver', price: '159,000' },
+        { name: 'Top Tier', price: '109,000' },
+        { name: 'Bronze', price: '85,000' },
+        { name: 'Basic', price: '74,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1HrbSV1cW9dDW3K5uzR3kELyKKOlAYR_v',
+        'https://lh3.googleusercontent.com/d/1oyY1vKVMOp8N8cC5dbJ4SKGQhxqpij-m',
+        'https://lh3.googleusercontent.com/d/1Kc_53A8uL_FDDCpxG5OfioD-9yJ6QMQN'
+      ],
+      description: 'Indulge in unparalleled boutique comfort at Morning Side Suites, beautifully situated on 11b Taslim Elias Close, Victoria Island, Lagos. Experience exceptional service, outstanding suites, and top-tier amenities tailored for discerning business and leisure travelers alike.'
+    },
+    {
+      id: 'the-atrium-lagos',
+      name: 'The Atrium Lagos',
+      location: 'Plot 19, Block 1a, Agoro St, Omole Phase 1, Ikeja, Lagos',
+      price: '109,300',
+      tiers: [
+        { name: 'Diamond', price: '176,200' },
+        { name: 'Exclusive', price: '139,000' },
+        { name: 'Silver', price: '124,300' },
+        { name: 'Top Tier', price: '109,300' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1vLqeHmx4yh4DrPvbybqYPfLzi_zv6lJt',
+        'https://lh3.googleusercontent.com/d/1W-jKpdx3wFdXF5D12eq6Y-2h8kKf5XTf',
+        'https://lh3.googleusercontent.com/d/1zHRyXiZ-IupFg43iKZ0XOkzIdS35qLwl',
+        'https://lh3.googleusercontent.com/d/1GX23MbKq92gDD96L1Us3zgW_qT-iuZlU'
+      ],
+      description: 'Experience state-of-the-art hospitality, contemporary design, and unparalleled comfort at The Atrium Lagos, nested at Plot 19, Block 1a, Agoro Street, Omole Phase 1, Ikeja, Lagos. Unwind in spacious accommodations tailored from premium Top Tier and Silver settings to elite Diamond suites.'
+    },
+    {
+      id: 'de-rigg-place',
+      name: 'De Rigg Place',
+      location: '18b Elsie Femi Pearse St, Off Kofo Abayomi St, Victoria Island, Lagos',
+      price: '109,000',
+      tiers: [
+        { name: 'Silver', price: '139,000' },
+        { name: 'Top Tier', price: '119,000' },
+        { name: 'Bronze', price: '119,000' },
+        { name: 'Basic', price: '109,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/17jB-eZXulebISE3wPiIxXXCS_GFsmw53',
+        'https://lh3.googleusercontent.com/d/1fDEjRFiwvaPktyMjND0tkGvwpF67db2n',
+        'https://lh3.googleusercontent.com/d/1ORgXMhNgLeHRQCY2-R1IOp7u5CESUnvZ',
+        'https://lh3.googleusercontent.com/d/18kJYNz6z2UDvSSqpWO5EjSl1UEThz8TE'
+      ],
+      description: 'Indulge in modern urban convenience and classic warmth at De Rigg Place, located at 18b Elsie Femi Pearse Street, off Kofo Abayomi Street, Victoria Island, Lagos. Perfect for business travelers and luxury seekers wanting proximity to prime commercial and entertainment spots in Lagos.'
+    },
+    {
+      id: 'the-art-hotel',
+      name: 'The Art Hotel',
+      location: 'Plot 13A, Block 111, Chief Yesufu Abiodun Oniru Rd, Victoria Island, Lagos',
+      price: '260,000',
+      tiers: [
+        { name: 'Emperor', price: '810,000' },
+        { name: 'Prince Deluxe', price: '510,000' },
+        { name: 'Prince', price: '410,000' },
+        { name: 'Duke Superior', price: '310,000' },
+        { name: 'Duke Deluxe', price: '290,000' },
+        { name: 'Duke Room', price: '260,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1Ei7UcqQRfmzN0Ti8EC_DRD4hhZYd3jSC',
+        'https://lh3.googleusercontent.com/d/1nZU8oBATiLm6y0zTJGWtFWSOdXfE2g1w',
+        'https://lh3.googleusercontent.com/d/1QpRriQfTMZZ7ZC16I34wtR1POPhaunsN',
+        'https://lh3.googleusercontent.com/d/1ORgXMhNgLeHRQCY2-R1IOp7u5CESUnvZ'
+      ],
+      description: 'Enter a canvas of spectacular curated masterpieces, fine arts, and boutique hospitality at The Art Hotel, situated at Plot 13A, Block 111, Chief Yesufu Abiodun Oniru Road, Victoria Island, Lagos. Elevate your standard of living in exquisite chambers from our luxurious Duke rooms to the grand Emperor suites.'
+    },
+    {
+      id: 'choice-suites-ii',
+      name: 'Choice Suites II',
+      location: '5 Tiwalade Close, Off Bamisele, Off Allen Avenue, Ikeja, Lagos',
+      price: '43,000',
+      tiers: [
+        { name: 'Top Tier', price: '54,000' },
+        { name: 'Bronze', price: '45,000' },
+        { name: 'Basic', price: '43,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1NCFwOCYSLyiAf9vlTcEbsKn-5zZVMZKh',
+        'https://lh3.googleusercontent.com/d/18kAOZl6w00M6s79teg-KanG9i9TBo7Wk',
+        'https://lh3.googleusercontent.com/d/1gupSNT9NWeWgqgiLRTAQJhYTiQe14E9z'
+      ],
+      description: 'Experience home-away-from-home comfort and warm hospitality at Choice Suites II, nestled in a quiet, secure neighborhood at 5 Tiwalade Close, off Allen Avenue, Ikeja, Lagos. Fully tailored for cozy, relaxing stays with high-value bronze and basic tier selections.'
+    },
+    {
+      id: 'bluemoon-beach-hotel',
+      name: 'Bluemoon Beach Hotel',
+      location: 'Okunde Blue Water Scheme, 2nd Roundabout, 3/5, Off Remi Olowude St, Eti-Osa, Lekki, Lagos',
+      price: '38,000',
+      tiers: [
+        { name: 'Exclusive', price: '64,000' },
+        { name: 'Silver', price: '54,000' },
+        { name: 'Top Tier', price: '48,000' },
+        { name: 'Bronze', price: '43,000' },
+        { name: 'Basic', price: '38,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1A5xjWIe73yx8iZbGVSEVesVAIxK8JN1u',
+        'https://lh3.googleusercontent.com/d/1pqx1GqT-YWrskpfoIdlarGzc0eFhGizB',
+        'https://lh3.googleusercontent.com/d/1eu9YFYd9kc9chKODUZdxgjOZSvAutVUg'
+      ],
+      description: 'Unwind by the majestic coastline at Bluemoon Beach Hotel, located in the Okunde Blue Water Scheme, Lekki, Lagos. Offering wonderful breezy atmospheres, relaxing suites, and premier recreational vibes with exquisite room tiers ranging from Basic comfort to gorgeous Exclusive suites.'
+    },
+    {
+      id: 'hotel-capitol',
+      name: 'Hotel Capitol',
+      location: '6 Animashaun Cl, Gate Akiode Bus Stop, Opp Justrite Supermarket, Opp Omole Phase 1, Ojodu, Ikeja, Lagos',
+      price: '38,500',
+      tiers: [
+        { name: 'Deluxe', price: '129,000' },
+        { name: 'Gold', price: '64,500' },
+        { name: 'Diamond', price: '54,500' },
+        { name: 'Exclusive', price: '50,500' },
+        { name: 'Silver', price: '48,500' },
+        { name: 'Top Tier', price: '43,500' },
+        { name: 'Bronze', price: '41,500' },
+        { name: 'Basic', price: '38,500' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1aEtgCcZsqyRZ1ka2kLRWEks3J9R5rucF',
+        'https://lh3.googleusercontent.com/d/1X4rg5JbaFw0hZgjj7RHlez86k8kc-VHx',
+        'https://lh3.googleusercontent.com/d/1MtMmEZ_PaffrwPoD57QcqA4CiDRDSeDs'
+      ],
+      description: 'Experience outstanding comfort and stellar customer support at Hotel Capitol, situated in Ojodu, Ikeja. Offering elegantly decorated rooms ranging from cozy Basic options to our luxury Deluxe suites to guarantee a supreme resting environment.'
+    },
+    {
+      id: 'jade-suites',
+      name: 'Jade Suites',
+      location: '31a Bishop Oluwole St, Off Ahmadu Bello Way, Victoria Island, Lagos',
+      price: '28,000',
+      tiers: [
+        { name: 'Exclusive', price: '57,700' },
+        { name: 'Bronze [External Bathroom]', price: '28,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/188cFT_3XOs8GNnf643w3IzgXzzZy_g4O',
+        'https://lh3.googleusercontent.com/d/1BBQ181QaS4RV0Vj6sEVqmHYPukDqlDp9'
+      ],
+      description: 'Enjoy private serenity and stylish lodgings at Jade Suites, ideally situated at Victoria Island, Lagos. Perfect for travelers seeking high-quality stays with options including our budget-friendly Bronze tier and premium Exclusive suites.'
+    },
+    {
+      id: 'de-santos',
+      name: 'De Santos Hotel',
+      location: '7 Shasha Rd, Akowonjo, Lagos',
+      price: '65,000',
+      tiers: [
+        { name: 'Diamond', price: '95,000' },
+        { name: 'Exclusive', price: '84,000' },
+        { name: 'Silver', price: '74,000' },
+        { name: 'Top Tier', price: '69,000' },
+        { name: 'Bronze', price: '65,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/14hQIi58rmnzRNy8zuungb4nFy7nsqxTD',
+        'https://lh3.googleusercontent.com/d/146TePf1_bwILKcm2H1MC_NiLFflOG_bz',
+        'https://lh3.googleusercontent.com/d/1LBwOGsaXvCuyB4rwHdy7RupTxgt0ayDP'
+      ],
+      description: 'Discover luxurious relaxation, exceptional event spaces, and warm hospitality at De Santos Hotel, situated at Akowonjo, Lagos. Featuring beautifully customized suites ranging from standard Bronze selections to our elite Diamond executive rooms.'
+    },
+    {
+      id: 'eko-hotel-suites',
+      name: 'Eko Hotel & Suites',
+      location: '1415 Adetokunbo Ademola St, Victoria Island, Lagos',
+      price: '345,000',
+      tiers: [
+        { name: 'Presidential Suite [Eko Signature]', price: '2,510,000' },
+        { name: 'Presidential Suite [Main Building]', price: '2,510,000' },
+        { name: 'Signature Suite [Eko Signature]', price: '1,360,000' },
+        { name: 'Premium Suite [Eko Signature]', price: '1,160,000' },
+        { name: 'Diplomatic Suite [Main Building]', price: '1,110,000' },
+        { name: 'Executive Suite [Eko Suites]', price: '1,010,000' },
+        { name: 'Classic Suite [Main Building]', price: '790,000' },
+        { name: 'Club Suite [Eko Signature]', price: '685,000' },
+        { name: 'Studio Suite [Eko Suites]', price: '610,000' },
+        { name: 'Eko Queen Room [Main Building]', price: '610,000' },
+        { name: 'Eko Atlantic Superior Room [Main Building]', price: '510,000' },
+        { name: 'Deluxe Room [Eko Suites]', price: '485,000' },
+        { name: 'Eko Classic Superior Room [Main Building]', price: '455,000' },
+        { name: 'Eko Garden Superior', price: '380,000' },
+        { name: 'Eko Garden Classic', price: '345,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1O7mJ9Lsyrvt5XNNqsnm8inJvtq04e9ES',
+        'https://lh3.googleusercontent.com/d/114CmsZqwOYUMWktMSRr8GMGgm2ehwsPn',
+        'https://lh3.googleusercontent.com/d/1GWPdfN80SSUWK7oW38M7V6nXYG_h2Q6G',
+        'https://lh3.googleusercontent.com/d/1tA64dyDwBX1HI77cWgQI1KZ9_09SrUp3'
+      ],
+      description: "Nigeria's premier luxury hotel landmark. Experience the grandeur of Eko Hotel & Suites on Adetokunbo Ademola Street, Victoria Island, Lagos. Boasting unparalleled luxury suites, world-class restaurants, and stunning city and ocean views tailored for elite global citizens."
+    },
+    {
+      id: 'rollace-hotel',
+      name: 'Rollace Hotel',
+      location: '46/48 Awoniyi Elemo St, Airport Rd, Ajao Estate, Lagos',
+      price: '65,000',
+      tiers: [
+        { name: 'Royal Suite', price: '180,000' },
+        { name: 'Executive Suite', price: '120,000' },
+        { name: 'Deluxe Room', price: '95,000' },
+        { name: 'Superior Room', price: '75,000' },
+        { name: 'Standard Room', price: '65,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/19CHYIe3o0lZSv6y0c0hXGwAZFdTLUIZ4',
+        'https://lh3.googleusercontent.com/d/1uowT5nX1ZM84JFRAw70B-_BkVsoSpyjO',
+        'https://lh3.googleusercontent.com/d/15byRKs1l6HmRz5dsEb8LVoU82QzeqhDM',
+        'https://lh3.googleusercontent.com/d/1pmud0XksIwTEbWfGU5u6CzKqX9yThs4a'
+      ],
+      description: 'Experience first-class hospitality, tranquil stays, and premium dining at Rollace Hotel, perfectly located at Ajao Estate, Lagos (near the Airport). Offering premium comfort for international travelers and staycationers alike.'
+    },
+    {
+      id: 'safron-hotel',
+      name: 'Safron Hotel',
+      location: '57 Joel Ogunnaike St, Onigbongbo, Ikeja, Lagos',
+      price: '219,000',
+      tiers: [
+        { name: 'Penthouse', price: '659,000' },
+        { name: 'Executive Room', price: '304,000' },
+        { name: 'Superior Room', price: '259,000' },
+        { name: 'Deluxe Room', price: '239,000' },
+        { name: 'Classic Room', price: '219,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1sWESMTDtC8CI0y-BSIHUOLb8TqV8nvit',
+        'https://lh3.googleusercontent.com/d/1rcOzSjmvnNgbHdY0tmJfzn149T62uCz4',
+        'https://lh3.googleusercontent.com/d/1G9Wp7h_aUUJaGEatnKY8HB5WL6iCHHlF',
+        'https://lh3.googleusercontent.com/d/1BQeY22jwNcs5FbwrsItbo1eDiNNqXOSm'
+      ],
+      description: 'Discover the height of bespoke hotel service and boutique rest at Safron Hotel, elegantly positioned at GRA Ikeja, Lagos. Perfect for executive lodging, featuring gourmet breakfast for two and top-tier amenities.'
+    },
+    {
+      id: 'monty-suites-lagos',
+      name: 'Monty Suites',
+      location: '16 Adebayo Doherty Rd, Eti-Osa, Lagos',
+      price: '146,000',
+      tiers: [
+        { name: 'Executive Suite', price: '259,000' },
+        { name: 'Junior Suite', price: '212,000' },
+        { name: 'Deluxe Room', price: '182,000' },
+        { name: 'Standard Room', price: '159,000' },
+        { name: 'Classic Room', price: '146,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/18EJgcXAkDCKQZwopz2HfEqtaTt4F_3HT',
+        'https://lh3.googleusercontent.com/d/14Ggm46xOy-eu1Ut1iqIqYxqSND5A-N68',
+        'https://lh3.googleusercontent.com/d/1-qPL5HBrR79Dl9P7qSD6OnhlYdVjgsAo',
+        'https://lh3.googleusercontent.com/d/1kcW93WfPvFTbjgvkDGCY8OrfqhYcRRHJ'
+      ],
+      description: 'Experience state-of-the-art service, contemporary executive comfort, and refined hospitality at Monty Suites, located in Lekki / Eti-Osa, Lagos. Designed perfectly for standard and suite stays of premium grandeur.'
+    }
+  ];
+
+  const lagosShortlets: any[] = [];
+  const lagosCars: any[] = [];
+
   const phShortlets = [
     {
       id: 'studio-room',
@@ -1825,6 +2173,33 @@ Best regards.`;
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-gold/30">
+      {/* Seamless Moving Announcement / Assistance Banner */}
+      <div className="w-full bg-gold/5 border-b border-gold/15 overflow-hidden relative flex h-10 items-center">
+        <style>{`
+          @keyframes marquee {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+          }
+          .animate-marquee {
+            animation: marquee 35s linear infinite;
+          }
+          .animate-marquee:hover {
+            animation-play-state: paused;
+          }
+        `}</style>
+        <div className="animate-marquee whitespace-nowrap flex text-[10px] md:text-[11px] font-sans font-medium tracking-[0.25em] uppercase text-charcoal/70 py-1">
+          <span className="inline-block px-4">if you need any assistance, we can make the best decision for you, click the whatsapp icon below to contact us</span>
+          <span className="inline-block px-4 opacity-40">•</span>
+          <span className="inline-block px-4">if you need any assistance, we can make the best decision for you, click the whatsapp icon below to contact us</span>
+          <span className="inline-block px-4 opacity-40">•</span>
+          {/* Duplicate to enable seamless scrolling infinite loop */}
+          <span className="inline-block px-4">if you need any assistance, we can make the best decision for you, click the whatsapp icon below to contact us</span>
+          <span className="inline-block px-4 opacity-40">•</span>
+          <span className="inline-block px-4">if you need any assistance, we can make the best decision for you, click the whatsapp icon below to contact us</span>
+          <span className="inline-block px-4 opacity-40">•</span>
+        </div>
+      </div>
+
       {/* Navigation */}
       <nav className="p-8 flex justify-between items-center z-50">
         <motion.div 
@@ -1927,13 +2302,14 @@ Best regards.`;
                 </p>
               </div>
 
-              <div className="flex justify-center">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                {/* Port Harcourt */}
                 <motion.div
                   whileHover={{ y: -10 }}
                   onClick={() => {
                     setSelectedLocation('Port Harcourt, Rivers State');
                   }}
-                  className="group cursor-pointer relative overflow-hidden rounded-3xl aspect-[16/9] w-full max-w-3xl bg-charcoal shadow-2xl shadow-gold/10"
+                  className="group cursor-pointer relative overflow-hidden rounded-3xl aspect-[4/3] bg-charcoal shadow-2xl shadow-gold/10"
                 >
                   <img 
                     src="https://media.premiumtimesng.com/wp-content/files/2019/11/Port-Harcourt-Rivers-State.jpg" 
@@ -1942,18 +2318,42 @@ Best regards.`;
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-transparent to-transparent opacity-80" />
-                  <div className="absolute inset-0 p-12 flex flex-col justify-end items-center text-center">
-                    <h3 className="text-5xl text-cream font-serif mb-2">Port Harcourt</h3>
-                    <p className="text-gold text-[12px] uppercase tracking-[0.4em] font-bold">Rivers State</p>
-                    <div className="mt-8 flex items-center text-cream/40 text-[10px] uppercase tracking-[0.2em] group-hover:text-gold transition-colors">
-                      Explore Properties <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" />
+                  <div className="absolute inset-0 p-8 flex flex-col justify-end items-center text-center">
+                    <h3 className="text-3xl md:text-4xl text-cream font-serif mb-1">Port Harcourt</h3>
+                    <p className="text-gold text-[10px] uppercase tracking-[0.4em] font-bold">Rivers State</p>
+                    <div className="mt-6 flex items-center text-cream/40 text-[9px] uppercase tracking-[0.2em] group-hover:text-gold transition-colors">
+                      Explore Properties <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1.5 transition-transform" />
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Lagos */}
+                <motion.div
+                  whileHover={{ y: -10 }}
+                  onClick={() => {
+                    setSelectedLocation('Lagos, Lagos State');
+                  }}
+                  className="group cursor-pointer relative overflow-hidden rounded-3xl aspect-[4/3] bg-charcoal shadow-2xl shadow-gold/10"
+                >
+                  <img 
+                    src="https://images.unsplash.com/photo-1618245341355-d2a2c1490216?q=80&w=800&auto=format&fit=crop" 
+                    alt="Lagos"
+                    className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-1000 ease-out"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-transparent to-transparent opacity-80" />
+                  <div className="absolute inset-0 p-8 flex flex-col justify-end items-center text-center">
+                    <h3 className="text-3xl md:text-4xl text-cream font-serif mb-1">Lagos</h3>
+                    <p className="text-gold text-[10px] uppercase tracking-[0.4em] font-bold">Lagos State</p>
+                    <div className="mt-6 flex items-center text-cream/40 text-[9px] uppercase tracking-[0.2em] group-hover:text-gold transition-colors">
+                      Explore Properties <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1.5 transition-transform" />
                     </div>
                   </div>
                 </motion.div>
               </div>
 
-              <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 opacity-30 pointer-events-none">
-                {['Lagos', 'Abuja', 'Enugu'].map(city => (
+              <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6 opacity-30 pointer-events-none max-w-2xl mx-auto">
+                {['Abuja', 'Enugu'].map(city => (
                   <div key={city} className="border border-charcoal/10 rounded-2xl p-8 text-center grayscale">
                     <span className="text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2 block">Coming Soon</span>
                     <h4 className="text-xl font-serif text-charcoal/60">{city}</h4>
@@ -1985,7 +2385,7 @@ Best regards.`;
                   Luxury Hotels &amp; Suites
                 </h2>
                 <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
-                  Curated premium rooms and executive spaces in Port Harcourt.
+                  Curated premium rooms and executive spaces in {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : 'Port Harcourt'}.
                 </p>
               </div>
 
@@ -2101,7 +2501,7 @@ Best regards.`;
                   Private Shortlet Estates
                 </h2>
                 <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
-                  Architectural masterpieces and high-end living in Port Harcourt.
+                  Architectural masterpieces and high-end living in {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : 'Port Harcourt'}.
                 </p>
               </div>
 
@@ -2703,6 +3103,31 @@ Best regards.`;
         </div>
       </footer>
 
+      {/* Floating WhatsApp Assistance Button */}
+      <div className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-55 flex flex-col items-end pointer-events-none">
+        <motion.a
+          id="whatsapp-assistance-button"
+          href="https://wa.me/2347072253857?text=Hello%2C%20I%20need%20some%20assistance%20with%20a%20booking."
+          target="_blank"
+          rel="noopener noreferrer"
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="pointer-events-auto flex items-center gap-2.5 bg-[#25D366] text-white pl-4 pr-4 py-3 md:pl-5 md:pr-5 md:py-3.5 rounded-full shadow-[0_8px_32px_rgba(37,211,102,0.3)] hover:shadow-[0_12px_40px_rgba(37,211,102,0.45)] border border-emerald-400/20 transition-all duration-300 group cursor-pointer hover:scale-105 active:scale-95"
+        >
+          {/* Subtle pulse effect */}
+          <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-20 group-hover:scale-110 transition-transform duration-500 animate-ping -z-10" />
+          
+          <span className="text-[11px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap drop-shadow-sm font-sans">
+            need any assistance
+          </span>
+          <div className="bg-white/15 p-1 rounded-full">
+            <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.35-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+          </div>
+        </motion.a>
+      </div>
+
       {/* Elegant Floating Back to Top Button */}
       <AnimatePresence>
         {showBackToTop && (
@@ -2712,7 +3137,7 @@ Best regards.`;
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 15 }}
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-55 bg-charcoal text-gold hover:bg-gold hover:text-charcoal p-4 rounded-full shadow-[0_8px_32px_rgba(212,175,55,0.25)] border border-gold/30 transition-all duration-300 group cursor-pointer"
+            className="fixed bottom-24 right-6 md:bottom-28 md:right-8 z-50 bg-charcoal text-gold hover:bg-gold hover:text-charcoal p-4 rounded-full shadow-[0_8px_32px_rgba(212,175,55,0.25)] border border-gold/30 transition-all duration-300 group cursor-pointer"
             aria-label="Back to Top"
           >
             <ArrowUp className="w-5 h-5 group-hover:-translate-y-1 transition-all duration-300" />
