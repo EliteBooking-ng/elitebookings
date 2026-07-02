@@ -201,7 +201,11 @@ export default function App() {
                 { label: 'Ikeja', value: 'Ikeja' },
                 { label: 'Ajao Estate', value: 'Ajao' },
                 { label: 'Akowonjo', value: 'Akowonjo' },
-                { label: 'Ojodu', value: 'Ojodu' }
+                { label: 'Ojodu', value: 'Ojodu' },
+                { label: 'Surulere', value: 'Surulere' },
+                { label: 'Maryland', value: 'Maryland' },
+                { label: 'Oshodi-Isolo', value: 'Oshodi' },
+                { label: 'Festac Town', value: 'Festac' }
               ] : [
                 { label: 'GRA Port Harcourt', value: 'GRA' },
                 { label: 'Rumudara', value: 'rumuodara' },
@@ -1748,6 +1752,245 @@ export default function App() {
         'https://lh3.googleusercontent.com/d/1kcW93WfPvFTbjgvkDGCY8OrfqhYcRRHJ'
       ],
       description: 'Experience state-of-the-art service, contemporary executive comfort, and refined hospitality at Monty Suites, located in Lekki / Eti-Osa, Lagos. Designed perfectly for standard and suite stays of premium grandeur.'
+    },
+    {
+      id: 'royal-jatoz-hotels',
+      name: 'ROYAL JATOZ HOTELS Lagos',
+      location: '9 Rasmon Street, Off Osolo Wy, Ikeja, Lagos',
+      price: '46,000',
+      tiers: [
+        { name: 'Silver', price: '54,000' },
+        { name: 'Bronze', price: '46,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1rExuarv7I5gQViY6q7-CbFPjsCrj4Q1g',
+        'https://lh3.googleusercontent.com/d/1w5TO0OzBc1DX0NxSHk89gg4GFwqwHY5f',
+        'https://lh3.googleusercontent.com/d/1NZKm-5An50njrxa8UGWfxvVlB91iHS_J'
+      ],
+      description: 'Experience relaxing stays, high-value comfort, and excellent hospitality at Royal Jatoz Hotels on Rasmon Street, off Osolo Way, Ikeja, Lagos. A perfect spot for cozy, convenient lodging.'
+    },
+    {
+      id: 'great-ville-lagos',
+      name: 'Great Ville Lagos',
+      location: '36/38 Nathan Street, Off Ojuelegba Road, Surulere, Lagos',
+      price: '46,000',
+      tiers: [
+        { name: 'Twin/ Executive', price: '74,000' },
+        { name: 'Deluxe', price: '64,000' },
+        { name: 'Classic', price: '54,000' },
+        { name: 'Standard', price: '46,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/12TjfSMKWl9cLVFKJ2dPYeSmeAzWkLnO1',
+        'https://lh3.googleusercontent.com/d/1skH8uAer7aWqkMYBvaWwgGvrCqAcSFYT',
+        'https://lh3.googleusercontent.com/d/1RUP6mq9LPhABVxGXxKceMHR6fGdmSpri',
+        'https://lh3.googleusercontent.com/d/1760alA-M5uz87rgtKtIstH9aS6I3sUmE'
+      ],
+      description: 'Discover wonderful convenience and premium lodging at Great Ville Lagos on Nathan Street, off Ojuelegba Road, Surulere, Lagos. Featuring a selection of cozy, comfortable accommodations styled to satisfy every traveler.'
+    },
+    {
+      id: 'the-colossus-hotel',
+      name: 'The Colossus Hotel',
+      location: '4 Sheraton Link Rd, Maryland, Lagos 101233',
+      price: '129,750',
+      tiers: [
+        { name: 'Presidential Suite', price: '359,750' },
+        { name: 'Royal Suite', price: '299,000' },
+        { name: 'Continental Suite', price: '269,500' },
+        { name: 'Diplomatic Suite', price: '229,250' },
+        { name: 'Business Suite', price: '204,000' },
+        { name: 'Junior Suite', price: '159,750' },
+        { name: 'Executive Room', price: '144,000' },
+        { name: 'Standard Room', price: '129,750' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1n41kH1DZpYH9fN1GIHkLFIlR0GZihDLH',
+        'https://lh3.googleusercontent.com/d/1QScV-e3nJVcns1RrGk8bg1sdoekKc6Xx',
+        'https://lh3.googleusercontent.com/d/1yDrThOOOMC3VgTNkOGt1b4JlJ97i03nL',
+        'https://lh3.googleusercontent.com/d/1Q8tU5zxaPv8nNWxhvCXmoNG1dU2Bd61U',
+        'https://lh3.googleusercontent.com/d/1u6Ixp5KiXMkx3uQ2TfECuAXXshS3Bh0u',
+        'https://lh3.googleusercontent.com/d/1nR_MQpmt_tG1mUV6RYRa2CKymY-Ohmr3'
+      ],
+      description: 'Experience majestic grandeur and top-tier luxury living at The Colossus Hotel, phenomenally situated at 4 Sheraton Link Road, Maryland, Lagos. Unwind in superb boutique suites fully designed for exquisite luxury, featuring our signature presidential and royal guest suites.'
+    },
+    {
+      id: 'nordic-hotel',
+      name: 'Nordic Hotel',
+      location: '258 Kofo Abayomi St, Victoria Island, Lagos',
+      price: '274,000',
+      tiers: [
+        { name: 'H.C. Andersen Suite', price: '1,215,000' },
+        { name: 'Junior Suite', price: '759,000' },
+        { name: 'Executive Room [Double]', price: '529,000' },
+        { name: 'Executive Room [Single]', price: '499,000' },
+        { name: 'Deluxe Room [Double]', price: '489,000' },
+        { name: 'Deluxe Room [Single]', price: '450,000' },
+        { name: 'Superior Room [Double]', price: '379,000' },
+        { name: 'Superior Room [Single]', price: '349,000' },
+        { name: 'Standard Room [Double]', price: '349,000' },
+        { name: 'Standard Room [Single]', price: '319,000' },
+        { name: 'Economy Room [Single]', price: '274,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1j4F-_Fi7yS5Gmq-AC2oZKaZFaQjxf_o3',
+        'https://lh3.googleusercontent.com/d/1uRKq1cOaQY-DkJAlEQ_yM3_Uk0fGqk6O',
+        'https://lh3.googleusercontent.com/d/18k_TBvkU_-3SPGCGlm6jx_TmYiTHM5Va',
+        'https://lh3.googleusercontent.com/d/1ZAnO1gkeXU2OR5a5_oWODSYrKSeI4TQq',
+        'https://lh3.googleusercontent.com/d/1d7wt3RMd0PcwpwDBdRPSheSMhwFIm-mD'
+      ],
+      description: 'Discover the ultimate luxury and Danish-inspired design at Nordic Hotel, situated in Victoria Island, Lagos. Featuring high-end amenities, superb customer care, and spectacular, tranquil suites engineered for maximum comfort.'
+    },
+    {
+      id: 'greywood-hotel-apartment',
+      name: 'Greywood Hotel & Apartment',
+      location: 'After Jendor Supermarket, 20 Tijani Bello St, opp. Colors Store, beside Chicken Republic, Ojodu, Ikeja 101233, Lagos',
+      price: '43,500',
+      tiers: [
+        { name: 'Apartment', price: '159,000' },
+        { name: 'Suite', price: '95,000' },
+        { name: 'Superior Room [Double]', price: '66,500' },
+        { name: 'Superior Room [Single]', price: '58,500' },
+        { name: 'Super Executive [Double]', price: '56,500' },
+        { name: 'Super Executive [Single]', price: '48,500' },
+        { name: 'Executive Room [Double]', price: '50,500' },
+        { name: 'Executive Room [Single]', price: '43,500' }
+      ],
+      note: 'Caution fee needed',
+      images: [
+        'https://lh3.googleusercontent.com/d/1EAqX49tn1Ey3yqyZCWhEVynNrQtO87II',
+        'https://lh3.googleusercontent.com/d/1N-1Kme6r_ikG-1hghBm2MShnWFIIbZ-l',
+        'https://lh3.googleusercontent.com/d/1oXj9AEmy1c6mm2vPjOUjbDpl1E5RRQd6',
+        'https://lh3.googleusercontent.com/d/1r-ynfpvqDqxcyGQdX_FZAzh10XmoCrhU'
+      ],
+      description: 'Experience stylish apartments and executive rest at Greywood Hotel & Apartment, located at Ojodu, Ikeja. Offering top-quality service, contemporary interiors, and beautiful leisure spaces.'
+    },
+    {
+      id: 'presken-hotel-lekki',
+      name: 'Presken Hotel',
+      location: '19 Michael Olawale-Cole Dr, Lekki Phase 1, Lekki 100212, Lagos',
+      price: '69,750',
+      tiers: [
+        { name: 'Exclusive', price: '131,000' },
+        { name: 'Silver', price: '94,800' },
+        { name: 'Top Tier', price: '89,500' },
+        { name: 'Bronze', price: '77,550' },
+        { name: 'Basic', price: '69,750' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1O053ZxwcCk3b0ZSw4Yhta6P7GrYs71n9',
+        'https://lh3.googleusercontent.com/d/1UEZmxjKqxizyf1LiJ_HZhkChHX8r_nmZ',
+        'https://lh3.googleusercontent.com/d/12iiEPGfU6i3lpcmmITy870tgpr_Ghb3l'
+      ],
+      description: 'Relax in stylish, state-of-the-art accommodations at Presken Hotel, perfectly situated in Lekki Phase 1, Lagos. A premium destination for executive business travelers and cozy staycations.'
+    },
+    {
+      id: 'boss-hotel',
+      name: 'Boss Hotel',
+      location: '14/18 Oseni Agoro St, Oshodi-Isolo, Lagos 100261, Lagos',
+      price: '18,000',
+      tiers: [
+        { name: 'Silver', price: '33,000' },
+        { name: 'Top Tier', price: '28,000' },
+        { name: 'Bronze', price: '23,000' },
+        { name: 'Basic', price: '18,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1qoFoULcnjFPX52Zf7Yk-g9frzawD5Jy1',
+        'https://lh3.googleusercontent.com/d/1zw6Haf938Fq4-IROdsvOEiJYdBNqWBeN',
+        'https://lh3.googleusercontent.com/d/11wKnpVWtbucc-UfJL-QsME6y339CSNcv'
+      ],
+      description: 'Experience warm hospitality, clean accommodations, and fantastic value at Boss Hotel, located in Oshodi-Isolo, Lagos. Providing budget-friendly, high-comfort rooms for everyday travelers.'
+    },
+    {
+      id: 'blue-moon-hotel-vi',
+      name: 'Blue Moon Hotel',
+      location: '317 Akin Ogunlewe Rd, Oniru Rd, Victoria Island, Lagos 106104, Lagos',
+      price: '43,000',
+      tiers: [
+        { name: 'Exclusive', price: '74,000' },
+        { name: 'Silver', price: '63,000' },
+        { name: 'Top Tier', price: '53,000' },
+        { name: 'Bronze', price: '48,000' },
+        { name: 'Basic', price: '43,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1ZysS-yYeKI5NANOnNaNAV5PJ9FhPNCDk',
+        'https://lh3.googleusercontent.com/d/1973x5b7H4w6M9sOL1hL7Kijrh3wt8Pb_',
+        'https://lh3.googleusercontent.com/d/1x3myQ-qxH9Gn4GXecLnF7vCeBjZzmEh0'
+      ],
+      description: 'Enjoy stellar urban comfort and premium boutique hosting at Blue Moon Hotel, ideally positioned near Oniru Road, Victoria Island, Lagos. A supreme option for premium executive rest.'
+    },
+    {
+      id: 'lilygate-hotel',
+      name: 'Lilygate Hotel',
+      location: '2 Olubunmi Owa Street, off Admiralty Wy, Lekki Phase 1, Lagos 105102',
+      price: '170,500',
+      tiers: [
+        { name: 'Classic Executive Suite', price: '358,000' },
+        { name: 'Classic Business Suite', price: '328,000' },
+        { name: 'Deluxe Room', price: '180,500' },
+        { name: 'Classic Room', price: '170,500' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1via6EjQYUYtHNerlkr8rHFfS8ffFaWj_',
+        'https://lh3.googleusercontent.com/d/19WzKoM7OTYuw2zkM_nluy55AoPWJmx8C',
+        'https://lh3.googleusercontent.com/d/1eDdmvgxHTgLWV-iXkWYTUuPUayZ43xNR'
+      ],
+      description: 'Experience refined service, boutique high-end interiors, and supreme comfort at the stunning Lilygate Hotel in Lekki Phase 1, Lagos. A highly popular option with wonderful luxury suites.'
+    },
+    {
+      id: 'whitechase-hotel-1',
+      name: 'Whitechase Hotel 1',
+      location: '9, Church Street, off Vulcanizer Bus Stop, Akowonjo, Egbeda, Alimosho, Lagos 100275',
+      price: '38,000',
+      tiers: [
+        { name: 'Top Tier', price: '48,000' },
+        { name: 'Bronze', price: '43,000' },
+        { name: 'Basic', price: '38,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1_zzxHJFTGx1W-8jHO_YVIZtDwex9zBsT',
+        'https://lh3.googleusercontent.com/d/1yTX2Tew_X4iYRluS5_G5WhkMgz9uNmh0',
+        'https://lh3.googleusercontent.com/d/1g0Ya3KVoUwGD8as0b2OhbMP7ZzCZC__W',
+        'https://lh3.googleusercontent.com/d/1DaSf_HJw0q9MrOQGZxtGvcK243y25GQH'
+      ],
+      description: 'Unwind at Whitechase Hotel 1, situated in Akowonjo, Alimosho, Lagos. Providing tidy rooms, safe parking, and great amenities for business and personal travel.'
+    },
+    {
+      id: 'mountain-top-hotel',
+      name: 'Mountain Top Hotel',
+      location: 'Grammar School Bus Stop, 16 Olaleke Taiwo St, off Aina Rd, Ojodu, Ojodu Berger 100213, Lagos',
+      price: '38,000',
+      tiers: [
+        { name: 'Exclusive', price: '58,000' },
+        { name: 'Silver', price: '48,000' },
+        { name: 'Top Tier', price: '43,000' },
+        { name: 'Bronze', price: '38,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1rvgjYdZ3Q_8-GpoS2sx7cECgSO3fW2Sr',
+        'https://lh3.googleusercontent.com/d/1oo5m0nIBlk3_Empe6TgFAYY1lO3I4hVL',
+        'https://lh3.googleusercontent.com/d/1Ka8jBCipS38BEIQt7u-cn75S6ZVrVGtt'
+      ],
+      description: 'Experience stunning views and peaceful hospitality at Mountain Top Hotel, located in Ojodu Berger, Lagos. Fully designed for rest, staycations, and delightful customer service.'
+    },
+    {
+      id: 'opera-classic-suite',
+      name: 'Opera Classic Suite',
+      location: '102, Festac Link Road, by Raji Rasaki Junction, Festac Town, Lagos',
+      price: '18,000',
+      tiers: [
+        { name: 'Silver', price: '53,000' },
+        { name: 'Top Tier', price: '43,000' },
+        { name: 'Bronze', price: '33,000' },
+        { name: 'Basic', price: '18,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1Qwiabm43tpJMKENjZKNWCS5sRuuaK2OS',
+        'https://lh3.googleusercontent.com/d/1nZdIMfoXj7H49B2_eyPTCGDv8H1Tpyzo',
+        'https://lh3.googleusercontent.com/d/1rXuygLjXbQpLw0eBnmuSA3TyVUKKrEpI'
+      ],
+      description: 'Experience premium luxury and cozy boutique hospitality at Opera Classic Suite, excellently located in Festac Town, Lagos. Your private gateway to relaxation and delightful city vibes.'
     }
   ];
 
