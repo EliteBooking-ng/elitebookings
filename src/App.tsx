@@ -1694,26 +1694,6 @@ export default function App() {
       description: "Nigeria's premier luxury hotel landmark. Experience the grandeur of Eko Hotel & Suites on Adetokunbo Ademola Street, Victoria Island, Lagos. Boasting unparalleled luxury suites, world-class restaurants, and stunning city and ocean views tailored for elite global citizens."
     },
     {
-      id: 'rollace-hotel',
-      name: 'Rollace Hotel',
-      location: '46/48 Awoniyi Elemo St, Airport Rd, Ajao Estate, Lagos',
-      price: '65,000',
-      tiers: [
-        { name: 'Royal Suite', price: '180,000' },
-        { name: 'Executive Suite', price: '120,000' },
-        { name: 'Deluxe Room', price: '95,000' },
-        { name: 'Superior Room', price: '75,000' },
-        { name: 'Standard Room', price: '65,000' }
-      ],
-      images: [
-        'https://lh3.googleusercontent.com/d/19CHYIe3o0lZSv6y0c0hXGwAZFdTLUIZ4',
-        'https://lh3.googleusercontent.com/d/1uowT5nX1ZM84JFRAw70B-_BkVsoSpyjO',
-        'https://lh3.googleusercontent.com/d/15byRKs1l6HmRz5dsEb8LVoU82QzeqhDM',
-        'https://lh3.googleusercontent.com/d/1pmud0XksIwTEbWfGU5u6CzKqX9yThs4a'
-      ],
-      description: 'Experience first-class hospitality, tranquil stays, and premium dining at Rollace Hotel, perfectly located at Ajao Estate, Lagos (near the Airport). Offering premium comfort for international travelers and staycationers alike.'
-    },
-    {
       id: 'safron-hotel',
       name: 'Safron Hotel',
       location: '57 Joel Ogunnaike St, Onigbongbo, Ikeja, Lagos',
@@ -1755,19 +1735,20 @@ export default function App() {
     },
     {
       id: 'royal-jatoz-hotels',
-      name: 'ROYAL JATOZ HOTELS Lagos',
+      name: 'Royal Jatoz Hotel',
       location: '9 Rasmon Street, Off Osolo Wy, Ikeja, Lagos',
       price: '46,000',
       tiers: [
-        { name: 'Silver', price: '54,000' },
-        { name: 'Bronze', price: '46,000' }
+        { name: 'Top Tier', price: '54,000' },
+        { name: 'Basic', price: '46,000' }
       ],
       images: [
-        'https://lh3.googleusercontent.com/d/1rExuarv7I5gQViY6q7-CbFPjsCrj4Q1g',
-        'https://lh3.googleusercontent.com/d/1w5TO0OzBc1DX0NxSHk89gg4GFwqwHY5f',
-        'https://lh3.googleusercontent.com/d/1NZKm-5An50njrxa8UGWfxvVlB91iHS_J'
+        'https://lh3.googleusercontent.com/d/1bW_lVC4TLOpZ_Yvx5CleluPcv0mq2Cx9',
+        'https://lh3.googleusercontent.com/d/1qEo4qKQDWAOQcUDNN8CsTV7wePhhX3Rt',
+        'https://lh3.googleusercontent.com/d/1fYbVWl-P9YOFkgqrGvLbbkCIb_uBBTZs',
+        'https://lh3.googleusercontent.com/d/1ccXLxhgQWTIS9gv_6yG6jIJW7cPckmuJ'
       ],
-      description: 'Experience relaxing stays, high-value comfort, and excellent hospitality at Royal Jatoz Hotels on Rasmon Street, off Osolo Way, Ikeja, Lagos. A perfect spot for cozy, convenient lodging.'
+      description: 'Experience relaxing stays, high-value comfort, and excellent hospitality at Royal Jatoz Hotel on Rasmon Street, off Osolo Way, Ikeja, Lagos. A perfect spot for cozy, convenient lodging.'
     },
     {
       id: 'great-ville-lagos',
@@ -1991,6 +1972,251 @@ export default function App() {
         'https://lh3.googleusercontent.com/d/1rXuygLjXbQpLw0eBnmuSA3TyVUKKrEpI'
       ],
       description: 'Experience premium luxury and cozy boutique hospitality at Opera Classic Suite, excellently located in Festac Town, Lagos. Your private gateway to relaxation and delightful city vibes.'
+    },
+    {
+      id: 'apartment-royale',
+      name: 'Apartment Royale Hotel',
+      location: '13 Wole Ogunjimi St, Allen, Ikeja 100281, Lagos',
+      price: '59,000',
+      tiers: [
+        { name: 'Presidential Royale Suite', price: '479,000' },
+        { name: 'Pent Royale', price: '258,000' },
+        { name: 'Prestige Royale Deluxe (3 B/R)', price: '248,000' },
+        { name: 'Prestige Royale Deluxe (2 B/R)', price: '208,000' },
+        { name: 'Family Room', price: '137,000' },
+        { name: 'Executive Royale Suite', price: '94,000' },
+        { name: 'Executive Royale Family', price: '94,000' },
+        { name: 'Executive Mini-Royale', price: '84,000' },
+        { name: 'Mini-Royale', price: '79,000' },
+        { name: 'Executive Superior Room', price: '74,900' },
+        { name: 'Superior Room', price: '67,500' },
+        { name: 'Deluxe Room', price: '62,900' },
+        { name: 'Classic Room', price: '59,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1r2xOy3KLVr0sp5L971BDaAMnRbc0iEiE',
+        'https://lh3.googleusercontent.com/d/1NJ0NRrL5sQkz3-Kw4Zy-O_v_g-8j0pHK',
+        'https://lh3.googleusercontent.com/d/1NkLhOKWKna4SvQ620QT3Cl8UIzkVjw3s',
+        'https://lh3.googleusercontent.com/d/1R2A-o6Tecy8eD05NR-prnHRSY9nUWKIn'
+      ],
+      description: 'Discover upscale boutique residences, majestic rooms, and delightful hospitality at Apartment Royale Hotel, nestled at 13 Wole Ogunjimi Street, Allen, Ikeja, Lagos. Perfect for short and long term executive business stays, offering top-tier presidential suites, family suites, and modern penthouses.'
+    },
+    {
+      id: 'pasadena-suites',
+      name: 'Pasadena Suites',
+      location: 'Plot 1 Block, 54A Rasheed Alaba Williams Street, Lekki Phase I, Lagos',
+      price: '54,000',
+      tiers: [
+        { name: 'Presidential Suite', price: '126,000' },
+        { name: 'Executive Suite', price: '84,000' },
+        { name: 'King\'s Deluxe Suite', price: '74,000' },
+        { name: 'Deluxe Suite', price: '54,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1E_eotBZ5S99SdP5wamrFMzMN9CYFWASo',
+        'https://lh3.googleusercontent.com/d/1kFsttGyyvAYdP0VZajGHPX0iqIfa8mEd',
+        'https://lh3.googleusercontent.com/d/1emCAN337V_4XkCIzbyi1NXNMhYAuaMlX',
+        'https://lh3.googleusercontent.com/d/1VNi3w6rw9EaRCmgmBGdDWx12d8xosdV4'
+      ],
+      description: 'Unwind in pure serenity and customized premium suites at Pasadena Suites, ideally located along Rasheed Alaba Williams Street, Lekki Phase I, Lagos. Featuring beautifully crafted presidential, executive, and deluxe suite configurations for ultimate relaxation.'
+    },
+    {
+      id: 'skyrock-hotel',
+      name: 'Skyrock Hotel',
+      location: '24 Ogunsiji Cl, Allen, Ikeja 101233, Lagos',
+      price: '43,000',
+      tiers: [
+        { name: 'Silver', price: '81,000' },
+        { name: 'Top Tier', price: '59,000' },
+        { name: 'Bronze', price: '46,000' },
+        { name: 'Basic', price: '43,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1UQ2IUMjjHkAURpgH2_BE_qifpxjYHA9w',
+        'https://lh3.googleusercontent.com/d/1z0Tvfidy-pY5AJQboDzTZCM3uyJOJUGA',
+        'https://lh3.googleusercontent.com/d/1g0-MQ7G4HzVSXAj8TEXasT-zieFKgwXN'
+      ],
+      description: 'Immerse yourself in sleek style and boutique elegance at Skyrock Hotel, conveniently located along Ogunsiji Close, off Allen Avenue, Ikeja, Lagos. Fully tailored for maximum comfort and relaxation, featuring beautifully appointed rooms and premium suites.'
+    },
+    {
+      id: 'the-view-hotel',
+      name: 'The View Hotel',
+      location: 'Chief Collins Uchidiuno Street, Fola Osibo Road, 1 Godwin Omene St, Lekki Phase 1, Lagos',
+      price: '69,000',
+      tiers: [
+        { name: 'Penthouse Suite [Breakfast Incl.]', price: '136,000' },
+        { name: 'Presidential Suite', price: '126,000' },
+        { name: 'Executive Room', price: '116,000' },
+        { name: 'Deluxe Room [With Breakfast]', price: '105,000' },
+        { name: 'Classic Room [With Breakfast]', price: '99,000' },
+        { name: 'Deluxe Room [No Breakfast]', price: '89,000' },
+        { name: 'Classic Room [No Breakfast]', price: '89,000' },
+        { name: 'Standard Room [With Breakfast]', price: '89,000' },
+        { name: 'Standard Room [No Breakfast]', price: '69,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1keNB5XY-ERROqFSD4G7ve1YUOXLOCGS_',
+        'https://lh3.googleusercontent.com/d/1UNnjZNXFqgIAovR-C0TqsiTUwvgMNuVT',
+        'https://lh3.googleusercontent.com/d/1hG2mHHkjEYScHvrRFWZAmU0tulWcFrp7'
+      ],
+      description: 'Enjoy sweeping cityscapes and premier hospitality at The View Hotel, ideally positioned in Lekki Phase 1, Lagos. A supreme boutique sanctuary featuring deluxe standard rooms, luxurious executive spaces, and breathtaking penthouse suites for the discerning traveler.'
+    },
+    {
+      id: 'ikeja-central-hotel',
+      name: 'Ikeja Central Hotel',
+      location: '6 Obe Street, Off Adeniyi Jones, Ikeja, Lagos',
+      price: '17,000',
+      tiers: [
+        { name: 'Top Tier', price: '33,000' },
+        { name: 'Bronze', price: '22,500' },
+        { name: 'Basic', price: '17,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1vp193aKQzZ-l7PyUIHhsjQuE3K9C_DtS',
+        'https://lh3.googleusercontent.com/d/1tejXqXSYnRYf8fOzfd3ZmeoMa3l0F59Z',
+        'https://lh3.googleusercontent.com/d/1WIxZtWIQIC4gG_Wj0rGimL-MmksAFG62'
+      ],
+      description: 'Experience excellent hospitality and outstanding value at Ikeja Central Hotel, strategically located on Obe Street, off Adeniyi Jones, Ikeja, Lagos. Perfect for quick stopovers, corporate visits, and comfortable, budget-friendly rests.'
+    },
+    {
+      id: 'citigeight-hotel',
+      name: 'CITIGEIGHT Hotel Lagos',
+      location: '6 Sheraton Link Rd, Opebi, Ikeja 101233, Lagos',
+      price: '89,500',
+      tiers: [
+        { name: 'Penthouse Suite', price: '155,500' },
+        { name: 'Executive Room', price: '109,500' },
+        { name: 'Superior Room', price: '99,500' },
+        { name: 'Deluxe Room', price: '89,500' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1_zWlNTdTdx3Yrn0j3QYPzNgRu9yccjP8',
+        'https://lh3.googleusercontent.com/d/1TGQTeN5I9YUfeLlA_GcGVOK5IiLmgVOy',
+        'https://lh3.googleusercontent.com/d/1ZZ_MBU14H8AX9Cnc2XteET4Qzc6CPaM3'
+      ],
+      description: 'Step into contemporary prestige and elite comfort at CITIGEIGHT Hotel Lagos, perfectly positioned at 6 Sheraton Link Road, Opebi, Ikeja, Lagos. Revel in beautifully furnished deluxe, superior, and executive rooms, or our premier Penthouse suites, designed for top-class relaxation.'
+    },
+    {
+      id: 'westine-hotel-spa',
+      name: 'Westine Hotel & SPA',
+      location: '16 Babatunde Dabiri St, Lekki Phase I, Lagos 102503, Lagos',
+      price: '78,000',
+      tiers: [
+        { name: 'Exclusive', price: '220,000' },
+        { name: 'Silver', price: '177,000' },
+        { name: 'Top Tier', price: '128,000' },
+        { name: 'Bronze', price: '90,000' },
+        { name: 'Basic', price: '78,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1kvfWTbFLRBdZ48tbRxzTXrXzgV8qUyfV',
+        'https://lh3.googleusercontent.com/d/1T1mIBshWzMcv7cegHEDQFCYYauA2eoLq',
+        'https://lh3.googleusercontent.com/d/1FiZCpPnpI4L9MAwNG5MsLjbOcnuGb_Az',
+        'https://lh3.googleusercontent.com/d/142lJnTPhZYQQiAQC-FYQNeeGASjE7lNd'
+      ],
+      description: 'Indulge in ultimate rejuvenation and sophisticated luxury at Westine Hotel & SPA, located at 16 Babatunde Dabiri Street, Lekki Phase I, Lagos. Our premium wellness facilities, expert SPA services, and beautifully curated guest rooms provide a tranquil sanctuary for both leisure and business stays.'
+    },
+    {
+      id: 'federal-palace-hotel',
+      name: 'Federal Palace Hotel',
+      location: '6-8 Ahmadu Bello Wy, Victoria Island, Lagos 101241, Lagos',
+      price: '287,284',
+      tiers: [
+        { name: 'Two Bedroom Suite', price: '642,500' },
+        { name: 'One Bedroom Suite', price: '468,215' },
+        { name: 'Luxury Superior Room [Single Occupancy]', price: '389,281' },
+        { name: 'Standard Room [Single Occupancy]', price: '287,284' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1HgcseUXptEY-JHtuVfQ1zqPrQTBenZ15',
+        'https://lh3.googleusercontent.com/d/15a2FPVIwtU8tOUU5BTuZQ1FPBH6a1wNn',
+        'https://lh3.googleusercontent.com/d/1ABh9RJBqStbaiwwkwfvtFZLE56z1jBG7',
+        'https://lh3.googleusercontent.com/d/1A8-6f5ipaZNxWVm0awVde8fo7m3CSzPf'
+      ],
+      description: 'Experience five-star colonial grandeur and premium resort living at the historic Federal Palace Hotel, situated along Ahmadu Bello Way on Victoria Island, Lagos. Offering world-class casino access, pristine pool complexes, and majestic views of the Atlantic ocean.'
+    },
+    {
+      id: 'jcgold-hotels-apartment',
+      name: 'JCGOLD HOTELS & APARTMENT',
+      location: '15 Kolawole Shonibare St, off Asa-Afariogun Street, off Airport Road, Isolo, Lagos 102214, Lagos',
+      price: '43,000',
+      tiers: [
+        { name: 'Apartment Flat [Platinum]', price: '155,000' },
+        { name: 'Apartment Flat [Gold]', price: '125,000' },
+        { name: 'Apartment Flat [Silver]', price: '89,000' },
+        { name: 'Executive Suite', price: '89,000' },
+        { name: 'Presidential Room', price: '69,000' },
+        { name: 'Supreme Room', price: '64,000' },
+        { name: 'Executive Room', price: '54,000' },
+        { name: 'Standard Room', price: '43,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1lIE2uYfRmgCDxA3fgOUVHjZJTZapQVUz',
+        'https://lh3.googleusercontent.com/d/17lzbqokHIY0IUOovSRrKmms7bI0ItoaQ'
+      ],
+      description: 'Experience modern urban hospitality and cozy apartment-style accommodations at JCGOLD HOTELS & APARTMENT, ideally located on Kolawole Shonibare Street in Isolo, Lagos. Just minutes from the airport, it offers a superb selection of executive suites, supreme rooms, and fully equipped apartment flats perfect for transit and corporate stays.'
+    },
+    {
+      id: 'the-borough-lagos',
+      name: 'The Borough Lagos',
+      location: '2 Kola Adeyina Cl, Phase 1, Lekki , Lagos',
+      price: '74,000',
+      tiers: [
+        { name: 'Diplomatic Suite', price: '205,000' },
+        { name: 'Business Suite', price: '205,000' },
+        { name: 'Executive Studio', price: '185,000' },
+        { name: 'Executive Suite', price: '185,000' },
+        { name: 'Afrocentric Haven', price: '105,000' },
+        { name: 'Classic Room', price: '105,000' },
+        { name: 'Standard Room', price: '74,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1NztRuoqy7E4mug0CzN0ZhUfBjmEE7B2R',
+        'https://lh3.googleusercontent.com/d/11U_Wqc5CnyEZNLxJ7m-75ETVQnJ2Dwqf',
+        'https://lh3.googleusercontent.com/d/1b2p-JNTdEzRGcLs8lJfPXwydD3nhzkYy',
+        'https://lh3.googleusercontent.com/d/1yBIuEzXZU_W-rK5Y39GAiUs7t0D92SZN'
+      ],
+      description: 'Experience bespoke hospitality, design-forward elegance, and intimate comfort at The Borough Lagos, situated at 2 Kola Adeyina Close, Lekki Phase 1, Lagos. Combining custom boutique styling with modern luxury suites, it represents the ultimate retreat for discerning travelers in the heart of Lekki.'
+    },
+    {
+      id: 'downtown-royal-hotel',
+      name: 'DownTown Royal Hotel',
+      location: 'G.R.A, 58b Oladipo Bateye Street, off Works Road, Ikeja GRA, Ikeja 100101, Lagos',
+      price: '33,000',
+      tiers: [
+        { name: 'Top Tier', price: '59,000' },
+        { name: 'Bronze', price: '43,500' },
+        { name: 'Basic', price: '33,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1VV2BmvO3vcorVnTigS13jAdeIjzC4L2D',
+        'https://lh3.googleusercontent.com/d/1rd4eIGPxpxHwsl-GcBQvLa_7Q_pFAxYx',
+        'https://lh3.googleusercontent.com/d/1I5igemYAorNH_3UX0OgB6WoBh6L0Fo6s',
+        'https://lh3.googleusercontent.com/d/1W1j_4u-oTIGcZW3MvryR2fUxVnD-_APi',
+        'https://lh3.googleusercontent.com/d/1Si8AhnqyivsYjV9KxeGWC_KgXDu5N1re'
+      ],
+      description: 'Unwind in the peaceful, elite surroundings of Ikeja GRA at DownTown Royal Hotel, located at 58b Oladipo Bateye Street. Offering highly secure, quiet, and fully serviced rooms designed to deliver premium relaxation, exquisite dining, and exceptional personalized care.'
+    },
+    {
+      id: 'rollace-hotel',
+      name: 'ROLLACE HOTEL',
+      location: '46/48 Awoniyi Elemo St, Airport Rd, Ajao Estate, Lagos 102214',
+      price: '99,000',
+      tiers: [
+        { name: 'Gold', price: '257,000' },
+        { name: 'Diamond', price: '165,000' },
+        { name: 'Exclusive', price: '135,000' },
+        { name: 'Silver', price: '115,000' },
+        { name: 'Top Tier', price: '110,000' },
+        { name: 'Bronze', price: '102,500' },
+        { name: 'Basic', price: '99,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1J3LY-XzynS8Gjrk-Azlfw4VdivFxbFkV',
+        'https://lh3.googleusercontent.com/d/1JnkIVtS1miTHvX5SOnBGGFZo1D6JHBps',
+        'https://lh3.googleusercontent.com/d/1VQfa2wtYwnYQYI9v2xGjSpLWcQaJ5UsN'
+      ],
+      description: 'Ideally positioned near the international airport in Ajao Estate, ROLLACE HOTEL provides majestic hospitality, deluxe guest lounges, and sophisticated accommodations ranging from high-end executive suites to gold-standard rooms. Perfect for corporate delegations and premium rest.'
     }
   ];
 
