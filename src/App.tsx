@@ -90,6 +90,8 @@ export default function App() {
     const query = searchQuery.trim().toLowerCase();
     const sourceHotels = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
       ? lagosHotels
+      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      ? abujaHotels
       : phHotels;
     if (!query) return sourceHotels;
     return sourceHotels.filter(hotel => 
@@ -106,6 +108,8 @@ export default function App() {
     const query = searchQuery.trim().toLowerCase();
     const sourceShortlets = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
       ? lagosShortlets
+      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      ? abujaShortlets
       : phShortlets;
     if (!query) return sourceShortlets;
     return sourceShortlets.filter(shortlet => 
@@ -124,6 +128,8 @@ export default function App() {
     const query = searchQuery.trim().toLowerCase();
     const sourceCars = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
       ? lagosCars
+      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      ? abujaCars
       : phCars;
     if (!query) return sourceCars;
     return sourceCars.filter(car => 
@@ -152,7 +158,7 @@ export default function App() {
       <div className="w-full mb-10 bg-white border border-charcoal/5 rounded-[2rem] p-6 md:p-8 shadow-2xl shadow-gold/5 font-sans">
         <div className="flex flex-col gap-4">
           <label className="block text-[10px] uppercase tracking-[0.25em] font-medium text-gold mb-1">
-            Search {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : 'Port Harcourt'} Listings
+            Search {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : selectedLocation && selectedLocation.includes('Abuja') ? 'Abuja' : 'Port Harcourt'} Listings
           </label>
           <div className="relative w-full">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/40" />
@@ -206,6 +212,12 @@ export default function App() {
                 { label: 'Maryland', value: 'Maryland' },
                 { label: 'Oshodi-Isolo', value: 'Oshodi' },
                 { label: 'Festac Town', value: 'Festac' }
+              ] : selectedLocation && selectedLocation.includes('Abuja') ? [
+                { label: 'Central Business District', value: 'Central Business' },
+                { label: 'Wuse', value: 'Wuse' },
+                { label: 'Maitama', value: 'Maitama' },
+                { label: 'Asokoro', value: 'Asokoro' },
+                { label: 'Garki', value: 'Garki' }
               ] : [
                 { label: 'GRA Port Harcourt', value: 'GRA' },
                 { label: 'Rumudara', value: 'rumuodara' },
@@ -1430,6 +1442,200 @@ export default function App() {
     }
   ];
 
+  const abujaHotels = [
+    {
+      id: 'jasmines-place-suites',
+      name: "Jasmine's Place & Suites",
+      location: 'IMO STATE HOUSE, State Liaison Office - Imo State Government, 82 Ralph Shodeinde St, Central Business Dis, Abuja 900211, Federal Capital Territory',
+      price: '43,000',
+      tiers: [
+        { name: 'Deluxe Suites (Premium)', price: '207,000' },
+        { name: 'Deluxe Suites (Standard)', price: '155,000' },
+        { name: 'Deluxe Suites (Basic)', price: '135,000' },
+        { name: 'Standard Suites (Premium)', price: '125,000' },
+        { name: 'Standard Suites (Standard)', price: '105,000' },
+        { name: 'Standard Suites (Basic)', price: '84,000' },
+        { name: 'Deluxe Room (Premium)', price: '75,000' },
+        { name: 'Deluxe Room (Standard)', price: '59,000' },
+        { name: 'Deluxe Room (Basic)', price: '54,000' },
+        { name: 'Standard Room (Premium)', price: '64,000' },
+        { name: 'Standard Room (Standard)', price: '48,000' },
+        { name: 'Standard Room (Basic)', price: '43,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1B4I8XeHzy6FLmTfP902WOQUPf0rsmLAl',
+        'https://lh3.googleusercontent.com/d/1WtZKZ0tqZ4Sp32lZ_O3EomC8Fk0Oe40g',
+        'https://lh3.googleusercontent.com/d/1LXAhXPcmBwFNxlqsCtgSJPA3xJCvteBI'
+      ],
+      description: "Nestled in the prestigious IMO STATE HOUSE Complex on Ralph Shodeinde Street in the heart of Abuja's Central Business District, Jasmine's Place & Suites offers an exceptional sanctuary of peace, safety, and modern elegance. Ideal for diplomats, government officials, corporate leaders, and elite travelers seeking prime accessibility and boutique class services."
+    },
+    {
+      id: 'the-destination-by-gidanka',
+      name: 'The Destination by Gidanka',
+      location: '20 N Djamena crescent, off Aminu Kano Crescent, Wuse, Abuja 900001, Federal Capital Territory',
+      price: '96,000',
+      tiers: [
+        { name: 'Basic (2 Persons)', price: '96,000' },
+        { name: 'Bronze', price: '226,000' },
+        { name: 'Top Tier', price: '309,000' },
+        { name: 'Silver', price: '409,000' },
+        { name: 'Deluxe (8 Adults + 4 Kids, 2 Kitchens)', price: '910,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1K91S1lDqppleAsYRcaP-oVYNJsrueKqw',
+        'https://lh3.googleusercontent.com/d/1P8mOicFPNKJVQyUV8oq66g-reQvSGmmI',
+        'https://lh3.googleusercontent.com/d/1Uaij3IJRqhoSKhNOkGrhG-nzD9ob3Ylk',
+        'https://lh3.googleusercontent.com/d/1RE1JCWuczukkQufHTHhv1jz3oqpy-yyM'
+      ],
+      description: 'Experience the absolute pinnacle of sophisticated hospitality at The Destination by Gidanka. Located on N Djamena Crescent in the prestigious Wuse district, this architectural masterpiece features majestic suites, bespoke kitchens, premium comforts, and unmatched security tailored perfectly for families, elites, and business leaders.'
+    },
+    {
+      id: 'presken-hotel-abuja',
+      name: 'Presken Hotel',
+      location: '44 Parakou St, Wuse, Abuja 904101, Federal Capital Territory',
+      price: '59,000',
+      tiers: [
+        { name: 'Executive Room', price: '59,000' },
+        { name: 'Executive Royal', price: '74,000' },
+        { name: 'Supreme Royal', price: '79,000' },
+        { name: 'Prestige', price: '84,000' },
+        { name: 'Classic Suite', price: '120,000' },
+        { name: 'Two Bedroom (Penthouse)', price: '206,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1ltvmJPyb07V2eejEH_-oNP92hWcck39D',
+        'https://lh3.googleusercontent.com/d/1ipQKzBwcVA40HSVUz661goeMXr_6S9CH',
+        'https://lh3.googleusercontent.com/d/1z7dLs3xb9LdDmsGdtE-jdTWa5_K5ST9-',
+        'https://lh3.googleusercontent.com/d/16E21XpxIdsDyc_dPj9aVIFpjbiFwYeZ3',
+        'https://lh3.googleusercontent.com/d/1qF2p4wvSkyppN5dcjNfvWSeqpXN1A2r8'
+      ],
+      description: 'Discover true comfort and first-class services at Presken Hotel, Wuse. Offering spacious executive rooms, premium leisure facilities, and delicious dining options, Presken delivers a warm and thoroughly relaxing oasis for corporate executives and holidaymakers in the heart of Abuja.'
+    },
+    {
+      id: 'paris-royal-hotel',
+      name: 'Paris Royal Hotel',
+      location: 'Jim P. Brown St, Gwarinpa, Abuja 900108, Federal Capital Territory',
+      price: '43,000',
+      tiers: [
+        { name: 'Parris Deluxe', price: '43,000' },
+        { name: 'Parris Exquisite', price: '48,000' },
+        { name: 'Parris Royal Delight (Twin Bed)', price: '52,000' },
+        { name: 'Parris Royal Ambassadorial Suite', price: '69,000' },
+        { name: 'Parris Royal Presidential Suite', price: '74,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1SDQsANG9e6ZXRIZ5YFCeRKaaPXg2jnW0',
+        'https://lh3.googleusercontent.com/d/18EKQWf_xc_v9_ruI5nc1Sg5OvSojkz7z',
+        'https://lh3.googleusercontent.com/d/1FxBPO7j-kM4m2xHtT_LuW9jZmy7SW_Ue'
+      ],
+      description: 'Savor royal elegance and majestic treatment at Paris Royal Hotel, Gwarinpa, Abuja. Adorned with beautiful European-inspired architecture, spacious state rooms, and supreme amenities, it represents a premier choice for high-class security, quiet comfort, and impeccable service.'
+    },
+    {
+      id: 'pearl-gates-hotel',
+      name: 'Pearl Gates Hotel',
+      location: 'Zone 4, Sani Abacha Estate, 11 Suez Cres, Wuse, Abuja 900288, Federal Capital Territory',
+      price: '46,300',
+      tiers: [
+        { name: 'Classic', price: '46,300' },
+        { name: 'Deluxe', price: '56,700' },
+        { name: 'Royal', price: '60,900' },
+        { name: 'Alcove', price: '66,500' },
+        { name: 'Executive', price: '78,500' },
+        { name: 'Pearl Room', price: '82,400' },
+        { name: 'Pearl Suites', price: '86,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1j70U_Jtc-8f_LdocsItf0OpVttDCc87d',
+        'https://lh3.googleusercontent.com/d/1FVnLWGxCqzTFbqbxvVueVmrEKrrs8T8l',
+        'https://lh3.googleusercontent.com/d/1qLPCpyqjXleKOyNsCFBPOW-qpz3ZEE7B'
+      ],
+      description: 'Boasting a premium location in the tranquil Sani Abacha Estate, Pearl Gates Hotel is an exceptional haven of peace and style. From beautifully curated Classic and Deluxe rooms to elite Pearl Suites, experience top-shelf customer service, state-of-the-art security, and a wonderfully relaxing stay.'
+    },
+    {
+      id: 'bon-hotel-imperial-wuse',
+      name: 'Bon Hotel Imperial Wuse',
+      location: '34 Sokode Cres, Wuse, Abuja 904101, Federal Capital Territory',
+      price: '133,500',
+      tiers: [
+        { name: 'Classic Room', price: '133,500' },
+        { name: 'Deluxe Room', price: '144,600' },
+        { name: 'Superior Deluxe', price: '151,590' },
+        { name: 'Executive Deluxe', price: '157,920' },
+        { name: 'Executive Suite', price: '248,400' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/138jJ56rILmTz0tQPmgLszZC0EaEqb7Gp',
+        'https://lh3.googleusercontent.com/d/1TCfW_2vP85-4OdIw5sR1ZC9XTbM1ijvl',
+        'https://lh3.googleusercontent.com/d/1QBZM6WfrKaqbEDHwUgHFsaOAq1ypYlwg',
+        'https://lh3.googleusercontent.com/d/16kJHy5XZoKoGUH4kyHsVJTvIlHzIE2MB'
+      ],
+      description: 'Experience imperial grandeur and world-class luxury at Bon Hotel Imperial Wuse. Located on Sokode Crescent, Wuse, this landmark hotel offers magnificent accommodations, gorgeous views, executive boardrooms, and highly refined services perfectly tailored to international business and leisure elites.'
+    },
+    {
+      id: 'bon-hotel-abuja',
+      name: 'BON Hotel Abuja',
+      location: '3 Negro Cres, Maitama, Abuja 904101, Federal Capital Territory',
+      price: '155,000',
+      tiers: [
+        { name: 'Executive Classic', price: '155,000' },
+        { name: 'Executive Suite', price: '256,000' },
+        { name: 'Diplomatic', price: '286,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/13IkWqpHw6Ww3lA5Tod-YpsqiJoT2aiFY',
+        'https://lh3.googleusercontent.com/d/19MPPDcPPkTwvzkfvC7SfQtm-ftw8wYe_',
+        'https://lh3.googleusercontent.com/d/1AoTaqfrfxqG5f7JVa5_NvNYUIA4L44qj'
+      ],
+      description: 'Located in the elite enclave of Maitama, BON Hotel Abuja offers a refined sanctuary of contemporary grandeur, supreme tranquility, and exquisite dining. An outstanding address for corporate executives and diplomats seeking prestige and flawless luxury.'
+    },
+    {
+      id: 'first-forty-hotel',
+      name: '1st Forty Hotel',
+      location: '38 Aminu Kano Cres, Wuse 2, Abuja 904101, Federal Capital Territory',
+      price: '48,800',
+      tiers: [
+        { name: 'Millennium Room', price: '48,800' },
+        { name: 'Deluxe Room', price: '56,800' },
+        { name: 'Diplomatic Room', price: '64,500' },
+        { name: 'Supreme Room', price: '69,800' },
+        { name: 'Executive Room', price: '89,000' },
+        { name: 'Luxury Room', price: '99,000' },
+        { name: 'Royal Room', price: '126,000' },
+        { name: 'Executive Deluxe Room', price: '133,000' },
+        { name: 'Premium Suite', price: '155,000' },
+        { name: 'Junior Suite', price: '175,000' },
+        { name: 'Signature', price: '276,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1AiDwENTSHAdjGEI4G8QRnK83M1l0LAxY',
+        'https://lh3.googleusercontent.com/d/1pbAos9SqFbf2ToE2ycDDEVPrgloStlcq',
+        'https://lh3.googleusercontent.com/d/1ZHcCLoIgXMS5ljblGf_Q1duzsYjpYa55'
+      ],
+      description: 'Situated prominently on the iconic Aminu Kano Crescent in Wuse 2, 1st Forty Hotel is a luxury beacon of style, supreme comfort, and premium hospitality. Featuring an array of meticulously designed rooms and suites, outstanding conference centers, and first-rate customer services.'
+    },
+    {
+      id: 'the-panama-hotel',
+      name: 'The Panama',
+      location: '43 Panama St, Maitama, Abuja 900271, Federal Capital Territory',
+      price: '139,000',
+      tiers: [
+        { name: 'Standard Room', price: '139,000' },
+        { name: 'Deluxe Room', price: '173,000' },
+        { name: 'Premium Room', price: '209,000' },
+        { name: 'Luxury Suite', price: '256,000' },
+        { name: 'Executive Suite', price: '319,000' },
+        { name: 'The Panama', price: '397,000' },
+        { name: 'The Royal', price: '506,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/16B9WPU5im5m6crnlRlz-y2cvViQan-ab',
+        'https://lh3.googleusercontent.com/d/1PUuCt8TKil-2FwRvtyE0NUpQeU2_LgZg',
+        'https://lh3.googleusercontent.com/d/1PmyXVAz4pFGfZcbtiuhrG8m7VowtsEad'
+      ],
+      description: 'Set in the diplomat-preferred neighborhood of Maitama, The Panama offers a bespoke boutique hotel experience combining modern sophistication with unparalleled privacy. Guests enjoy grandly appointed suites, signature amenities, and top-tier security for an unforgettable stay.'
+    }
+  ];
+
   const lagosHotels = [
     {
       id: 'mayoral-hotel-suites',
@@ -2222,6 +2428,8 @@ export default function App() {
 
   const lagosShortlets: any[] = [];
   const lagosCars: any[] = [];
+  const abujaShortlets: any[] = [];
+  const abujaCars: any[] = [];
 
   const phShortlets = [
     {
@@ -2771,7 +2979,7 @@ Best regards.`;
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
                 {/* Port Harcourt */}
                 <motion.div
                   whileHover={{ y: -10 }}
@@ -2819,10 +3027,27 @@ Best regards.`;
                     </div>
                   </div>
                 </motion.div>
+
+                {/* Abuja */}
+                <motion.div
+                  whileHover={{ y: -10 }}
+                  onClick={() => {
+                    setSelectedLocation('Abuja, Federal Capital Territory');
+                  }}
+                  className="group cursor-pointer relative overflow-hidden rounded-3xl aspect-[4/3] bg-charcoal shadow-2xl shadow-gold/10"
+                >
+                  <div className="absolute inset-0 p-8 flex flex-col justify-end items-center text-center">
+                    <h3 className="text-3xl md:text-4xl text-cream font-serif mb-1">Abuja</h3>
+                    <p className="text-gold text-[10px] uppercase tracking-[0.4em] font-bold">Federal Capital Territory</p>
+                    <div className="mt-6 flex items-center text-cream/40 text-[9px] uppercase tracking-[0.2em] group-hover:text-gold transition-colors">
+                      Explore Properties <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1.5 transition-transform" />
+                    </div>
+                  </div>
+                </motion.div>
               </div>
 
-              <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6 opacity-30 pointer-events-none max-w-2xl mx-auto">
-                {['Abuja', 'Enugu'].map(city => (
+              <div className="mt-16 grid grid-cols-1 gap-6 opacity-30 pointer-events-none max-w-[280px] mx-auto">
+                {['Enugu'].map(city => (
                   <div key={city} className="border border-charcoal/10 rounded-2xl p-8 text-center grayscale">
                     <span className="text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2 block">Coming Soon</span>
                     <h4 className="text-xl font-serif text-charcoal/60">{city}</h4>
@@ -2854,7 +3079,7 @@ Best regards.`;
                   Luxury Hotels &amp; Suites
                 </h2>
                 <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
-                  Curated premium rooms and executive spaces in {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : 'Port Harcourt'}.
+                  Curated premium rooms and executive spaces in {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : selectedLocation && selectedLocation.includes('Abuja') ? 'Abuja' : 'Port Harcourt'}.
                 </p>
               </div>
 
@@ -2970,7 +3195,7 @@ Best regards.`;
                   Private Shortlet Estates
                 </h2>
                 <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
-                  Architectural masterpieces and high-end living in {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : 'Port Harcourt'}.
+                  Architectural masterpieces and high-end living in {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : selectedLocation && selectedLocation.includes('Abuja') ? 'Abuja' : 'Port Harcourt'}.
                 </p>
               </div>
 
