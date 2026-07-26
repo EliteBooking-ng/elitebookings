@@ -29,7 +29,9 @@ import {
   Sliders,
   Filter,
   ArrowUp,
-  ShieldCheck
+  ShieldCheck,
+  Layers,
+  Crown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
@@ -81,6 +83,22 @@ export default function App() {
 
   // Luxury unified search states and helper functions
   const [searchQuery, setSearchQuery] = useState('');
+  const [hotelRoomsMap, setHotelRoomsMap] = useState<Record<string, string>>({});
+  const [hotelSelectedPackageMap, setHotelSelectedPackageMap] = useState<Record<string, { name: string; price: string }>>({});
+  const [selectedPackage, setSelectedPackage] = useState<{ name: string; price: string } | null>(null);
+
+  const getEffectiveHotelPackage = (hotel: any) => {
+    if (!hotel) return null;
+    if (hotelSelectedPackageMap[hotel.id]) {
+      return hotelSelectedPackageMap[hotel.id];
+    }
+    if (hotel.tiers && hotel.tiers.length > 0) {
+      const match = hotel.tiers.find((t: any) => t.price === hotel.price);
+      if (match) return match;
+      return { name: hotel.tiers[hotel.tiers.length - 1].name, price: hotel.tiers[hotel.tiers.length - 1].price };
+    }
+    return null;
+  };
 
   const getFilteredHotels = () => {
     const query = searchQuery.trim().toLowerCase();
@@ -95,6 +113,7 @@ export default function App() {
       hotel.location.toLowerCase().includes(query) ||
       hotel.description.toLowerCase().includes(query) ||
       ((hotel as any).note && (hotel as any).note.toLowerCase().includes(query)) ||
+      ((hotel as any).tiers && (hotel as any).tiers.some((t: any) => t.name.toLowerCase().includes(query))) ||
       'hotels'.includes(query) ||
       'stays'.includes(query)
     );
@@ -112,6 +131,7 @@ export default function App() {
       shortlet.name.toLowerCase().includes(query) ||
       shortlet.location.toLowerCase().includes(query) ||
       shortlet.description.toLowerCase().includes(query) ||
+      (shortlet.features && shortlet.features.some((f: string) => f.toLowerCase().includes(query))) ||
       'shortlets'.includes(query) ||
       'estates'.includes(query) ||
       'apartments'.includes(query) ||
@@ -246,8 +266,10 @@ export default function App() {
                 { label: 'Malibu', value: 'Malibu' }
               ] : [
                 { label: 'GRA Sani Abacha', value: 'Sani Abacha' },
-                { label: 'Treasure Court', value: 'Treasure' },
-                { label: 'Elite Court', value: 'Elite' },
+                { label: 'Treasure Court 4-Bed', value: '4-Bed Duplex' },
+                { label: 'Treasure Court 3-Bed', value: '3-Bed Duplex' },
+                { label: 'Elite Court Smart', value: 'Smart Home' },
+                { label: 'Elite Court Off Abacha', value: 'off Abacha' },
                 { label: 'Studio Room', value: 'Studio' },
                 { label: 'Diamond Blue', value: 'Diamond' }
               ]
@@ -317,82 +339,142 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 gap-10">
-          {otherHotels.map((hotel) => (
-            <motion.div
-              key={`other-hotel-${hotel.id}`}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/80 border border-charcoal/5 rounded-[2rem] overflow-hidden shadow-lg flex flex-col md:flex-row group hover:shadow-2xl hover:bg-white transition-all duration-500"
-            >
-              <div className="md:w-2/5 relative overflow-hidden aspect-video md:aspect-auto h-[240px] md:h-auto font-sans">
-                <HotelImageSlider images={hotel.images} name={hotel.name} />
-                <span className="absolute top-4 left-4 bg-charcoal text-cream text-[9px] uppercase tracking-[0.25em] font-bold px-3 py-1.5 rounded-full z-10 shadow-md">
-                  Hotel Stay
-                </span>
-              </div>
-              <div className="md:w-3/5 p-8 flex flex-col justify-center font-sans">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="text-2xl font-serif text-charcoal mb-1">{hotel.name}</h4>
-                    <div className="flex items-center text-charcoal/40 text-xs">
-                      <MapPin className="w-3.5 h-3.5 mr-1 text-gold" />
-                      {hotel.location}
+          {otherHotels.map((hotel) => {
+            const selectedPkg = hotelSelectedPackageMap[hotel.id] || null;
+            return (
+              <motion.div
+                key={`other-hotel-${hotel.id}`}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/80 border border-charcoal/5 rounded-[2rem] overflow-hidden shadow-lg flex flex-col md:flex-row group hover:shadow-2xl hover:bg-white transition-all duration-500"
+              >
+                <div className="md:w-2/5 relative overflow-hidden aspect-video md:aspect-auto h-[240px] md:h-auto font-sans">
+                  <HotelImageSlider images={hotel.images} name={hotel.name} />
+                  <span className="absolute top-4 left-4 bg-charcoal text-cream text-[9px] uppercase tracking-[0.25em] font-bold px-3 py-1.5 rounded-full z-10 shadow-md">
+                    Hotel Stay
+                  </span>
+                </div>
+                <div className="md:w-3/5 p-8 flex flex-col justify-center font-sans">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h4 className="text-2xl font-serif text-charcoal mb-1">{hotel.name}</h4>
+                      <div className="flex items-center text-charcoal/40 text-xs">
+                        <MapPin className="w-3.5 h-3.5 mr-1 text-gold" />
+                        {hotel.location}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">
+                        {selectedPkg ? `${selectedPkg.name} Rate` : 'From'}
+                      </span>
+                      <span className="text-xl font-serif text-charcoal">
+                        ₦{selectedPkg ? selectedPkg.price : hotel.price}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">From</span>
-                    <span className="text-xl font-serif text-charcoal">₦{hotel.price}</span>
+
+                  <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-4 line-clamp-2">
+                    {hotel.description}
+                  </p>
+
+                  {(hotel as any).tiers && (
+                    <div className="mb-4 p-3 rounded-xl bg-gold/5 border border-gold/20 font-sans">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-gold flex items-center gap-1">
+                          <Crown className="w-3 h-3 text-gold" /> Select Package / Tier:
+                        </span>
+                        {selectedPkg && (
+                          <span className="text-[9px] font-bold text-charcoal bg-gold/20 px-2 py-0.5 rounded-full">
+                            {selectedPkg.name}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {(hotel as any).tiers.map((tier: any) => {
+                          const isTierSelected = selectedPkg?.name === tier.name;
+                          return (
+                            <button
+                              key={tier.name}
+                              type="button"
+                              onClick={() => {
+                                const pkg = { name: tier.name, price: tier.price };
+                                setHotelSelectedPackageMap(prev => ({ ...prev, [hotel.id]: pkg }));
+                                setSelectedPackage(pkg);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 border ${
+                                isTierSelected
+                                  ? 'bg-gold text-charcoal font-bold border-gold shadow-xs'
+                                  : 'bg-white border-charcoal/10 text-charcoal/80 hover:border-gold/40'
+                              }`}
+                            >
+                              <span>{tier.name}</span>
+                              <span className={isTierSelected ? 'text-charcoal font-bold' : 'text-gold'}>₦{tier.price}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="w-full mb-3 p-2.5 bg-gold/5 border border-gold/15 rounded-xl font-sans">
+                    <label className="block text-[10px] uppercase tracking-wider font-bold text-gold mb-1 flex items-center gap-1">
+                      <BedDouble className="w-3.5 h-3.5" /> Rooms Needed (Optional):
+                    </label>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {['1 Room', '2 Rooms', '3 Rooms', '4+ Rooms'].map((roomOpt) => {
+                        const isSelected = (hotelRoomsMap[hotel.id] || '1 Room') === roomOpt;
+                        return (
+                          <button
+                            key={roomOpt}
+                            type="button"
+                            onClick={() => {
+                              setHotelRoomsMap(prev => ({ ...prev, [hotel.id]: roomOpt }));
+                              setNumberOfRooms(roomOpt);
+                            }}
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-gold text-charcoal font-bold shadow-xs'
+                                : 'bg-white border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10'
+                            }`}
+                          >
+                            {roomOpt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <button 
+                      onClick={() => {
+                        const selectedRooms = hotelRoomsMap[hotel.id] || '1 Room';
+                        setNumberOfRooms(selectedRooms);
+                        setSelectedPackage(getEffectiveHotelPackage(hotel));
+                        setSelectedCategory('stays');
+                        setBookingType('booking');
+                        setShowBookingOptions(hotel);
+                      }}
+                      className="bg-charcoal text-cream px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors shadow-md inline-block cursor-pointer"
+                    >
+                      Book Hotel
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const selectedRooms = hotelRoomsMap[hotel.id] || '1 Room';
+                        setNumberOfRooms(selectedRooms);
+                        setSelectedPackage(getEffectiveHotelPackage(hotel));
+                        setSelectedCategory('stays');
+                        setBookingType('reservation');
+                        setShowBookingOptions(hotel);
+                      }}
+                      className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer"
+                    >
+                      Check Availability
+                    </button>
                   </div>
                 </div>
-                <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-6 line-clamp-2">
-                  {hotel.description}
-                </p>
-                <div className="w-full mb-3 p-2.5 bg-gold/5 border border-gold/15 rounded-xl font-sans">
-                  <label className="block text-[10px] uppercase tracking-wider font-bold text-gold mb-1 flex items-center gap-1">
-                    <BedDouble className="w-3.5 h-3.5" /> Rooms Needed (Optional):
-                  </label>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {['1 Room', '2 Rooms', '3 Rooms', '4+ Rooms'].map((roomOpt) => (
-                      <button
-                        key={roomOpt}
-                        type="button"
-                        onClick={() => setNumberOfRooms(roomOpt)}
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
-                          numberOfRooms === roomOpt
-                            ? 'bg-gold text-charcoal font-bold shadow-xs'
-                            : 'bg-white border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10'
-                        }`}
-                      >
-                        {roomOpt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <button 
-                    onClick={() => {
-                      setSelectedCategory('stays');
-                      setBookingType('booking');
-                      setShowBookingOptions(hotel);
-                    }}
-                    className="bg-charcoal text-cream px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors shadow-md inline-block cursor-pointer"
-                  >
-                    Book Hotel
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setSelectedCategory('stays');
-                      setBookingType('reservation');
-                      setShowBookingOptions(hotel);
-                    }}
-                    className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer"
-                  >
-                    Check Availability
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
 
           {otherShortlets.map((shortlet) => (
             <motion.div
@@ -512,6 +594,15 @@ export default function App() {
     );
   };
   const [showBookingOptions, setShowBookingOptions] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (showBookingOptions) {
+      const pkg = getEffectiveHotelPackage(showBookingOptions);
+      setSelectedPackage(pkg);
+    } else {
+      setSelectedPackage(null);
+    }
+  }, [showBookingOptions]);
   const [bookingType, setBookingType] = useState<'booking' | 'reservation'>('booking');
   const [bookingStep, setBookingStep] = useState<1 | 2>(1); // 1 = Date/Time, 2 = WhatsApp Options
   const [showEmailPopup, setShowEmailPopup] = useState(false);
@@ -2836,6 +2927,10 @@ export default function App() {
       showBookingOptions?.category === 'stays' || 
       (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels].some((h: any) => h.id === showBookingOptions.id));
 
+    const activePackage = selectedPackage || getEffectiveHotelPackage(showBookingOptions);
+    const effectivePrice = activePackage ? activePackage.price : (showBookingOptions.price || '');
+    const packageTierText = activePackage ? `${activePackage.name} (₦${activePackage.price})` : '';
+
     const bookingText = `Hello Elite Bookings Team,
 
 I would like to make an elite ${kindLabel} enquiry. Below are the details of the ${kindLabel}:
@@ -2845,7 +2940,7 @@ PROPERTY / ASSET DETAILS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Name: ${showBookingOptions.name}
 Location: ${showBookingOptions.location}
-Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}${isHotelBooking ? `\nRooms Needed: ${numberOfRooms || '1 Room'}` : ''}
+Rate: ${effectivePrice ? `₦${effectivePrice}` : 'N/A'}${activePackage ? ` (${activePackage.name} Package)` : ''}${isHotelBooking ? `\nRooms Needed: ${numberOfRooms || '1 Room'}` : ''}${packageTierText ? `\nSelected Package / Tier: ${packageTierText}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${capKindLabel.toUpperCase()} TIMELINE
@@ -2865,7 +2960,8 @@ Best regards.`;
     const enquiryPayload = {
       propertyName: showBookingOptions.name,
       propertyLocation: showBookingOptions.location,
-      price: showBookingOptions.price || '',
+      price: effectivePrice || showBookingOptions.price || '',
+      ...(packageTierText ? { packageTier: packageTierText } : {}),
       checkin: formattedCheckin,
       checkout: formattedCheckout,
       clientPhone: userPhoneNumber,
@@ -2906,7 +3002,8 @@ Best regards.`;
           _template: 'table',
           "Property / Asset": showBookingOptions.name,
           "Location": showBookingOptions.location,
-          "Rate": showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A',
+          "Rate": effectivePrice ? `₦${effectivePrice}` : 'N/A',
+          ...(packageTierText ? { "Package / Tier": packageTierText } : {}),
           ...(isHotelBooking ? { "Rooms Needed": numberOfRooms || '1 Room' } : {}),
           "Client Phone Number": userPhoneNumber,
           "Check-In": formattedCheckin,
@@ -3372,101 +3469,149 @@ Best regards.`;
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-12">
-                  {getFilteredHotels().map((hotel, idx) => (
-                    <motion.div
-                      key={hotel.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
-                    >
-                      <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
-                        <HotelImageSlider images={hotel.images} name={hotel.name} />
-                      </div>
-                      <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
-                        <div className="flex justify-between items-start mb-6">
-                          <div>
-                            <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{hotel.name}</h3>
-                            <div className="flex items-center text-charcoal/40 text-sm">
-                              <MapPin className="w-4 h-4 mr-2 text-gold" />
-                              {hotel.location}
-                            </div>
-                          </div>
-                          <div className="text-right flex flex-col items-end">
-                            <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">From</span>
-                            <span className="text-3xl font-serif text-charcoal block mb-6">₦{hotel.price}</span>
-                            
-                            {(hotel as any).tiers && (
-                              <div className="w-full min-w-[180px] space-y-2.5 pt-6 border-t border-charcoal/5 font-sans">
-                                <p className="text-[10px] uppercase tracking-[0.2em] text-charcoal/30 font-bold mb-4">Available Tiers</p>
-                                {(hotel as any).tiers.map((tier: any) => (
-                                  <div key={tier.name} className="flex justify-between items-center gap-6">
-                                    <span className="text-[10px] uppercase tracking-widest text-charcoal/50 font-bold">{tier.name}</span>
-                                    <span className="text-sm font-serif text-gold">₦{tier.price}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                  {getFilteredHotels().map((hotel, idx) => {
+                    const selectedPkg = hotelSelectedPackageMap[hotel.id] || null;
+                    return (
+                      <motion.div
+                        key={hotel.id}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
+                      >
+                        <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
+                          <HotelImageSlider images={hotel.images} name={hotel.name} />
                         </div>
-                        <p className={(hotel as any).note ? "text-charcoal/60 font-normal leading-relaxed mb-4 max-w-md" : "text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md"}>
-                          {hotel.description}
-                        </p>
-                        {(hotel as any).note && (
-                          <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3 max-w-md font-sans">
-                            <Sparkles className="w-4 h-4 text-gold flex-shrink-0 animate-pulse" />
-                            <span className="text-xs text-charcoal/80 font-medium italic">
-                              {(hotel as any).note}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex flex-col gap-4">
-                          <div className="p-3 bg-gold/5 border border-gold/15 rounded-2xl max-w-md font-sans">
-                            <label className="block text-[10px] uppercase tracking-wider font-bold text-gold mb-1.5 flex items-center gap-1.5">
-                              <BedDouble className="w-3.5 h-3.5" /> Rooms Needed (Optional):
-                            </label>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {['1 Room', '2 Rooms', '3 Rooms', '4+ Rooms'].map((roomOpt) => (
-                                <button
-                                  key={roomOpt}
-                                  type="button"
-                                  onClick={() => setNumberOfRooms(roomOpt)}
-                                  className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
-                                    numberOfRooms === roomOpt
-                                      ? 'bg-gold text-charcoal font-bold shadow-xs'
-                                      : 'bg-white border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10'
-                                  }`}
-                                >
-                                  {roomOpt}
-                                </button>
-                              ))}
+                        <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
+                          <div className="flex justify-between items-start mb-6">
+                            <div>
+                              <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{hotel.name}</h3>
+                              <div className="flex items-center text-charcoal/40 text-sm">
+                                <MapPin className="w-4 h-4 mr-2 text-gold" />
+                                {hotel.location}
+                              </div>
+                            </div>
+                            <div className="text-right flex flex-col items-end">
+                              <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">
+                                {selectedPkg ? `${selectedPkg.name} Rate` : 'Starting From'}
+                              </span>
+                              <span className="text-3xl font-serif text-charcoal block">
+                                ₦{selectedPkg ? selectedPkg.price : hotel.price}
+                              </span>
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-4">
-                            <button 
-                              onClick={() => {
-                                setBookingType('booking');
-                                setShowBookingOptions(hotel);
-                              }}
-                              className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
-                            >
-                              Book Now
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setBookingType('reservation');
-                                setShowBookingOptions(hotel);
-                              }}
-                              className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
-                            >
-                              Check Availability
-                            </button>
+                          <p className={(hotel as any).note ? "text-charcoal/60 font-normal leading-relaxed mb-4 max-w-md" : "text-charcoal/60 font-normal leading-relaxed mb-6 max-w-md"}>
+                            {hotel.description}
+                          </p>
+
+                          {(hotel as any).tiers && (
+                            <div className="mb-6 p-4 rounded-2xl bg-gold/5 border border-gold/20 font-sans max-w-md">
+                              <div className="flex items-center justify-between mb-2.5">
+                                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gold flex items-center gap-1.5">
+                                  <Crown className="w-3.5 h-3.5 text-gold" /> Select Package / Room Tier:
+                                </span>
+                                {selectedPkg && (
+                                  <span className="text-[10px] font-bold text-charcoal bg-gold/20 px-2.5 py-0.5 rounded-full">
+                                    {selectedPkg.name} Selected
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {(hotel as any).tiers.map((tier: any) => {
+                                  const isTierSelected = selectedPkg?.name === tier.name;
+                                  return (
+                                    <button
+                                      key={tier.name}
+                                      type="button"
+                                      onClick={() => {
+                                        const pkg = { name: tier.name, price: tier.price };
+                                        setHotelSelectedPackageMap(prev => ({ ...prev, [hotel.id]: pkg }));
+                                        setSelectedPackage(pkg);
+                                      }}
+                                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center gap-2 border ${
+                                        isTierSelected
+                                          ? 'bg-gold text-charcoal font-bold border-gold shadow-md ring-2 ring-gold/30 scale-[1.02]'
+                                          : 'bg-white border-charcoal/10 text-charcoal/80 hover:border-gold/50 hover:bg-gold/10'
+                                      }`}
+                                    >
+                                      <span>{tier.name}</span>
+                                      <span className={isTierSelected ? 'text-charcoal font-bold' : 'text-gold'}>₦{tier.price}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {(hotel as any).note && (
+                            <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3 max-w-md font-sans">
+                              <Sparkles className="w-4 h-4 text-gold flex-shrink-0 animate-pulse" />
+                              <span className="text-xs text-charcoal/80 font-medium italic">
+                                {(hotel as any).note}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-4">
+                            <div className="p-3 bg-gold/5 border border-gold/15 rounded-2xl max-w-md font-sans">
+                              <label className="block text-[10px] uppercase tracking-wider font-bold text-gold mb-1.5 flex items-center gap-1.5">
+                                <BedDouble className="w-3.5 h-3.5" /> Rooms Needed (Optional):
+                              </label>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {['1 Room', '2 Rooms', '3 Rooms', '4+ Rooms'].map((roomOpt) => {
+                                  const isSelected = (hotelRoomsMap[hotel.id] || '1 Room') === roomOpt;
+                                  return (
+                                    <button
+                                      key={roomOpt}
+                                      type="button"
+                                      onClick={() => {
+                                        setHotelRoomsMap(prev => ({ ...prev, [hotel.id]: roomOpt }));
+                                        setNumberOfRooms(roomOpt);
+                                      }}
+                                      className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-gold text-charcoal font-bold shadow-xs'
+                                          : 'bg-white border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10'
+                                      }`}
+                                    >
+                                      {roomOpt}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-4">
+                              <button 
+                                onClick={() => {
+                                  const selectedRooms = hotelRoomsMap[hotel.id] || '1 Room';
+                                  setNumberOfRooms(selectedRooms);
+                                  setSelectedPackage(getEffectiveHotelPackage(hotel));
+                                  setBookingType('booking');
+                                  setShowBookingOptions(hotel);
+                                }}
+                                className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
+                              >
+                                Book Now
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  const selectedRooms = hotelRoomsMap[hotel.id] || '1 Room';
+                                  setNumberOfRooms(selectedRooms);
+                                  setSelectedPackage(getEffectiveHotelPackage(hotel));
+                                  setBookingType('reservation');
+                                  setShowBookingOptions(hotel);
+                                }}
+                                className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
+                              >
+                                Check Availability
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -3547,11 +3692,30 @@ Best regards.`;
                         </p>
                         {shortlet.features && shortlet.features.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-8">
-                            {shortlet.features.map((feat: string, fIdx: number) => (
-                              <span key={fIdx} className="bg-gold/10 text-gold border border-gold/20 text-[10px] font-bold px-3 py-1 rounded-full tracking-wider flex items-center gap-1 font-sans shadow-xs">
-                                {feat}
-                              </span>
-                            ))}
+                            {shortlet.features.map((feat: string, fIdx: number) => {
+                              const isSelected = !!searchQuery && searchQuery.toLowerCase() === feat.toLowerCase();
+                              return (
+                                <button
+                                  key={fIdx}
+                                  type="button"
+                                  onClick={() => {
+                                    if (searchQuery.toLowerCase() === feat.toLowerCase()) {
+                                      setSearchQuery('');
+                                    } else {
+                                      setSearchQuery(feat);
+                                    }
+                                  }}
+                                  className={`text-[10px] font-bold px-3.5 py-1.5 rounded-full tracking-wider flex items-center gap-1 font-sans transition-all duration-300 cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-gold text-charcoal border border-gold shadow-md scale-105 font-extrabold ring-2 ring-gold/40'
+                                      : 'bg-gold/10 text-gold hover:bg-gold/25 border border-gold/20 shadow-xs'
+                                  }`}
+                                  title={`Filter by ${feat}`}
+                                >
+                                  {feat}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                         <div className="flex flex-wrap gap-4 font-sans">
@@ -3836,7 +4000,12 @@ Best regards.`;
                                   <button
                                     key={opt}
                                     type="button"
-                                    onClick={() => setNumberOfRooms(opt)}
+                                    onClick={() => {
+                                      setNumberOfRooms(opt);
+                                      if (showBookingOptions?.id) {
+                                        setHotelRoomsMap(prev => ({ ...prev, [showBookingOptions.id]: opt }));
+                                      }
+                                    }}
                                     className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                                       numberOfRooms === opt
                                         ? 'bg-gold text-charcoal font-bold shadow-xs'
@@ -3852,7 +4021,13 @@ Best regards.`;
                                 placeholder="Or specify custom rooms (e.g. 2 Deluxe + 1 Suite)..."
                                 className="w-full bg-charcoal/5 border border-charcoal/10 rounded-xl py-2.5 px-3.5 focus:outline-none focus:border-gold transition-colors text-xs font-semibold text-charcoal placeholder:font-normal placeholder:text-charcoal/30"
                                 value={numberOfRooms}
-                                onChange={(e) => setNumberOfRooms(e.target.value)}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setNumberOfRooms(val);
+                                  if (showBookingOptions?.id) {
+                                    setHotelRoomsMap(prev => ({ ...prev, [showBookingOptions.id]: val }));
+                                  }
+                                }}
                               />
                             </div>
                           )}
@@ -3923,6 +4098,48 @@ Best regards.`;
                       <h3 className="text-2xl font-serif text-charcoal mb-1">Select Dates &amp; Times</h3>
                       <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out dates and times to check availability for {showBookingOptions.name}</p>
                     </div>
+
+                    {/* Package / Tier Picker in Modal Step 1 */}
+                    {(showBookingOptions as any).tiers && (
+                      <div className="mb-6 p-4 bg-gold/5 border border-gold/20 rounded-2xl text-left font-sans">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gold flex items-center gap-1.5">
+                            <Crown className="w-3.5 h-3.5 text-gold" /> Choose Package / Room Tier:
+                          </span>
+                          {selectedPackage && (
+                            <span className="text-[10px] font-bold text-charcoal bg-gold/20 px-2.5 py-0.5 rounded-full">
+                              Active: {selectedPackage.name}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
+                          {(showBookingOptions as any).tiers.map((tier: any) => {
+                            const isSelected = selectedPackage?.name === tier.name;
+                            return (
+                              <button
+                                key={tier.name}
+                                type="button"
+                                onClick={() => {
+                                  const pkg = { name: tier.name, price: tier.price };
+                                  setSelectedPackage(pkg);
+                                  if (showBookingOptions.id) {
+                                    setHotelSelectedPackageMap(prev => ({ ...prev, [showBookingOptions.id]: pkg }));
+                                  }
+                                }}
+                                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center gap-2 border ${
+                                  isSelected
+                                    ? 'bg-gold text-charcoal font-bold border-gold shadow-sm ring-2 ring-gold/30'
+                                    : 'bg-white border-charcoal/10 text-charcoal/80 hover:border-gold/40 hover:bg-gold/5'
+                                }`}
+                              >
+                                <span>{tier.name}</span>
+                                <span className={isSelected ? 'text-charcoal font-bold' : 'text-gold'}>₦{tier.price}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Tabs for Check-in / Check-out */}
                     <div className="flex bg-charcoal/5 p-1 rounded-xl mb-6">
@@ -4070,12 +4287,21 @@ Best regards.`;
                           <span className="text-[11px] text-charcoal/60 mt-0.5 block">{checkoutHour}:{checkoutMinute} {checkoutPeriod}</span>
                         </div>
                       </div>
-                      {showBookingOptions.price && (
+                      {selectedPackage ? (
+                        <div className="border-t border-charcoal/10 pt-4 flex justify-between items-center">
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-gold block flex items-center gap-1">
+                            <Crown className="w-3.5 h-3.5 text-gold" /> Selected Package Rate
+                          </span>
+                          <span className="text-base font-serif font-semibold text-gold">
+                            ₦{selectedPackage.price} <span className="text-[10px] font-sans text-charcoal/60">({selectedPackage.name})</span>
+                          </span>
+                        </div>
+                      ) : showBookingOptions.price ? (
                         <div className="border-t border-charcoal/10 pt-4 flex justify-between items-center">
                           <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 block">Rate starting from</span>
                           <span className="text-base font-serif font-semibold text-gold">₦{showBookingOptions.price}</span>
                         </div>
-                      )}
+                      ) : null}
                       {(selectedCategory === 'stays' || showBookingOptions?.type === 'hotel' || showBookingOptions?.category === 'stays' || (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels].some((h: any) => h.id === showBookingOptions.id))) && (
                         <div className="border-t border-charcoal/10 pt-4 flex justify-between items-center">
                           <span className="text-[10px] uppercase font-bold tracking-widest text-gold block flex items-center gap-1">
