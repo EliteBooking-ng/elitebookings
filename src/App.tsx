@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, Component } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Hotel, 
   Home, 
   Car, 
+  BedDouble,
   ChevronLeft, 
   ChevronRight,
   MapPin, 
@@ -19,6 +20,7 @@ import {
   Calendar,
   Clock,
   Mail,
+  Send,
   Phone,
   Check,
   Copy,
@@ -26,26 +28,19 @@ import {
   Search,
   Sliders,
   Filter,
-  ArrowUp
+  ArrowUp,
+  ShieldCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
+import portHarcourtImg from './assets/images/port_harcourt_landmark_1785093104193.jpg';
+import abujaImg from './assets/images/abuja_landmark_1785093118297.jpg';
+import lagosImg from './assets/images/lagos_landmark_1785093272541.jpg';
+import { AdminDashboard } from './components/AdminDashboard';
 import { 
-  doc,
-  getDocFromServer,
   collection,
   addDoc
 } from 'firebase/firestore';
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if(error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. ");
-    }
-  }
-}
-testConnection();
 
 enum OperationType {
   CREATE = 'create',
@@ -77,6 +72,7 @@ interface EnquiryData {
 }
 
 export default function App() {
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
@@ -239,11 +235,23 @@ export default function App() {
               </button>
             ))}
 
-            {currentCategory === 'homes' && [
-              { label: 'GRA Sani Abacha', value: 'Sani Abacha' },
-              { label: 'Studio Room', value: 'Studio' },
-              { label: 'Diamond Blue', value: 'Diamond' }
-            ].map(tag => (
+            {currentCategory === 'homes' && (
+              selectedLocation && selectedLocation.includes('Lagos') ? [
+                { label: 'Akoka Lagos', value: 'Akoka' },
+                { label: 'Beverly Hills', value: 'Beverly' },
+                { label: 'Seychelles', value: 'Seychelles' },
+                { label: 'Santorini', value: 'Santorini' },
+                { label: 'Monte Carlo', value: 'Monte' },
+                { label: 'Cappadocia', value: 'Cappadocia' },
+                { label: 'Malibu', value: 'Malibu' }
+              ] : [
+                { label: 'GRA Sani Abacha', value: 'Sani Abacha' },
+                { label: 'Treasure Court', value: 'Treasure' },
+                { label: 'Elite Court', value: 'Elite' },
+                { label: 'Studio Room', value: 'Studio' },
+                { label: 'Diamond Blue', value: 'Diamond' }
+              ]
+            ).map(tag => (
               <button
                 key={tag.label}
                 type="button"
@@ -339,6 +347,27 @@ export default function App() {
                 <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-6 line-clamp-2">
                   {hotel.description}
                 </p>
+                <div className="w-full mb-3 p-2.5 bg-gold/5 border border-gold/15 rounded-xl font-sans">
+                  <label className="block text-[10px] uppercase tracking-wider font-bold text-gold mb-1 flex items-center gap-1">
+                    <BedDouble className="w-3.5 h-3.5" /> Rooms Needed (Optional):
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {['1 Room', '2 Rooms', '3 Rooms', '4+ Rooms'].map((roomOpt) => (
+                      <button
+                        key={roomOpt}
+                        type="button"
+                        onClick={() => setNumberOfRooms(roomOpt)}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                          numberOfRooms === roomOpt
+                            ? 'bg-gold text-charcoal font-bold shadow-xs'
+                            : 'bg-white border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10'
+                        }`}
+                      >
+                        {roomOpt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-3">
                   <button 
                     onClick={() => {
@@ -487,6 +516,7 @@ export default function App() {
   const [bookingStep, setBookingStep] = useState<1 | 2>(1); // 1 = Date/Time, 2 = WhatsApp Options
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [userPhoneNumber, setUserPhoneNumber] = useState('');
+  const [numberOfRooms, setNumberOfRooms] = useState<string>('1 Room');
   const [emailSubmitStatus, setEmailSubmitStatus] = useState<'idle' | 'saving' | 'sending' | 'success' | 'manual_fallback'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [checkinDate, setCheckinDate] = useState<Date | null>(null);
@@ -504,6 +534,90 @@ export default function App() {
   });
 
   const [showBackToTop, setShowBackToTop] = useState(false);
+
+  const isPoppingState = useRef(false);
+
+  // Helper for UI back/close buttons to cleanly pop browser history when available
+  const handleNavigateBack = (fallbackFn: () => void) => {
+    if (window.history.state && typeof window.history.state.depth === 'number' && window.history.state.depth > 0) {
+      window.history.back();
+    } else {
+      fallbackFn();
+    }
+  };
+
+  // 1. Mobile Physical Back Button & Browser Navigation Listener
+  useEffect(() => {
+    // Set up root history state on mount
+    if (!window.history.state || window.history.state.ebRoot === undefined) {
+      window.history.replaceState({
+        ebRoot: true,
+        depth: 0,
+        category: null,
+        location: null,
+        bookingOptions: null,
+        emailPopup: false,
+        adminOpen: false
+      }, '');
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      isPoppingState.current = true;
+      const state = event.state;
+      if (state) {
+        setSelectedCategory(state.category ?? null);
+        setSelectedLocation(state.location ?? null);
+        setShowBookingOptions(state.bookingOptions ?? null);
+        setShowEmailPopup(state.emailPopup ?? false);
+        setIsAdminOpen(state.adminOpen ?? false);
+      } else {
+        // Fallback to home root
+        setSelectedCategory(null);
+        setSelectedLocation(null);
+        setShowBookingOptions(null);
+        setShowEmailPopup(false);
+        setIsAdminOpen(false);
+      }
+      setTimeout(() => {
+        isPoppingState.current = false;
+      }, 60);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // 2. Sync state changes to browser history
+  useEffect(() => {
+    if (isPoppingState.current) return;
+
+    const isRoot = !selectedCategory && !selectedLocation && !showBookingOptions && !showEmailPopup && !isAdminOpen;
+    
+    const currentState = {
+      ebRoot: isRoot,
+      category: selectedCategory,
+      location: selectedLocation,
+      bookingOptions: showBookingOptions,
+      emailPopup: showEmailPopup,
+      adminOpen: isAdminOpen
+    };
+
+    const histState = window.history.state || {};
+
+    const isSameState = 
+      histState.category === currentState.category &&
+      histState.location === currentState.location &&
+      (histState.bookingOptions?.id ?? null) === (currentState.bookingOptions?.id ?? null) &&
+      histState.emailPopup === currentState.emailPopup &&
+      histState.adminOpen === currentState.adminOpen;
+
+    if (!isSameState) {
+      const currentDepth = typeof histState.depth === 'number' ? histState.depth : 0;
+      window.history.pushState({ ...currentState, depth: currentDepth + 1 }, '');
+    }
+  }, [selectedCategory, selectedLocation, showBookingOptions, showEmailPopup, isAdminOpen]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -2426,12 +2540,153 @@ export default function App() {
     }
   ];
 
-  const lagosShortlets: any[] = [];
+  const lagosShortlets: any[] = [
+    {
+      id: 'beverly-hills-akoka',
+      name: 'Beverly Hills',
+      location: 'Akoka Lagos',
+      price: '160,000',
+      features: ['Studio Apartment', '🍽️ Restaurant & Fine Dining', '🍹 Crafted Cocktails', '🎨 Sip & Paint'],
+      images: [
+        'https://lh3.googleusercontent.com/d/10gkv7kWQm3cxe99NioOObCi5Fruzx-Ls',
+        'https://lh3.googleusercontent.com/d/1eRlKyagLuqXCsaEv9EktQ3geqBCKfEr1',
+        'https://lh3.googleusercontent.com/d/1W7gljbcPi-QDNBPPC670APHFOYgbII-x'
+      ],
+      description: 'Studio Apartment in Akoka, Lagos. Premium luxury shortlet stay featuring fine dining restaurant services, crafted cocktails, and sip & paint experiences.'
+    },
+    {
+      id: 'seychelles-akoka',
+      name: 'Seychelles',
+      location: 'Akoka Lagos',
+      price: '95,000',
+      features: ['Studio Apartment', '🍽️ Restaurant & Fine Dining', '🍹 Crafted Cocktails', '🎨 Sip & Paint'],
+      images: [
+        'https://lh3.googleusercontent.com/d/101aQhAMaomKIEvJScW3YNaERBnsyAkYC',
+        'https://lh3.googleusercontent.com/d/1BYTBws1vtcVGcmxGipkRrIy7Ks5RUjsK',
+        'https://lh3.googleusercontent.com/d/1kjqTkU_C-rUdumGH2rrEH8QrImUTiKv8'
+      ],
+      description: 'Charming Studio Apartment in Akoka, Lagos offering restaurant and fine dining services, crafted cocktails, and sip & paint experiences.'
+    },
+    {
+      id: 'santorini-akoka',
+      name: 'Santorini',
+      location: 'Akoka Lagos',
+      price: '95,000',
+      features: ['Akoka Shortlet', 'Modern Living', '24/7 Power'],
+      images: [
+        'https://lh3.googleusercontent.com/d/1dGCksxQd158ALsw7WX8FJJkD2isz8Xz8',
+        'https://lh3.googleusercontent.com/d/1aYabFK04_bJjp41b4ra27vteYQPH733s',
+        'https://lh3.googleusercontent.com/d/1WyA19Bt_9Ke5deRrq7a75N_P6eB1jmZo'
+      ],
+      description: 'Exquisite Aegean-inspired shortlet stay in Akoka, Lagos styled with premium comfort and luxury finishes.'
+    },
+    {
+      id: 'monte-carlo-akoka',
+      name: 'Monte Carlo',
+      location: 'Akoka Lagos',
+      price: '85,000',
+      features: ['Akoka Shortlet', 'Luxury Interiors', 'Private Retreat'],
+      images: [
+        'https://lh3.googleusercontent.com/d/1wXt4-wELuV_JnxC5bVswhYAomD6uBBI8',
+        'https://lh3.googleusercontent.com/d/1OHUisQCb3dG7FQLoepZJrMZDYp7DCFLe',
+        'https://lh3.googleusercontent.com/d/1T6LCV6RAPh__KrTTx_Kyqqty0Ci4FMO7'
+      ],
+      description: 'Sophisticated luxury shortlet apartment in Akoka, Lagos designed for optimal privacy, comfort, and upscale convenience.'
+    },
+    {
+      id: 'cappadocia-akoka',
+      name: 'Cappadocia',
+      location: 'Akoka Lagos',
+      price: '75,000',
+      features: ['Akoka Shortlet', 'Serene Stay', 'Fully Serviced'],
+      images: [
+        'https://lh3.googleusercontent.com/d/1u7d1BAK_GayVr1MIqUBxhTU5pxMrBRPQ',
+        'https://lh3.googleusercontent.com/d/1i2Avi7QSawJ22c1uHBLkn5OeiRRuFv1V',
+        'https://lh3.googleusercontent.com/d/1PYk5MSPF9IAq71Ih_Cleptt_Nce67hbZ'
+      ],
+      description: 'Stylish and serene shortlet residence in Akoka, Lagos equipped with contemporary furnishings and round-the-clock service.'
+    },
+    {
+      id: 'malibu-akoka',
+      name: 'Malibu',
+      location: 'Akoka Lagos',
+      price: '64,000',
+      features: ['Studio Apartment', 'Akoka Shortlet', 'Cozy Living'],
+      images: [
+        'https://lh3.googleusercontent.com/d/1HtY3zimiD5qkA9ZaXdSM9nNc0MqEXl_F',
+        'https://lh3.googleusercontent.com/d/19u8heNTEONUkyGglFRw5jT5FSrGDzMxs',
+        'https://lh3.googleusercontent.com/d/1Vybo4Tza6NbPSMXWMkmdvDNrb8GgGfL1'
+      ],
+      description: 'Chic shortlet studio apartment in Akoka, Lagos offering affordable luxury and convenient access.'
+    }
+  ];
   const lagosCars: any[] = [];
   const abujaShortlets: any[] = [];
   const abujaCars: any[] = [];
 
   const phShortlets = [
+    {
+      id: 'treasure-court-4bed',
+      name: 'Treasure Court (4-Bed Duplex)',
+      location: 'off Sani Abacha Road, Port Harcourt',
+      price: '260,000',
+      cautionFee: '50,000',
+      features: ['4-Bedroom Duplex', 'Starlink 🛜', 'Netflix ✅', 'Table Tennis 🏓', 'Swimming Pool 🏊', 'Snooker 🎱', 'Card & Board Games 🎮', 'In-House Chef (On Request)', 'Serene & Secure'],
+      images: [
+        'https://lh3.googleusercontent.com/d/1zP5epVVGrwKzwhQYlelXrvLZus_d5G_D',
+        'https://lh3.googleusercontent.com/d/1LzLCZmITUvzdPR4G26ofaZnPCGfAaRFb',
+        'https://lh3.googleusercontent.com/d/1hSZh3jXPEp46yn_fnuixBCiNAIYtSb0N'
+      ],
+      description: 'Exquisite 4-Bedroom Duplex located off Sani Abacha Road, Port Harcourt. Features Starlink WiFi, private swimming pool, snooker table, table tennis, card & board games, Netflix, and in-house chef available on request. Serene & secure environment. (Refundable caution fee: ₦50,000 | Total initial payment: ₦310,000).'
+    },
+    {
+      id: 'treasure-court-3bed',
+      name: 'Treasure Court (3-Bed Duplex)',
+      location: 'off Sani Abacha Road, Port Harcourt',
+      price: '240,000',
+      cautionFee: '50,000',
+      features: ['3-Bedroom Duplex', 'Starlink 🛜', 'Netflix ✅', 'Table Tennis 🏓', 'Swimming Pool 🏊', 'Snooker 🎱', 'Card & Board Games 🎮', 'In-House Chef (On Request)', 'Serene & Secure'],
+      images: [
+        'https://lh3.googleusercontent.com/d/16AktMQImOD2u2cYO7c2sKy4tLadAezJR',
+        'https://lh3.googleusercontent.com/d/1bo6kDR7SVp8d4XYX1gAKXLBlt6i0FAv5',
+        'https://lh3.googleusercontent.com/d/18o5v49dCDmxtoe_th9eoSajcevAWh-ff',
+        'https://lh3.googleusercontent.com/d/1i6x003UHUftq2JI1co_OYJhP_fnJadtG',
+        'https://lh3.googleusercontent.com/d/1-zEJF6zk6B8QIhWHqo_3NCerB8Zf9uS0'
+      ],
+      description: 'Luxurious 3-Bedroom Duplex located off Sani Abacha Road, Port Harcourt. Features Starlink WiFi, private swimming pool, snooker, table tennis, card & board games, Netflix, and in-house chef available on request. Serene & secure environment. (Refundable caution fee: ₦50,000 | Total initial payment: ₦290,000).'
+    },
+    {
+      id: 'elite-court-4bed-smart',
+      name: 'Elite Court (Smart Home)',
+      location: 'Sani Abacha, Port Harcourt',
+      price: '360,000',
+      cautionFee: '100,000',
+      features: ['4-Bedroom Smart Home', '24/7 Power ⚡', 'Swimming Pool 🏊', 'High Speed Internet 🛜', 'DSTV & Netflix 📺', 'Built-in Speakers 🔊', 'Balcony View 🏙️', 'All Rooms En-suite 🛌'],
+      images: [
+        'https://lh3.googleusercontent.com/d/1m1WgrXeDL_-UczlGODDq1L08mh8ucYoO',
+        'https://lh3.googleusercontent.com/d/1dq0eGFz7z6O1Ey3OE61ciXMjb_CWSRV1',
+        'https://lh3.googleusercontent.com/d/1AWQJs606k377KLfcycvXOmWOg8g6jpxC',
+        'https://lh3.googleusercontent.com/d/1Yt5P6clctjTqf5JaqCgTW7_UDcnY-GVH',
+        'https://lh3.googleusercontent.com/d/1E9rwVUapPgJu9icyruW_lGr8RY64A6sq'
+      ],
+      description: 'Ultra-modern 4 Bedroom Duplex Smart Home in Sani Abacha, Port Harcourt. Features constant electricity, professional housekeeping, swimming pool, purified water system, DSTV & Netflix, round-the-clock security, high speed internet, built-in speakers, balcony view, and all rooms en-suite. (Refundable caution fee: ₦100,000 | Total initial payment: ₦460,000).'
+    },
+    {
+      id: 'elite-court-off-abacha',
+      name: 'Elite Court (off Abacha Road)',
+      location: 'off Abacha Road, Port Harcourt',
+      price: '210,000',
+      cautionFee: '50,000',
+      features: ['Off Abacha Road', '24/7 Power ⚡', 'Swimming Pool 🏊', 'High Speed Internet 🛜', 'DSTV & Netflix 📺', 'Built-in Speakers 🔊', 'Balcony View 🏙️', 'All Rooms En-suite 🛌'],
+      images: [
+        'https://lh3.googleusercontent.com/d/14oOxCzj8hd2A4CsFr9in2M1v37DDRGSz',
+        'https://lh3.googleusercontent.com/d/1m9Dj86bRDGQFJ2jMSZWTGElA38XC35Om',
+        'https://lh3.googleusercontent.com/d/1xrOs3miH1uzvumpyPpGpu1HpMOzpetqn',
+        'https://lh3.googleusercontent.com/d/1UPGsyUY3sLX5fuyuxFXpezYr5NiLUw0j',
+        'https://lh3.googleusercontent.com/d/1EBQHVwx2cHaAI4dvt3JV6laN_hkaWFQ4'
+      ],
+      description: 'Exquisite shortlet residence located off Abacha Road, Port Harcourt. Complete with constant electricity, professional housekeeping, swimming pool, purified water system, DSTV & Netflix, round-the-clock security, high speed internet, built-in sound speakers, and serene balcony views. (Refundable caution fee: ₦50,000 | Total initial payment: ₦260,000).'
+    },
     {
       id: 'studio-room',
       name: 'Studio room',
@@ -2542,13 +2797,20 @@ export default function App() {
 
 
   const reset = () => {
-    setSelectedCategory(null);
-    setSelectedLocation(null);
-    setSelectedHotel(null);
-    setSelectedShortlet(null);
-    setSelectedCar(null);
-    setStep(1);
-    setFormData({ location: '', dates: '', guests: '', preferences: '' });
+    if (window.history.state && typeof window.history.state.depth === 'number' && window.history.state.depth > 0) {
+      window.history.go(-window.history.state.depth);
+    } else {
+      setSelectedCategory(null);
+      setSelectedLocation(null);
+      setSelectedHotel(null);
+      setSelectedShortlet(null);
+      setSelectedCar(null);
+      setShowBookingOptions(null);
+      setShowEmailPopup(false);
+      setIsAdminOpen(false);
+      setStep(1);
+      setFormData({ location: '', dates: '', guests: '', preferences: '' });
+    }
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -2569,6 +2831,11 @@ export default function App() {
     const kindLabel = bookingType === 'reservation' ? 'availability' : 'booking';
     const capKindLabel = bookingType === 'reservation' ? 'Availability' : 'Booking';
 
+    const isHotelBooking = selectedCategory === 'stays' || 
+      showBookingOptions?.type === 'hotel' || 
+      showBookingOptions?.category === 'stays' || 
+      (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels].some((h: any) => h.id === showBookingOptions.id));
+
     const bookingText = `Hello Elite Bookings Team,
 
 I would like to make an elite ${kindLabel} enquiry. Below are the details of the ${kindLabel}:
@@ -2578,7 +2845,7 @@ PROPERTY / ASSET DETAILS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Name: ${showBookingOptions.name}
 Location: ${showBookingOptions.location}
-Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}
+Rate: ${showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A'}${isHotelBooking ? `\nRooms Needed: ${numberOfRooms || '1 Room'}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${capKindLabel.toUpperCase()} TIMELINE
@@ -2603,6 +2870,7 @@ Best regards.`;
       checkout: formattedCheckout,
       clientPhone: userPhoneNumber,
       type: bookingType,
+      ...(isHotelBooking ? { numberOfRooms: numberOfRooms || '1 Room' } : {}),
       createdAt: new Date().toISOString()
     };
 
@@ -2619,32 +2887,40 @@ Best regards.`;
       }
     }
 
-    // 2. Automated background email sending
-    const accessKey = (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
+    // 2. Automated background email sending via FormSubmit & Web3Forms
+    const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
+    const targetEmail = localStorage.getItem('elite_notification_email') || 'Elitebooking.ng@gmail.com';
 
-    const triggerMailtoDirectly = () => {
-      const subject = `Elite ${capKindLabel} Enquiry: ${showBookingOptions.name}`;
-      const mailtoUrl = `mailto:Elitebooking.ng@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bookingText)}`;
-      
-      // Auto-trigger native mail composer
-      window.location.href = mailtoUrl;
+    setEmailSubmitStatus('sending');
 
-      // Delightful feedback
-      confetti({
-        particleCount: 120,
-        spread: 75,
-        origin: { y: 0.6 }
+    try {
+      // Primary: FormSubmit.co instant dispatch (no API key required!)
+      const formSubmitPromise = fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          _subject: `Elite Booking Alert: ${showBookingOptions.name}`,
+          _template: 'table',
+          "Property / Asset": showBookingOptions.name,
+          "Location": showBookingOptions.location,
+          "Rate": showBookingOptions.price ? `₦${showBookingOptions.price}` : 'N/A',
+          ...(isHotelBooking ? { "Rooms Needed": numberOfRooms || '1 Room' } : {}),
+          "Client Phone Number": userPhoneNumber,
+          "Check-In": formattedCheckin,
+          "Check-Out": formattedCheckout,
+          "Type": capKindLabel,
+          "Full Message": bookingText
+        })
       });
 
-      // Instantly dismiss modal and clean state
-      setShowEmailPopup(false);
-      setShowBookingOptions(null);
-    };
+      // Secondary: Web3Forms if key is present
+      const promises: Promise<any>[] = [formSubmitPromise];
 
-    if (accessKey && accessKey.trim() !== '') {
-      setEmailSubmitStatus('sending');
-      try {
-        const response = await fetch('https://api.web3forms.com/submit', {
+      if (accessKey && accessKey.trim() !== '') {
+        const web3Promise = fetch('https://api.web3forms.com/submit', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2654,31 +2930,24 @@ Best regards.`;
             access_key: accessKey,
             subject: `Elite Booking Enquiry: ${showBookingOptions.name}`,
             from_name: 'Elite Bookings System',
-            to_email: 'Elitebooking.ng@gmail.com',
+            to_email: targetEmail,
             message: bookingText,
             phone: userPhoneNumber
           })
         });
-
-        const data = await response.json();
-        if (response.ok && data.success) {
-          setEmailSubmitStatus('success');
-          confetti({
-            particleCount: 150,
-            spread: 80,
-            origin: { y: 0.6 }
-          });
-        } else {
-          console.error('Web3Forms email delivery error:', data);
-          triggerMailtoDirectly();
-        }
-      } catch (emailError) {
-        console.error('Network error during email auto-transmit:', emailError);
-        triggerMailtoDirectly();
+        promises.push(web3Promise);
       }
-    } else {
-      // Direct instant redirection to the mail client - exactly as requested!
-      triggerMailtoDirectly();
+
+      await Promise.allSettled(promises);
+    } catch (emailError) {
+      console.error('Error during email auto-transmit:', emailError);
+    } finally {
+      setEmailSubmitStatus('success');
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
     }
   };
 
@@ -2878,20 +3147,21 @@ Best regards.`;
       </div>
 
       {/* Navigation */}
-      <nav className="p-8 flex justify-between items-center z-50">
+      <nav className="p-6 md:p-8 flex justify-between items-center z-50">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="text-2xl font-serif tracking-[0.2em] uppercase font-light text-charcoal"
+          onClick={reset}
+          className="text-2xl font-serif tracking-[0.2em] uppercase font-light text-charcoal cursor-pointer"
         >
           Elite Bookings
         </motion.div>
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="hidden md:flex space-x-12 text-[11px] uppercase tracking-[0.3em] font-semibold text-charcoal/80"
+          className="flex items-center space-x-6 md:space-x-12 text-[11px] uppercase tracking-[0.25em] font-semibold text-charcoal/80"
         >
-          <button onClick={reset} className="hover:text-gold transition-colors">Home</button>
+          <button onClick={reset} className="hover:text-gold transition-colors cursor-pointer">Home</button>
         </motion.div>
       </nav>
 
@@ -2989,9 +3259,9 @@ Best regards.`;
                   className="group cursor-pointer relative overflow-hidden rounded-3xl aspect-[4/3] bg-charcoal shadow-2xl shadow-gold/10"
                 >
                   <img 
-                    src="https://media.premiumtimesng.com/wp-content/files/2019/11/Port-Harcourt-Rivers-State.jpg" 
-                    alt="Port Harcourt"
-                    className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-1000 ease-out"
+                    src={portHarcourtImg} 
+                    alt="Port Harcourt Landmark"
+                    className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-1000 ease-out"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-transparent to-transparent opacity-80" />
@@ -3013,9 +3283,9 @@ Best regards.`;
                   className="group cursor-pointer relative overflow-hidden rounded-3xl aspect-[4/3] bg-charcoal shadow-2xl shadow-gold/10"
                 >
                   <img 
-                    src="https://images.unsplash.com/photo-1618245341355-d2a2c1490216?q=80&w=800&auto=format&fit=crop" 
-                    alt="Lagos"
-                    className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-1000 ease-out"
+                    src={lagosImg} 
+                    alt="Lagos Landmark"
+                    className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-1000 ease-out"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-transparent to-transparent opacity-80" />
@@ -3036,6 +3306,13 @@ Best regards.`;
                   }}
                   className="group cursor-pointer relative overflow-hidden rounded-3xl aspect-[4/3] bg-charcoal shadow-2xl shadow-gold/10"
                 >
+                  <img 
+                    src={abujaImg} 
+                    alt="Abuja Landmark"
+                    className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-1000 ease-out"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-charcoal via-transparent to-transparent opacity-80" />
                   <div className="absolute inset-0 p-8 flex flex-col justify-end items-center text-center">
                     <h3 className="text-3xl md:text-4xl text-cream font-serif mb-1">Abuja</h3>
                     <p className="text-gold text-[10px] uppercase tracking-[0.4em] font-bold">Federal Capital Territory</p>
@@ -3143,25 +3420,49 @@ Best regards.`;
                             </span>
                           </div>
                         )}
-                        <div className="flex flex-wrap gap-4">
-                          <button 
-                            onClick={() => {
-                              setBookingType('booking');
-                              setShowBookingOptions(hotel);
-                            }}
-                            className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
-                          >
-                            Book Now
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setBookingType('reservation');
-                              setShowBookingOptions(hotel);
-                            }}
-                            className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
-                          >
-                            Check Availability
-                          </button>
+                        <div className="flex flex-col gap-4">
+                          <div className="p-3 bg-gold/5 border border-gold/15 rounded-2xl max-w-md font-sans">
+                            <label className="block text-[10px] uppercase tracking-wider font-bold text-gold mb-1.5 flex items-center gap-1.5">
+                              <BedDouble className="w-3.5 h-3.5" /> Rooms Needed (Optional):
+                            </label>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {['1 Room', '2 Rooms', '3 Rooms', '4+ Rooms'].map((roomOpt) => (
+                                <button
+                                  key={roomOpt}
+                                  type="button"
+                                  onClick={() => setNumberOfRooms(roomOpt)}
+                                  className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
+                                    numberOfRooms === roomOpt
+                                      ? 'bg-gold text-charcoal font-bold shadow-xs'
+                                      : 'bg-white border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10'
+                                  }`}
+                                >
+                                  {roomOpt}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-4">
+                            <button 
+                              onClick={() => {
+                                setBookingType('booking');
+                                setShowBookingOptions(hotel);
+                              }}
+                              className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
+                            >
+                              Book Now
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setBookingType('reservation');
+                                setShowBookingOptions(hotel);
+                              }}
+                              className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
+                            >
+                              Check Availability
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -3234,11 +3535,25 @@ Best regards.`;
                           <div className="text-right">
                             <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Per Night</span>
                             <span className="text-2xl font-serif text-charcoal">₦{shortlet.price}</span>
+                            {shortlet.cautionFee && (
+                              <span className="text-[10px] text-charcoal/60 font-mono block mt-0.5 font-bold">
+                                + ₦{shortlet.cautionFee} Caution Fee
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md font-sans">
+                        <p className="text-charcoal/60 font-normal leading-relaxed mb-6 max-w-md font-sans">
                           {shortlet.description}
                         </p>
+                        {shortlet.features && shortlet.features.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-8">
+                            {shortlet.features.map((feat: string, fIdx: number) => (
+                              <span key={fIdx} className="bg-gold/10 text-gold border border-gold/20 text-[10px] font-bold px-3 py-1 rounded-full tracking-wider flex items-center gap-1 font-sans shadow-xs">
+                                {feat}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-4 font-sans">
                           <button 
                             onClick={() => {
@@ -3510,13 +3825,45 @@ Best regards.`;
                             </div>
                           </div>
 
+                          {/* Optional Rooms Selector for Hotels in Email Popup */}
+                          {(selectedCategory === 'stays' || showBookingOptions?.type === 'hotel' || showBookingOptions?.category === 'stays' || (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels].some((h: any) => h.id === showBookingOptions.id))) && (
+                            <div className="text-left font-sans space-y-2">
+                              <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-gold flex items-center gap-1.5">
+                                <BedDouble className="w-3.5 h-3.5" /> Number of Rooms Needed (Optional)
+                              </label>
+                              <div className="flex items-center gap-1.5">
+                                {['1 Room', '2 Rooms', '3 Rooms', '4+ Rooms'].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => setNumberOfRooms(opt)}
+                                    className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                      numberOfRooms === opt
+                                        ? 'bg-gold text-charcoal font-bold shadow-xs'
+                                        : 'bg-charcoal/5 border border-charcoal/10 text-charcoal/70 hover:bg-charcoal/10'
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Or specify custom rooms (e.g. 2 Deluxe + 1 Suite)..."
+                                className="w-full bg-charcoal/5 border border-charcoal/10 rounded-xl py-2.5 px-3.5 focus:outline-none focus:border-gold transition-colors text-xs font-semibold text-charcoal placeholder:font-normal placeholder:text-charcoal/30"
+                                value={numberOfRooms}
+                                onChange={(e) => setNumberOfRooms(e.target.value)}
+                              />
+                            </div>
+                          )}
+
                           <div className="space-y-3 pt-4">
                             <button
                               type="submit"
-                              className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer"
+                              className="flex items-center justify-center space-x-3 w-full bg-gold text-charcoal py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold/90 hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer shadow-md"
                             >
-                              <Mail className="w-5 h-5" />
-                              <span>{bookingType === 'reservation' ? 'Send Availability Request via Email' : 'Send Booking via Email'}</span>
+                              <Send className="w-4 h-4" />
+                              <span>Submit</span>
                             </button>
 
                             <button
@@ -3729,38 +4076,27 @@ Best regards.`;
                           <span className="text-base font-serif font-semibold text-gold">₦{showBookingOptions.price}</span>
                         </div>
                       )}
+                      {(selectedCategory === 'stays' || showBookingOptions?.type === 'hotel' || showBookingOptions?.category === 'stays' || (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels].some((h: any) => h.id === showBookingOptions.id))) && (
+                        <div className="border-t border-charcoal/10 pt-4 flex justify-between items-center">
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-gold block flex items-center gap-1">
+                            <BedDouble className="w-3.5 h-3.5" /> Rooms Needed
+                          </span>
+                          <span className="text-xs font-bold text-charcoal">{numberOfRooms || '1 Room'}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-3">
-                      <a 
-                        href={`https://wa.me/2347072253857?text=${encodeURIComponent(
-                          `Hello, I would like to ${bookingType === 'reservation' ? 'check availability for' : 'book'} ${showBookingOptions.name}.\n\n` +
-                          `📅 Check-in: ${checkinDate ? checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkinHour}:${checkinMinute} ${checkinPeriod}\n` +
-                          `🔑 Check-out: ${checkoutDate ? checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}\n` +
-                          `📍 Location: ${showBookingOptions.location}` +
-                          `${showBookingOptions.price ? `\n💳 Base Price: ₦${showBookingOptions.price}` : ''}` +
-                          `${showBookingOptions.note ? `\n✨ Note: ${showBookingOptions.note}` : ''}`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center space-x-3 w-full bg-[#25D366] text-white py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:opacity-90 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300"
-                      >
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.35-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                        </svg>
-                        <span>Connect on WhatsApp</span>
-                      </a>
-
                       <button
                         type="button"
                         onClick={() => {
                           setUserPhoneNumber('');
                           setShowEmailPopup(true);
                         }}
-                        className="flex items-center justify-center space-x-3 w-full bg-charcoal text-cream py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer"
+                        className="flex items-center justify-center space-x-3 w-full bg-gold text-charcoal py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold hover:bg-gold/90 hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 cursor-pointer shadow-md"
                       >
-                        <Mail className="w-5 h-5" />
-                        <span>Connect via Email</span>
+                        <Send className="w-4 h-4" />
+                        <span>Submit</span>
                       </button>
                       
                       <button
@@ -3838,6 +4174,12 @@ Best regards.`;
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* Admin Dashboard Modal */}
+      <AdminDashboard 
+        isOpen={isAdminOpen} 
+        onClose={() => handleNavigateBack(() => setIsAdminOpen(false))} 
+      />
     </div>
   );
 }

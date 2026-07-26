@@ -6,5 +6,7 @@
   "firestoreDatabaseId": "ai-studio-elitebookings-48f5736c-759a-48db-ad67-1e06eaef785c",
   "storageBucket": "gen-lang-client-0344403091.firebasestorage.app",
   "messagingSenderId": "575957829985",
-  "measurementId": ""
+  "measurementId": "",
+  "oAuthClientId": "575957829985-jln4io4op2kcbobb7lcfvedh1qsdrmki.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }
