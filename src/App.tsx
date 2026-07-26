@@ -998,7 +998,7 @@ export default function App() {
         { name: 'Top Tier', price: '53,000' }
       ],
       images: [
-        'https://lh3.googleusercontent.com/d/1_QjzozOTFjdhUxbG0cX5xo-LCxJTXbOo'
+        'https://cf.bstatic.com/xdata/images/hotel/270x200/724381730.webp?k=6265314bb5b299ca3d962310f72438f948ae71f4220a3b123962b4384cd067f2&o='
       ],
       description: 'Experience cozy comfort and outstanding service at 1708 Hotel, located on Ogunka Erewu Road.'
     },
