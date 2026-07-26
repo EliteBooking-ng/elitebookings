@@ -3692,30 +3692,14 @@ Best regards.`;
                         </p>
                         {shortlet.features && shortlet.features.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-8">
-                            {shortlet.features.map((feat: string, fIdx: number) => {
-                              const isSelected = !!searchQuery && searchQuery.toLowerCase() === feat.toLowerCase();
-                              return (
-                                <button
-                                  key={fIdx}
-                                  type="button"
-                                  onClick={() => {
-                                    if (searchQuery.toLowerCase() === feat.toLowerCase()) {
-                                      setSearchQuery('');
-                                    } else {
-                                      setSearchQuery(feat);
-                                    }
-                                  }}
-                                  className={`text-[10px] font-bold px-3.5 py-1.5 rounded-full tracking-wider flex items-center gap-1 font-sans transition-all duration-300 cursor-pointer ${
-                                    isSelected
-                                      ? 'bg-gold text-charcoal border border-gold shadow-md scale-105 font-extrabold ring-2 ring-gold/40'
-                                      : 'bg-gold/10 text-gold hover:bg-gold/25 border border-gold/20 shadow-xs'
-                                  }`}
-                                  title={`Filter by ${feat}`}
-                                >
-                                  {feat}
-                                </button>
-                              );
-                            })}
+                            {shortlet.features.map((feat: string, fIdx: number) => (
+                              <span
+                                key={fIdx}
+                                className="text-[10px] font-bold px-3.5 py-1.5 rounded-full tracking-wider flex items-center gap-1 font-sans bg-gold/10 text-gold border border-gold/20 shadow-xs"
+                              >
+                                {feat}
+                              </span>
+                            ))}
                           </div>
                         )}
                         <div className="flex flex-wrap gap-4 font-sans">
