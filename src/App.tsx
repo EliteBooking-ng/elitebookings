@@ -4099,48 +4099,6 @@ Best regards.`;
                       <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out dates and times to check availability for {showBookingOptions.name}</p>
                     </div>
 
-                    {/* Package / Tier Picker in Modal Step 1 */}
-                    {(showBookingOptions as any).tiers && (
-                      <div className="mb-6 p-4 bg-gold/5 border border-gold/20 rounded-2xl text-left font-sans">
-                        <div className="flex items-center justify-between mb-2.5">
-                          <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gold flex items-center gap-1.5">
-                            <Crown className="w-3.5 h-3.5 text-gold" /> Choose Package / Room Tier:
-                          </span>
-                          {selectedPackage && (
-                            <span className="text-[10px] font-bold text-charcoal bg-gold/20 px-2.5 py-0.5 rounded-full">
-                              Active: {selectedPackage.name}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
-                          {(showBookingOptions as any).tiers.map((tier: any) => {
-                            const isSelected = selectedPackage?.name === tier.name;
-                            return (
-                              <button
-                                key={tier.name}
-                                type="button"
-                                onClick={() => {
-                                  const pkg = { name: tier.name, price: tier.price };
-                                  setSelectedPackage(pkg);
-                                  if (showBookingOptions.id) {
-                                    setHotelSelectedPackageMap(prev => ({ ...prev, [showBookingOptions.id]: pkg }));
-                                  }
-                                }}
-                                className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center gap-2 border ${
-                                  isSelected
-                                    ? 'bg-gold text-charcoal font-bold border-gold shadow-sm ring-2 ring-gold/30'
-                                    : 'bg-white border-charcoal/10 text-charcoal/80 hover:border-gold/40 hover:bg-gold/5'
-                                }`}
-                              >
-                                <span>{tier.name}</span>
-                                <span className={isSelected ? 'text-charcoal font-bold' : 'text-gold'}>₦{tier.price}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Tabs for Check-in / Check-out */}
                     <div className="flex bg-charcoal/5 p-1 rounded-xl mb-6">
                       <button
