@@ -1,5 +1,6 @@
 {
   "name": "ELITE BOOKINGS",
   "description": "A high-end, minimalist travel enquiry platform for luxury stays, homes, and private rentals.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

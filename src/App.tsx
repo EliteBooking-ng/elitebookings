@@ -39,7 +39,7 @@ import portHarcourtImg from './assets/images/port_harcourt_landmark_178509310419
 import abujaImg from './assets/images/abuja_landmark_1785093118297.jpg';
 import lagosImg from './assets/images/lagos_landmark_1785093272541.jpg';
 import { AdminDashboard } from './components/AdminDashboard';
-import { 
+import {
   collection,
   addDoc
 } from 'firebase/firestore';
@@ -1838,6 +1838,369 @@ export default function App() {
         'https://lh3.googleusercontent.com/d/1PmyXVAz4pFGfZcbtiuhrG8m7VowtsEad'
       ],
       description: 'Set in the diplomat-preferred neighborhood of Maitama, The Panama offers a bespoke boutique hotel experience combining modern sophistication with unparalleled privacy. Guests enjoy grandly appointed suites, signature amenities, and top-tier security for an unforgettable stay.'
+    },
+    {
+      id: 'the-sai-luxury-hotel-abuja',
+      name: 'The SAI luxury hotel Abuja',
+      location: 'No. 6, Asa Street, Off Gana Street Maitama, Abuja, Federal Capital Territory',
+      price: '84,000',
+      tiers: [
+        { name: 'ZINNIA', price: '84,000' },
+        { name: 'MAGNOLIA', price: '105,000' },
+        { name: 'RED ROSE', price: '120,000' },
+        { name: 'DHALIA', price: '140,000' },
+        { name: 'WHITE ROSE', price: '186,000' },
+        { name: 'DAISY', price: '186,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1CIvDQtQvJHPFSalUOyj6okHYuYZNeFe4',
+        'https://lh3.googleusercontent.com/d/11jcvEve08tzyh2akL43MZvK3oxpmS6sK',
+        'https://lh3.googleusercontent.com/d/1STYWeSgOsXYDE3hb-Q5MyH0smLSncgaG'
+      ],
+      description: 'Experience bespoke boutique hospitality and pristine luxury at The SAI Luxury Hotel, located at No. 6 Asa Street, Off Gana Street in Maitama, Abuja. Offering thoughtfully styled accommodations from ZINNIA to executive DAISY suites with round-the-clock security and premier service.'
+    },
+    {
+      id: 'ritman-hotel-abuja',
+      name: 'Ritman Hotel',
+      location: '11 Ilorin St, Garki, Abuja 900103, Federal Capital Territory',
+      price: '31,000',
+      tiers: [
+        { name: 'Standard Room', price: '31,000' },
+        { name: 'Deluxe Room', price: '37,000' },
+        { name: 'Executive Room', price: '51,000' },
+        { name: 'Super Deluxe Room', price: '64,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1lcMGnPXtmrojTY8JLb7nRHJMOgUZc2Tn',
+        'https://lh3.googleusercontent.com/d/1oHTay78kyK1HzPOThct0ZT7l2Y-LVxl9',
+        'https://lh3.googleusercontent.com/d/1XO5qnjOyQ-vl58k9LcyN5__2oZQzes9B'
+      ],
+      description: 'Discover welcoming hospitality and quiet comfort at Ritman Hotel in Garki, Abuja. Conveniently situated on Ilorin Street, offering cozy Standard options to spacious Super Deluxe rooms with excellent customer service and prime security.'
+    },
+    {
+      id: 'hotel-de-bently-abuja',
+      name: 'Hotel de Bently',
+      location: '892 Ngozi Okonjo-Iweala Wy, Utako, Abuja 900108, Federal Capital Territory',
+      price: '54,000',
+      tiers: [
+        { name: 'Standard Room', price: '54,000' },
+        { name: 'Deluxe Room', price: '59,000' },
+        { name: 'Executive Suite', price: '64,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1TQw0j56Z6HKaei1IlnVwX2OXjzy9GgQM',
+        'https://lh3.googleusercontent.com/d/1bCRxacPBXGDLHjODooAgZW9dCTFo80zU',
+        'https://lh3.googleusercontent.com/d/1g70Jnhx9N97jVE4AvxnnndGI03fWnkod',
+        'https://lh3.googleusercontent.com/d/1uuDdgJreOSuLaZlx7p7vnmmP7QPwmRfM',
+        'https://lh3.googleusercontent.com/d/1gF0aOMyLxyDIWZLY8ETI7U0mdzMT-byo'
+      ],
+      description: 'Experience refined elegance and contemporary hospitality at Hotel de Bently, conveniently located on Ngozi Okonjo-Iweala Way in Utako, Abuja. Featuring tastefully appointed Standard, Deluxe, and Executive suites, backed by top-class security and premium amenities.'
+    },
+    {
+      id: 'candellux-imperial-hotel-suites-abuja',
+      name: 'Candellux Imperial hotel and suites',
+      location: 'Area 1, No. 5 Sir Anebo Okekenta Street, adjacent Divine Hand of God Church, Garki, Abuja, Federal Capital Territory',
+      price: '54,000',
+      tiers: [
+        { name: 'Standard', price: '54,000' },
+        { name: 'Ultra', price: '74,000' },
+        { name: 'Suite', price: '105,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/127nGAoSw3y21JG6GX1L3Wm4GYLw0wPvp',
+        'https://lh3.googleusercontent.com/d/1qq-QFz3T5lgVEJfJ-hNAe2Zv2mdp9Ggx',
+        'https://lh3.googleusercontent.com/d/1dIhy9K1vmeQdRskHoNkNNr5xohPYtiDb',
+        'https://lh3.googleusercontent.com/d/1yTN630WW7mDmb6q6Hh_70zUcEMCEM3kN'
+      ],
+      description: 'Discover opulent accommodations and pristine executive service at Candellux Imperial Hotel and Suites. Located in Garki, Abuja, featuring refined Standard, Ultra, and luxury Suites equipped with high-speed internet, premier dining, and top-tier security.'
+    },
+    {
+      id: 'dayspring-hotel-abuja',
+      name: 'DaySpring Hotel',
+      location: 'Zone 6, Plot 4 Juba St, Wuse, Abuja 904101, Federal Capital Territory',
+      price: '33,000',
+      tiers: [
+        { name: 'Standard Room', price: '33,000' },
+        { name: 'Deluxe Room', price: '38,000' },
+        { name: 'Superior Room', price: '43,000' },
+        { name: 'Executive Room', price: '48,000' },
+        { name: 'Super Deluxe Suite', price: '64,000' },
+        { name: 'Presidential Suite', price: '84,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1P-Abri6TqvI_vw8kPA0TjA4PbNRncLry',
+        'https://lh3.googleusercontent.com/d/1TuSKWw-wj-jtrL-71uDvhvVnL9nBGH5I',
+        'https://lh3.googleusercontent.com/d/1-9Lr-YL2troDML1g4v7ZhVTfB375_1vS',
+        'https://lh3.googleusercontent.com/d/1I5T_QSVwR8klAYQcLYFkE3dn2xdxoQW5'
+      ],
+      description: 'Experience comforting hospitality and quiet elegance at DaySpring Hotel in Wuse, Abuja. Positioned on Juba Street in Zone 6, featuring room tiers from Standard to Executive and Presidential Suites with top-notch amenities and dedicated guest services.'
+    },
+    {
+      id: 'broadfield-hotel-apo-residence-abuja',
+      name: 'Broadfield Hotel Apo residence',
+      location: '2 Ahmadu Bello Wy, Apo, Abuja 900110, Federal Capital Territory',
+      price: '79,000',
+      tiers: [
+        { name: 'Classic (Single Room)', price: '79,000' },
+        { name: '1 Bedroom Apartment', price: '147,000' },
+        { name: '2 Bedroom Apartment (Standard)', price: '158,000' },
+        { name: '2 Bedroom Apartment (Executive)', price: '210,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1j_48gd4JZSYV_jtktkYJVmT2Jp4K68OX',
+        'https://lh3.googleusercontent.com/d/15_lPfDBZLo7TILOrlIdNkFO2wzSVGlXZ',
+        'https://lh3.googleusercontent.com/d/1IDA9gxYE9wDHz-cmaVKJemoO6vY6tblV',
+        'https://lh3.googleusercontent.com/d/1uV721Iz2XUkREysQaO9-oc-SRKa9ilEW',
+        'https://lh3.googleusercontent.com/d/1O0ok8cwF5PEF_6F7E7Lykxcar-xyO2I2'
+      ],
+      description: 'Enjoy high-end residence living at Broadfield Hotel Apo Residence on Ahmadu Bello Way, Apo, Abuja. Featuring sophisticated Classic single rooms to spacious 1 & 2 bedroom luxury apartments complete with modern kitchens, fitness facilities, and top-tier security.'
+    },
+    {
+      id: 'peace-luxury-hotel-apartments-abuja',
+      name: 'Peace Luxury Hotel and apartments',
+      location: 'Jahi, Municipal, Abuja 900108, Federal Capital Territory',
+      price: '60,250',
+      tiers: [
+        { name: 'Standard (Single Room)', price: '60,250' },
+        { name: 'Supreme Deluxe (Self Con)', price: '82,750' },
+        { name: 'Peace Suite (2 Bedroom)', price: '118,250' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1IbE74juc_bIXXSA3FiZM3BofglgSgKXY',
+        'https://lh3.googleusercontent.com/d/1hypI63rKvysaQMZRHU4OL0S1N9mEWMCH',
+        'https://lh3.googleusercontent.com/d/17sZpjCCmDwUnQr0zZat5uPDdSf84T0o3',
+        'https://lh3.googleusercontent.com/d/1abMjYOagcsDn6gOrzieBS1odCgijVlm1'
+      ],
+      description: 'Experience tranquil serenity and boutique luxury at Peace Luxury Hotel and Apartments in Jahi, Abuja. Offering thoughtfully furnished Standard single rooms, Supreme Deluxe self-contained suites, and spacious 2-bedroom Peace Suites with round-the-clock power and top-flight security.'
+    },
+    {
+      id: 'cubana-signature-abuja',
+      name: 'Cubana Signature',
+      location: '9 Ashiek Jarma Street, off Umaru Dikko St, District, Abuja, Federal Capital Territory',
+      price: '64,000',
+      tiers: [
+        { name: 'Deluxe Room', price: '64,000' },
+        { name: 'Executive Room', price: '74,000' },
+        { name: 'Business Luxury Suite', price: '84,000' },
+        { name: 'Signature Suite', price: '126,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1lA0fdol9UlIToZpP5yt4crMEAVU0KOCl',
+        'https://lh3.googleusercontent.com/d/1W74fttso-XYOvpe2b7a0Fo8bnsFBFPaO',
+        'https://lh3.googleusercontent.com/d/1EYl9mth-IBDrE9R-4sU94hFynYgvmcQr',
+        'https://lh3.googleusercontent.com/d/1LmSezwXcH1-aHWTNCUHbvFVTDxnLTBaZ',
+        'https://lh3.googleusercontent.com/d/1a318e_OgNlpSQue6HVpoXFJtbFSqnGSp',
+        'https://lh3.googleusercontent.com/d/1DyJXAE04BL90vcmmmW5Ru5xprl8YIlC9'
+      ],
+      description: 'Experience elite hospitality and grand luxury at Cubana Signature in Abuja. Nestled on Ashiek Jarma Street off Umaru Dikko, offering high-end Deluxe, Executive, Business Luxury, and Signature suites with world-class dining, lounge, and security services.'
+    },
+    {
+      id: 'reiz-continental-hotel-abuja',
+      name: 'Reiz Continental Hotel',
+      location: '9 Wole Olanipekun St, Cadastral Zone, Abuja 900103, Federal Capital Territory',
+      price: '104,875',
+      tiers: [
+        { name: 'Small Room', price: '104,875' },
+        { name: 'Standard Room', price: '113,100' },
+        { name: 'Deluxe Room', price: '135,250' },
+        { name: 'Super Deluxe Room', price: '147,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/19naXjXgcaApfYtSkXCOpgi7XENMbZP7M',
+        'https://lh3.googleusercontent.com/d/1co-zg5rG73sZ4xgETxuD-K2phyO44rrT',
+        'https://lh3.googleusercontent.com/d/1XyD_Lq9bmKsTRLhOXe2Luf2vo96uu5d_',
+        'https://lh3.googleusercontent.com/d/1xAJoHePjBQ4imUuBSFPI3FKBlED4_GQn',
+        'https://lh3.googleusercontent.com/d/1f61-1w4NNmgH_O2XGIOrp74_sqpXXbCm'
+      ],
+      description: 'Enjoy world-class hospitality and premier comfort at Reiz Continental Hotel in Central Cadastral Zone, Abuja. Located on Wole Olanipekun Street, featuring modern accommodations ranging from Cozy Small rooms to spacious Super Deluxe suites, complete with fine dining, event halls, and 24/7 top-tier security.'
+    },
+    {
+      id: 'od-vicks-luxe-abuja',
+      name: "OD-V!CK'S LUXE",
+      location: 'Zone 4, Kitwe St, Wuse, Abuja 900109, Federal Capital Territory',
+      price: '28,000',
+      tiers: [
+        { name: 'Standard Room', price: '28,000' },
+        { name: 'Deluxe Room', price: '33,000' },
+        { name: 'Super Deluxe Room', price: '38,000' },
+        { name: 'Executive Room', price: '43,000' },
+        { name: 'Superior Executive Room', price: '48,000' },
+        { name: 'Royal Suite', price: '74,000' },
+        { name: 'Diplomatic Suite', price: '84,000' },
+        { name: 'Executive Suite', price: '105,000' },
+        { name: 'Presidential Suite', price: '125,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/17s96mzq7wQvExXDq8a4c-PePDJvP6PSm',
+        'https://lh3.googleusercontent.com/d/1FKveYf3XGWDvqk3AnATeUdd2zIoJDduS',
+        'https://lh3.googleusercontent.com/d/1OfWj9tIedJtKm85f0TPRAZ8m8GQGWJcu',
+        'https://lh3.googleusercontent.com/d/1f519pz4BW-z4X7mAKrGF5odmUvSPj62h'
+      ],
+      description: "Discover modern luxury and tailored hospitality at OD-V!CK'S LUXE in Wuse Zone 4, Abuja. Located on Kitwe Street, offering versatile accommodations from cozy Standard rooms to opulent Presidential suites equipped with high-speed WiFi, top-tier security, and fine dining."
+    },
+    {
+      id: 'e-suites-luxury-hotel-abuja',
+      name: 'E-Suites Luxury Hotel',
+      location: '21 Jesse Jackson St, off Jimmy Carter Street, Asokoro, Abuja 900103, Federal Capital Territory',
+      price: '40,000',
+      tiers: [
+        { name: 'Standard Room', price: '40,000' },
+        { name: 'Executive Room', price: '48,000' },
+        { name: 'Junior Suite', price: '59,000' },
+        { name: 'Executive Suite (Room & Parlor)', price: '79,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1h0fYtcUi33r8gQCOOPnDzzHp316THFb6',
+        'https://lh3.googleusercontent.com/d/1O3ysWDurhW40hL1Zcjx1ZfeJxnHrFe1W',
+        'https://lh3.googleusercontent.com/d/1akTSI-AYko2oyS_XxND_BYKYWCISuwrs',
+        'https://lh3.googleusercontent.com/d/1Cv4PPNS_8I10JANfCgis78J_224fSUSI'
+      ],
+      description: 'Experience refined hospitality and exclusive tranquility at E-Suites Luxury Hotel in Asokoro, Abuja. Situated on Jesse Jackson Street off Jimmy Carter Street, offering well-appointed Standard and Executive rooms, Junior Suites, and Executive Room & Parlor suites with top-class amenities and pristine security.'
+    },
+    {
+      id: 'plush-hotel-abuja',
+      name: 'Plush Hotel',
+      location: '5 Mbala St, Zone 4, Abuja 904101, Federal Capital Territory',
+      price: '33,000',
+      tiers: [
+        { name: 'Standard Room', price: '33,000' },
+        { name: 'Executive Room', price: '74,000' },
+        { name: 'Deluxe Suite', price: '96,000' },
+        { name: 'Plush Presidential Suite', price: '126,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1-WZFdKBZLfE9hSw0q5o2Vk0urztHN4AS',
+        'https://lh3.googleusercontent.com/d/1lAfUwfL_n7ys7570GTZkf32Taowsv32p',
+        'https://lh3.googleusercontent.com/d/1KFZ-3pmoGcbDWVJJNuVcsHk4AOiERoDB',
+        'https://lh3.googleusercontent.com/d/11B4PQbCkDJxysY6VPZgcLVnPa0elhpnx'
+      ],
+      description: 'Experience plush comfort and contemporary hospitality at Plush Hotel in Zone 4, Wuse, Abuja. Conveniently located on Mbala Street, offering stylishly finished Standard and Executive rooms to luxurious Deluxe and Presidential Suites with top-notch security and 24/7 guest services.'
+    },
+    {
+      id: 'berbera-palace-royale-abuja',
+      name: 'Berbera Palace Royale',
+      location: 'Zone 6, 2 Berbera St, Wuse, Abuja 900108, Federal Capital Territory',
+      price: '38,000',
+      tiers: [
+        { name: 'Standard Room', price: '38,000' },
+        { name: 'Deluxe Room', price: '43,000' },
+        { name: 'Executive Room', price: '48,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1VGNBPX9IwiGkHa25VABih8oba8K1I9IV',
+        'https://lh3.googleusercontent.com/d/1u90xkfvdEQ4y8avhaa_bHg95DW0L8582',
+        'https://lh3.googleusercontent.com/d/1knkVYmrhRYTqkHeh7psftduN7pNmSaDC',
+        'https://lh3.googleusercontent.com/d/1bsdKWJ7AviyMvFtgPUL6668MA17PVsjk'
+      ],
+      description: 'Experience royal comfort and peaceful relaxation at Berbera Palace Royale in Wuse Zone 6, Abuja. Ideally located on Berbera Street, offering elegant Standard, Deluxe, and Executive accommodations equipped with modern amenities, 24/7 security, and exceptional guest services.'
+    },
+    {
+      id: 'hawthorn-suite-by-wyndham-abuja',
+      name: 'Hawthorn Suite by Wyndham',
+      location: '1 Uke St, Garki 2, Abuja 900001, Federal Capital Territory',
+      price: '142,000',
+      tiers: [
+        { name: 'Queen Bed Efficiency (Studio) 37 SQM', price: '142,000' },
+        { name: 'Queen Bed Suite (1 Bedroom Deluxe) 43 SQM', price: '162,000' },
+        { name: 'King Bed Suite (1 Bedroom Premium) 55 SQM', price: '176,000' },
+        { name: 'King Bed VIP Suite (1 Bedroom Executive) 59 SQM', price: '204,000' },
+        { name: 'Queen Bed Suite (2 Bedroom Premium) 50 SQM', price: '235,000' },
+        { name: 'King Bed Suite (2 Bedroom Executive) 69 SQM', price: '260,000' },
+        { name: 'Presidential Suite (116 SQM)', price: '385,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1C3LMdBx3WLYZ2M0N8LtD_NROlIQRqWWL',
+        'https://lh3.googleusercontent.com/d/1OUTXWkYm6QbjceYvTxXCIPEm8WgqmQVs',
+        'https://lh3.googleusercontent.com/d/1Sqg7as64croVJA2PhwP0R9ZpROlGQDiB',
+        'https://lh3.googleusercontent.com/d/1ozFU561kHoN8opsk8zTVcqxF1xjXzv6G',
+        'https://lh3.googleusercontent.com/d/1jjm0DaKnLwJxgFdJ1DH0VVRNvflFD6n_',
+        'https://lh3.googleusercontent.com/d/16AhQYAyJCxDSlL_sk6W-XSzgqx0Bmv53',
+        'https://lh3.googleusercontent.com/d/1IdGW0Jhxh1xpo1IkF22PtsnNbABi-iro'
+      ],
+      description: 'Experience world-class hospitality and international standard luxury at Hawthorn Suite by Wyndham in Garki 2, Abuja. Positioned on Uke Street, offering expansive studio efficiencies and 1 to 2 bedroom executive suites up to 116 SQM Presidential Suites equipped with kitchenette facilities, outdoor pool, fitness center, and top-tier security.'
+    },
+    {
+      id: 'knightsbridge-hotel-suites-abuja',
+      name: 'Knightsbridge Hotel & Suites',
+      location: '32A Katsina-Ala St, Maitama, Abuja 904101, Federal Capital Territory',
+      price: '127,000',
+      tiers: [
+        { name: 'Standard Room', price: '127,000' },
+        { name: 'Deluxe Room', price: '147,000' },
+        { name: 'Junior Suite', price: '167,000' },
+        { name: 'Ambassador Suite', price: '187,000' },
+        { name: 'Studio Apartment', price: '239,000' },
+        { name: '1 Bedroom Apartment', price: '289,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1ppw9s1z5HPboWPksJCsmznbsbZH0XSU2',
+        'https://lh3.googleusercontent.com/d/1uCEDIuaaxKbzV93iujoqRECC29dpTrE2',
+        'https://lh3.googleusercontent.com/d/1HBGN2IvyOpA84WBAa1tTHLSX6B7iJNv4',
+        'https://lh3.googleusercontent.com/d/16I0wWfqyf9Uan2XS3bsES_qhpqBbaW0I',
+        'https://lh3.googleusercontent.com/d/1NKUrjPcJaX6R4WuOylxRv6bx8A5nNS7E',
+        'https://lh3.googleusercontent.com/d/1qPdUKN-wK7afK4wDF53V3maCyMv-Slm8',
+        'https://lh3.googleusercontent.com/d/1Dvukv_P7i_uV04eJSFFgMM-KdqVmQ_nn'
+      ],
+      description: 'Experience pristine British-inspired luxury and refined elegance at Knightsbridge Hotel & Suites in Maitama, Abuja. Located on Katsina-Ala Street, offering exquisite Standard & Deluxe rooms, Ambassador Suites, and high-end Studio and 1 Bedroom Apartments with premium amenities and top-flight security.'
+    },
+    {
+      id: 'power-mike-hotel-abuja',
+      name: 'Power Mike Hotel',
+      location: 'Area 1, 9 Argungu Close, off Benue Cres, Garki, Abuja, Federal Capital Territory',
+      price: '28,000',
+      tiers: [
+        { name: 'Standard Room', price: '28,000' },
+        { name: 'Executive Room', price: '31,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1IkVa_ndAm9MwwiZ3mEHHd1nk-cLuMgie',
+        'https://lh3.googleusercontent.com/d/19AvZGRSSgb3BEuGvZYQQAhHrNjMmvFVq',
+        'https://lh3.googleusercontent.com/d/1oz5jMr0uH26vgB80hdA5h9sTAWolHa5g'
+      ],
+      description: 'Enjoy cozy hospitality and convenient comfort at Power Mike Hotel in Area 1, Garki, Abuja. Located on Argungu Close off Benue Crescent, offering well-furnished Standard and Executive rooms with round-the-clock power, secure surroundings, and friendly service.'
+    },
+    {
+      id: 'yellow-trumpet-hotel-abuja',
+      name: 'Yellow Trumpet Hotel',
+      location: '51 Euphrates Cres, Wuse, Abuja 904101, Federal Capital Territory',
+      price: '109,000',
+      tiers: [
+        { name: 'Deluxe Room', price: '109,000' },
+        { name: 'Superior Room', price: '123,000' },
+        { name: 'Executive Room', price: '144,000' },
+        { name: 'Suite', price: '223,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1FWEd22GIHLV0KbZ7JAlH5Vp2pm4GduPZ',
+        'https://lh3.googleusercontent.com/d/1HyQjC_UjE6ZAJSJjuU9AoZmVdUu0emHH',
+        'https://lh3.googleusercontent.com/d/13yZSwP6C8t42PZjpPq93xvoj8HRbogxT',
+        'https://lh3.googleusercontent.com/d/1GQNy8wVijN0cWYl3DQfwYmtXvRJX3oeO'
+      ],
+      description: 'Experience boutique elegance and contemporary luxury at Yellow Trumpet Hotel in Wuse, Abuja. Located on Euphrates Crescent, offering tastefully styled Deluxe, Superior, and Executive rooms, as well as grand Suites with fine dining, 24/7 security, and superior comfort.'
+    },
+    {
+      id: 'tranquila-hotels-and-suites-abuja',
+      name: 'Tranquila Hotels and Suites',
+      location: 'Plot 1731 off Ahmadu Bello Wy, Mabushi, Abuja 900108, Federal Capital Territory',
+      price: '79,000',
+      tiers: [
+        { name: 'Deluxe Room', price: '79,000' },
+        { name: 'Executive Room', price: '88,000' },
+        { name: 'Super Executive Room', price: '99,000' },
+        { name: 'Diamond Suite', price: '105,000' },
+        { name: 'Royal Suite', price: '116,000' },
+        { name: 'Royal Suite Plus', price: '135,000' }
+      ],
+      images: [
+        'https://lh3.googleusercontent.com/d/1QJhB8sDrwy67XfkYOGyXNqmO6Fa8i_Ii',
+        'https://lh3.googleusercontent.com/d/1wiBDmtM7fDy60cIaDPMiIwHMkLSWa1cM',
+        'https://lh3.googleusercontent.com/d/1hVpHT0yrmU5D3hpXE730BKhbqTs2bzB2',
+        'https://lh3.googleusercontent.com/d/1OsFar4mmudjgItNtPnN0LQHoLgRW6s3y',
+        'https://lh3.googleusercontent.com/d/18niHZCMokGN6b2_R1XvnTti4nqWz-5AA',
+        'https://lh3.googleusercontent.com/d/1PaPU3MvVsXOSG1w-XhHOySE2ZLv3w5tz',
+        'https://lh3.googleusercontent.com/d/18sgQZlq3n0cVOvIxACxKeUbIecDYIWc1'
+      ],
+      description: 'Enjoy tranquil luxury and serene ambiance at Tranquila Hotels and Suites in Mabushi, Abuja. Located on Plot 1731 off Ahmadu Bello Way, offering plush Deluxe and Executive rooms to regal Royal Plus suites, equipped with high-speed internet, gourmet dining, 24/7 security, and world-class guest services.'
     }
   ];
 
@@ -3244,21 +3607,27 @@ Best regards.`;
       </div>
 
       {/* Navigation */}
-      <nav className="p-6 md:p-8 flex justify-between items-center z-50">
+      <nav className="px-4 py-5 sm:px-8 sm:py-7 flex justify-between items-center z-50 max-w-7xl mx-auto w-full">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           onClick={reset}
-          className="text-2xl font-serif tracking-[0.2em] uppercase font-light text-charcoal cursor-pointer"
+          className="text-lg sm:text-2xl font-serif tracking-[0.15em] sm:tracking-[0.2em] uppercase font-light text-charcoal cursor-pointer flex-shrink-0"
         >
           Elite Bookings
         </motion.div>
+
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center space-x-6 md:space-x-12 text-[11px] uppercase tracking-[0.25em] font-semibold text-charcoal/80"
+          className="flex items-center space-x-3 sm:space-x-6 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-semibold text-charcoal/80"
         >
-          <button onClick={reset} className="hover:text-gold transition-colors cursor-pointer">Home</button>
+          <button
+            onClick={reset}
+            className="hover:text-gold transition-colors cursor-pointer hidden sm:inline-block"
+          >
+            Home
+          </button>
         </motion.div>
       </nav>
 
@@ -4340,29 +4709,30 @@ Best regards.`;
         </div>
       </footer>
 
-      {/* Floating WhatsApp Assistance Button */}
-      <div className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-55 flex flex-col items-end pointer-events-none">
-        <motion.a
-          id="whatsapp-assistance-button"
-          href="https://wa.me/2347072253857?text=Hello%2C%20I%20need%20some%20assistance%20with%20a%20booking."
-          target="_blank"
-          rel="noopener noreferrer"
-          initial={{ opacity: 0, scale: 0.8, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="pointer-events-auto flex items-center gap-2.5 bg-[#25D366] text-white pl-4 pr-4 py-3 md:pl-5 md:pr-5 md:py-3.5 rounded-full shadow-[0_8px_32px_rgba(37,211,102,0.3)] hover:shadow-[0_12px_40px_rgba(37,211,102,0.45)] border border-emerald-400/20 transition-all duration-300 group cursor-pointer hover:scale-105 active:scale-95"
-        >
-          {/* Subtle pulse effect */}
-          <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-20 group-hover:scale-110 transition-transform duration-500 animate-ping -z-10" />
-          
-          <span className="text-[11px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap drop-shadow-sm font-sans">
-            need any assistance
-          </span>
-          <div className="bg-white/15 p-1 rounded-full">
-            <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.35-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-            </svg>
-          </div>
-        </motion.a>
+      {/* Floating WhatsApp Assistance Button (Bottom-Right) */}
+      <div className="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 z-50 flex flex-col items-end max-w-[48vw]">
+          <motion.a
+            id="whatsapp-assistance-button"
+            href="https://wa.me/2347072253857?text=Hello%2C%20I%20need%20some%20assistance%20with%20a%20booking."
+            target="_blank"
+            rel="noopener noreferrer"
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="flex items-center gap-2 bg-[#25D366] text-white px-3.5 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-3.5 rounded-full shadow-[0_8px_32px_rgba(37,211,102,0.3)] hover:shadow-[0_12px_40px_rgba(37,211,102,0.45)] border border-emerald-400/30 transition-all duration-300 group cursor-pointer hover:scale-105 active:scale-95"
+          >
+            {/* Subtle pulse effect */}
+            <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-20 group-hover:scale-110 transition-transform duration-500 animate-ping -z-10" />
+            
+            <span className="text-[10px] sm:text-[11px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap drop-shadow-sm font-sans">
+              <span className="hidden sm:inline">Need Assistance</span>
+              <span className="sm:hidden">Assistance</span>
+            </span>
+            <div className="bg-white/20 p-1 rounded-full flex-shrink-0">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 fill-white" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.35-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+            </div>
+          </motion.a>
       </div>
 
       {/* Elegant Floating Back to Top Button */}
@@ -4374,18 +4744,18 @@ Best regards.`;
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 15 }}
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-24 right-6 md:bottom-28 md:right-8 z-50 bg-charcoal text-gold hover:bg-gold hover:text-charcoal p-4 rounded-full shadow-[0_8px_32px_rgba(212,175,55,0.25)] border border-gold/30 transition-all duration-300 group cursor-pointer"
+            className="fixed bottom-18 right-3 sm:bottom-22 sm:right-6 md:bottom-28 md:right-8 z-50 bg-charcoal text-gold hover:bg-gold hover:text-charcoal p-3 sm:p-3.5 rounded-full shadow-[0_8px_32px_rgba(212,175,55,0.25)] border border-gold/40 transition-all duration-300 group cursor-pointer"
             aria-label="Back to Top"
           >
-            <ArrowUp className="w-5 h-5 group-hover:-translate-y-1 transition-all duration-300" />
+            <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-y-1 transition-all duration-300" />
           </motion.button>
         )}
       </AnimatePresence>
 
       {/* Admin Dashboard Modal */}
-      <AdminDashboard 
-        isOpen={isAdminOpen} 
-        onClose={() => handleNavigateBack(() => setIsAdminOpen(false))} 
+      <AdminDashboard
+        isOpen={isAdminOpen}
+        onClose={() => handleNavigateBack(() => setIsAdminOpen(false))}
       />
     </div>
   );
