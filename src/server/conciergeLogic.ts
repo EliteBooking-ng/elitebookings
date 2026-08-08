@@ -1041,7 +1041,7 @@ export async function handleConciergeRequest(requestBody: any): Promise<Concierg
         handoff,
         pendingOffer: newPendingOffer,
         nextStep: result
-          ? "Select 'Book This' on any option below to request your reservation."
+          ? "Select 'Check Availability' on any option below to request your reservation."
           : "Let me know your city, dates, or what you need and I'll take it from there.",
       },
     };

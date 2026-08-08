@@ -79,7 +79,7 @@ const WELCOME_MESSAGE: Message = {
       description: item.description,
       tiers: item.tiers
     })),
-    nextStep: "Select 'Book This' on any option below to request your reservation."
+    nextStep: "Select 'Check Availability' on any option below to request your reservation."
   },
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 };
@@ -327,11 +327,20 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
     e.preventDefault();
     if (!bookingProperty || !guestName || !guestPhone) return;
 
-    setIsSubmittingBooking(true);
-
     const isHotel = bookingProperty.category === 'Hotel';
     const needsQuantity = bookingProperty.category === 'Hotel' || bookingProperty.category === 'Shortlet' || bookingProperty.category === 'Car Rental';
     const quantityLabel = bookingProperty.category === 'Car Rental' ? 'Cars Needed' : 'Rooms Needed';
+
+    const messageText = `Hello Elite Concierge! 👑\n\nI would like to book the following property recommended by AI Concierge:\n\n*Property:* ${bookingProperty.name}\n*Location:* ${bookingProperty.location}\n*Price:* ${bookingProperty.price}\n\n*Guest Details:*\n- Name: ${guestName}\n- Phone: ${guestPhone}\n- Check-in: ${checkIn || 'Flexible'}\n- Check-out: ${checkOut || 'Flexible'}\n- Guests: ${guestCount}${needsQuantity ? `\n- ${quantityLabel}: ${numberOfRooms}` : ''}\n\nPlease confirm availability and payment steps.`;
+
+    // Fired synchronously, before any `await` below — opening a tab after an
+    // await loses the click's "user activation" in mobile Safari/Chrome and
+    // gets silently blocked, which was why WhatsApp never actually opened.
+    if (method === 'whatsapp') {
+      window.open(`https://wa.me/2347072253857?text=${encodeURIComponent(messageText)}`, '_blank');
+    }
+
+    setIsSubmittingBooking(true);
 
     const bookingDetails = {
       propertyId: bookingProperty.id,
@@ -348,17 +357,57 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
       source: 'AI Concierge'
     };
 
-    try {
-      await addDoc(collection(db, 'concierge_bookings'), bookingDetails);
-    } catch (err) {
+    // Firestore save, and an email alert to the team — same FormSubmit /
+    // Web3Forms path the main site booking form uses, so the business gets a
+    // real notification even if the customer never presses Send in the
+    // WhatsApp tab that just opened. Neither should block the UI or each other.
+    const firestoreSave = addDoc(collection(db, 'concierge_bookings'), bookingDetails).catch((err) => {
       console.warn('Firestore booking save notice:', err);
+    });
+
+    const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
+    const targetEmail = localStorage.getItem('elite_notification_email') || 'Elitebooking.ng@gmail.com';
+
+    const emailPromises: Promise<any>[] = [
+      fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          _subject: `Elite Concierge Booking: ${bookingProperty.name}`,
+          _template: 'table',
+          'Property / Asset': bookingProperty.name,
+          'Location': bookingProperty.location,
+          'Price': bookingProperty.price,
+          'Guest Name': guestName,
+          'Guest Phone': guestPhone,
+          'Check-In': checkIn || 'Flexible',
+          'Check-Out': checkOut || 'Flexible',
+          'Guests': guestCount,
+          ...(needsQuantity ? { [quantityLabel]: numberOfRooms } : {}),
+          'Source': 'AI Concierge',
+          'Full Message': messageText
+        })
+      }).catch((err) => console.warn('FormSubmit email notice:', err))
+    ];
+
+    if (accessKey && accessKey.trim() !== '') {
+      emailPromises.push(
+        fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            access_key: accessKey,
+            subject: `Elite Concierge Booking: ${bookingProperty.name}`,
+            from_name: 'Elite Bookings AI Concierge',
+            to_email: targetEmail,
+            message: messageText,
+            phone: guestPhone
+          })
+        }).catch((err) => console.warn('Web3Forms email notice:', err))
+      );
     }
 
-    if (method === 'whatsapp') {
-      const messageText = `Hello Elite Concierge! 👑\n\nI would like to book the following property recommended by AI Concierge:\n\n*Property:* ${bookingProperty.name}\n*Location:* ${bookingProperty.location}\n*Price:* ${bookingProperty.price}\n\n*Guest Details:*\n- Name: ${guestName}\n- Phone: ${guestPhone}\n- Check-in: ${checkIn || 'Flexible'}\n- Check-out: ${checkOut || 'Flexible'}\n- Guests: ${guestCount}${needsQuantity ? `\n- ${quantityLabel}: ${numberOfRooms}` : ''}\n\nPlease confirm availability and payment steps.`;
-      const encodedMsg = encodeURIComponent(messageText);
-      window.open(`https://wa.me/2347072253857?text=${encodedMsg}`, '_blank');
-    }
+    await Promise.allSettled([firestoreSave, ...emailPromises]);
 
     setIsSubmittingBooking(false);
     setBookingSuccess(true);
@@ -606,7 +655,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                             onClick={() => openBooking(rec)}
                             className="mt-2.5 w-full bg-gradient-to-r from-gold via-amber-300 to-gold text-charcoal text-[11px] font-bold uppercase tracking-wider py-2 rounded-full hover:shadow-md transition-all cursor-pointer"
                           >
-                            Book This
+                            Check Availability
                           </button>
                         </div>
                       </div>
@@ -952,7 +1001,17 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                     <div className="text-center py-6">
                       <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
                       <h3 className="font-serif text-lg text-charcoal font-semibold">Request Sent!</h3>
-                      <p className="text-xs text-charcoal/50 mt-1">Our concierge will confirm your booking shortly.</p>
+                      <p className="text-xs text-charcoal/50 mt-1 mb-4">Our concierge will confirm your booking shortly.</p>
+                      {bookingProperty && (
+                        <a
+                          href={`https://wa.me/2347072253857?text=${encodeURIComponent(`Hello Elite Concierge! 👑\n\nFollowing up on my request for *${bookingProperty.name}* — Name: ${guestName}, Phone: ${guestPhone}.`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-bold uppercase tracking-wider py-3 px-5 rounded-full shadow-md transition-all cursor-pointer"
+                        >
+                          Message Us On WhatsApp To Confirm
+                        </a>
+                      )}
                     </div>
                   )}
                 </motion.div>

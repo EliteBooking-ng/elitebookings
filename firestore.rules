@@ -22,5 +22,9 @@ service cloud.firestore {
     match /enquiries/{enquiryId} {
       allow read, write: if true;
     }
+
+    match /concierge_bookings/{bookingId} {
+      allow read, write: if true;
+    }
   }
 }
