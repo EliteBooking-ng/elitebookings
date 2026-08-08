@@ -31,7 +31,8 @@ import {
   ArrowUp,
   ShieldCheck,
   Layers,
-  Crown
+  Crown,
+  Plane
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
@@ -39,6 +40,7 @@ import portHarcourtImg from './assets/images/port_harcourt_landmark_178509310419
 import abujaImg from './assets/images/abuja_landmark_1785093118297.jpg';
 import lagosImg from './assets/images/lagos_landmark_1785093272541.jpg';
 import { AdminDashboard } from './components/AdminDashboard';
+import { AIConciergeModal } from './components/AIConciergeModal';
 import {
   collection,
   addDoc
@@ -64,7 +66,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
-type Category = 'stays' | 'homes' | 'drive' | null;
+type Category = 'stays' | 'homes' | 'drive' | 'jets' | null;
 
 interface EnquiryData {
   location: string;
@@ -75,11 +77,13 @@ interface EnquiryData {
 
 export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isAIConciergeOpen, setIsAIConciergeOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
   const [selectedShortlet, setSelectedShortlet] = useState<any | null>(null);
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
+  const [selectedJet, setSelectedJet] = useState<any | null>(null);
 
   // Luxury unified search states and helper functions
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,11 +167,33 @@ export default function App() {
     );
   };
 
-  const renderSearchBar = (currentCategory: 'stays' | 'homes' | 'drive') => {
+  const getFilteredJets = () => {
+    const query = searchQuery.trim().toLowerCase();
+    const sourceJets = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+      ? lagosJets
+      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      ? abujaJets
+      : phJets;
+    if (!query) return sourceJets;
+    return sourceJets.filter(jet =>
+      jet.name.toLowerCase().includes(query) ||
+      jet.location.toLowerCase().includes(query) ||
+      jet.description.toLowerCase().includes(query) ||
+      'jets'.includes(query) ||
+      'private jets'.includes(query) ||
+      'charter'.includes(query) ||
+      'aviation'.includes(query) ||
+      'flight'.includes(query) ||
+      'plane'.includes(query)
+    );
+  };
+
+  const renderSearchBar = (currentCategory: 'stays' | 'homes' | 'drive' | 'jets') => {
     const catLabels = {
       stays: { singular: 'hotel', plural: 'hotels' },
       homes: { singular: 'shortlet', plural: 'shortlets' },
-      drive: { singular: 'car rental', plural: 'car rentals' }
+      drive: { singular: 'car rental', plural: 'car rentals' },
+      jets: { singular: 'private jet', plural: 'private jets' }
     };
 
     return (
@@ -307,21 +333,42 @@ export default function App() {
                 #{tag.label}
               </button>
             ))}
+
+            {currentCategory === 'jets' && [
+              { label: 'Light Jet', value: 'Citation' },
+              { label: 'Midsize Jet', value: 'Challenger' },
+              { label: 'Super-Midsize Jet', value: 'Legacy' },
+              { label: 'Heavy Jet', value: 'Gulfstream' }
+            ].map(tag => (
+              <button
+                key={tag.label}
+                type="button"
+                onClick={() => setSearchQuery(tag.value)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
+                  searchQuery.toLowerCase() === tag.value.toLowerCase()
+                    ? 'bg-charcoal text-cream shadow-sm'
+                    : 'bg-charcoal/[0.03] text-charcoal hover:bg-charcoal/10'
+                }`}
+              >
+                #{tag.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
     );
   };
 
-  const renderOtherCategoryMatches = (activeCat: 'stays' | 'homes' | 'drive') => {
+  const renderOtherCategoryMatches = (activeCat: 'stays' | 'homes' | 'drive' | 'jets') => {
     if (!searchQuery.trim()) return null;
 
     const query = searchQuery.trim();
     const otherHotels = activeCat !== 'stays' ? getFilteredHotels() : [];
     const otherShortlets = activeCat !== 'homes' ? getFilteredShortlets() : [];
     const otherCars = activeCat !== 'drive' ? getFilteredCars() : [];
+    const otherJets = activeCat !== 'jets' ? getFilteredJets() : [];
 
-    const totalMatches = otherHotels.length + otherShortlets.length + otherCars.length;
+    const totalMatches = otherHotels.length + otherShortlets.length + otherCars.length + otherJets.length;
     if (totalMatches === 0) return null;
 
     return (
@@ -575,11 +622,63 @@ export default function App() {
                   >
                     Rent Vehicle
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setSelectedCategory('drive');
                       setBookingType('reservation');
                       setShowBookingOptions(car);
+                    }}
+                    className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
+                  >
+                    Check Availability
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+
+          {otherJets.map((jet) => (
+            <motion.div
+              key={`other-jet-${jet.id}`}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/80 border border-charcoal/5 rounded-[2rem] overflow-hidden shadow-lg flex flex-col md:flex-row group hover:shadow-2xl hover:bg-white transition-all duration-500"
+            >
+              <div className="md:w-2/5 relative overflow-hidden aspect-video md:aspect-auto h-[240px] md:h-auto font-sans">
+                <HotelImageSlider images={jet.images} name={jet.name} />
+                <span className="absolute top-4 left-4 bg-charcoal text-gold text-[9px] uppercase tracking-[0.25em] font-bold px-3 py-1.5 rounded-full z-10 shadow-md">
+                  Private Aviation
+                </span>
+              </div>
+              <div className="md:w-3/5 p-8 flex flex-col justify-center font-sans font-sans">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h4 className="text-2xl font-serif text-charcoal mb-1">{jet.name}</h4>
+                    <div className="flex items-center text-charcoal/40 text-xs">
+                      <MapPin className="w-3.5 h-3.5 mr-1 text-gold" />
+                      {jet.location}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-6 line-clamp-2">
+                  {jet.description}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('jets');
+                      setBookingType('booking');
+                      setShowBookingOptions(jet);
+                    }}
+                    className="bg-charcoal text-cream px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors shadow-md inline-block cursor-pointer font-sans"
+                  >
+                    Charter Jet
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('jets');
+                      setBookingType('reservation');
+                      setShowBookingOptions(jet);
                     }}
                     className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
                   >
@@ -610,19 +709,27 @@ export default function App() {
   const [numberOfRooms, setNumberOfRooms] = useState<string>('1 Room');
   const [emailSubmitStatus, setEmailSubmitStatus] = useState<'idle' | 'saving' | 'sending' | 'success' | 'manual_fallback'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  // A single date+time value per field (native datetime-local input) instead of
+  // a separate calendar step plus hour/minute/AM-PM dropdowns — one control,
+  // one decision, per check-in and check-out.
   const [checkinDate, setCheckinDate] = useState<Date | null>(null);
-  const [checkinHour, setCheckinHour] = useState<string>('12');
-  const [checkinMinute, setCheckinMinute] = useState<string>('00');
-  const [checkinPeriod, setCheckinPeriod] = useState<string>('PM');
   const [checkoutDate, setCheckoutDate] = useState<Date | null>(null);
-  const [checkoutHour, setCheckoutHour] = useState<string>('12');
-  const [checkoutMinute, setCheckoutMinute] = useState<string>('00');
-  const [checkoutPeriod, setCheckoutPeriod] = useState<string>('PM');
-  const [activeDateTab, setActiveDateTab] = useState<'checkin' | 'checkout'>('checkin');
-  const [currentMonth, setCurrentMonth] = useState<Date>(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  });
+
+  const toDateTimeLocalValue = (date: Date | null): string => {
+    if (!date) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
+  const formatDateTime = (date: Date | null): string =>
+    date
+      ? `${date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+      : 'N/A';
+
+  const formatShortDateTime = (date: Date | null): string =>
+    date
+      ? `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+      : 'Select';
 
   const [showBackToTop, setShowBackToTop] = useState(false);
 
@@ -648,7 +755,8 @@ export default function App() {
         location: null,
         bookingOptions: null,
         emailPopup: false,
-        adminOpen: false
+        adminOpen: false,
+        conciergeOpen: false
       }, '');
     }
 
@@ -661,6 +769,7 @@ export default function App() {
         setShowBookingOptions(state.bookingOptions ?? null);
         setShowEmailPopup(state.emailPopup ?? false);
         setIsAdminOpen(state.adminOpen ?? false);
+        setIsAIConciergeOpen(state.conciergeOpen ?? false);
       } else {
         // Fallback to home root
         setSelectedCategory(null);
@@ -668,6 +777,7 @@ export default function App() {
         setShowBookingOptions(null);
         setShowEmailPopup(false);
         setIsAdminOpen(false);
+        setIsAIConciergeOpen(false);
       }
       setTimeout(() => {
         isPoppingState.current = false;
@@ -684,31 +794,33 @@ export default function App() {
   useEffect(() => {
     if (isPoppingState.current) return;
 
-    const isRoot = !selectedCategory && !selectedLocation && !showBookingOptions && !showEmailPopup && !isAdminOpen;
-    
+    const isRoot = !selectedCategory && !selectedLocation && !showBookingOptions && !showEmailPopup && !isAdminOpen && !isAIConciergeOpen;
+
     const currentState = {
       ebRoot: isRoot,
       category: selectedCategory,
       location: selectedLocation,
       bookingOptions: showBookingOptions,
       emailPopup: showEmailPopup,
-      adminOpen: isAdminOpen
+      adminOpen: isAdminOpen,
+      conciergeOpen: isAIConciergeOpen
     };
 
     const histState = window.history.state || {};
 
-    const isSameState = 
+    const isSameState =
       histState.category === currentState.category &&
       histState.location === currentState.location &&
       (histState.bookingOptions?.id ?? null) === (currentState.bookingOptions?.id ?? null) &&
       histState.emailPopup === currentState.emailPopup &&
-      histState.adminOpen === currentState.adminOpen;
+      histState.adminOpen === currentState.adminOpen &&
+      histState.conciergeOpen === currentState.conciergeOpen;
 
     if (!isSameState) {
       const currentDepth = typeof histState.depth === 'number' ? histState.depth : 0;
       window.history.pushState({ ...currentState, depth: currentDepth + 1 }, '');
     }
-  }, [selectedCategory, selectedLocation, showBookingOptions, showEmailPopup, isAdminOpen]);
+  }, [selectedCategory, selectedLocation, showBookingOptions, showEmailPopup, isAdminOpen, isAIConciergeOpen]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -727,20 +839,11 @@ export default function App() {
   useEffect(() => {
     if (showBookingOptions) {
       setBookingStep(1);
-      setActiveDateTab('checkin');
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(12, 0, 0, 0);
       setCheckinDate(tomorrow);
-      setCheckinHour('12');
-      setCheckinMinute('00');
-      setCheckinPeriod('PM');
-
       setCheckoutDate(null);
-      setCheckoutHour('12');
-      setCheckoutMinute('00');
-      setCheckoutPeriod('PM');
-
-      setCurrentMonth(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1));
       setShowEmailPopup(false);
       setUserPhoneNumber('');
       setEmailSubmitStatus('idle');
@@ -748,11 +851,16 @@ export default function App() {
     }
   }, [showBookingOptions]);
 
-  const handleCheckinDateChange = (date: Date) => {
+  const handleCheckinDateTimeChange = (value: string) => {
+    const date = value ? new Date(value) : null;
     setCheckinDate(date);
-    if (checkoutDate && date >= checkoutDate) {
+    if (date && checkoutDate && date >= checkoutDate) {
       setCheckoutDate(null);
     }
+  };
+
+  const handleCheckoutDateTimeChange = (value: string) => {
+    setCheckoutDate(value ? new Date(value) : null);
   };
   const [guestId, setGuestId] = useState<string>(() => {
     const existing = localStorage.getItem('guestId');
@@ -1648,6 +1756,24 @@ export default function App() {
   ];
 
   const abujaHotels = [
+    {
+      id: 'sharon-ultimate-hotel',
+      name: 'Sharon Ultimate Hotel',
+      location: '29 Jos St, Garki, Abuja 900243, Federal Capital Territory',
+      price: '42,950',
+      tiers: [
+        { name: 'Standard', price: '42,950' },
+        { name: 'Deluxe', price: '50,000' },
+        { name: 'Royal', price: '56,875' },
+        { name: 'Executive', price: '62,750' }
+      ],
+      images: [
+        '/images/sharon-ultimate-hotel/exterior.jpeg',
+        '/images/sharon-ultimate-hotel/room-1.jpeg',
+        '/images/sharon-ultimate-hotel/room-2.jpeg'
+      ],
+      description: 'Set on Jos Street in the heart of Garki, Sharon Ultimate Hotel offers refined comfort and dependable service in one of Abuja\'s most accessible districts. Choose from Standard, Deluxe, Royal, or Executive rooms, each finished with plush bedding and warm, elegant interiors — ideal for business travelers and guests seeking a peaceful stay close to the city center.'
+    },
     {
       id: 'jasmines-place-suites',
       name: "Jasmine's Place & Suites",
@@ -2996,6 +3122,27 @@ export default function App() {
 
   const lagosShortlets: any[] = [
     {
+      id: 'isadora-d-glides',
+      name: 'Isadora D Glides',
+      location: 'Ikate-Lekki, Lagos',
+      price: '110,000',
+      cautionFee: '50,000',
+      features: ['One-Bedroom Apartment', 'High-Speed WiFi 🛜', 'Smart TV 📺', '24/7 Electricity ⚡', 'Professional Security 🔒'],
+      images: [
+        '/images/isadora-d-glides/living-1.jpeg',
+        '/images/isadora-d-glides/living-2.jpeg',
+        '/images/isadora-d-glides/living-3.jpeg',
+        '/images/isadora-d-glides/living-4.jpeg',
+        '/images/isadora-d-glides/bed-1.jpeg',
+        '/images/isadora-d-glides/bed-2.jpeg',
+        '/images/isadora-d-glides/kitchen.jpeg',
+        '/images/isadora-d-glides/bathroom.jpeg',
+        '/images/isadora-d-glides/entrance.jpeg',
+        '/images/isadora-d-glides/exterior.jpeg'
+      ],
+      description: 'Elegant One-Bedroom Apartment in Ikate-Lekki, Lagos, with easy accessibility. Fully furnished and tastefully designed interiors, complete with high-speed WiFi, Smart TVs, 24/7 electricity, and professional security for total comfort and peace of mind. (Refundable caution fee: ₦50,000 | Total initial payment: ₦160,000).'
+    },
+    {
       id: 'beverly-hills-akoka',
       name: 'Beverly Hills',
       location: 'Akoka Lagos',
@@ -3079,6 +3226,45 @@ export default function App() {
   const abujaCars: any[] = [];
 
   const phShortlets = [
+    {
+      id: 'vintage-studio',
+      name: 'Vintage',
+      location: 'off Sani Abacha Road, GRA, Port Harcourt',
+      price: '90,000',
+      cautionFee: '20,000',
+      features: ['Studio Apartment', 'Air Conditioning', 'Smart TV 📺', 'Kitchenette', 'Washing Machine'],
+      images: [
+        '/images/vintage-shortlet/bed-1.jpeg',
+        '/images/vintage-shortlet/bed-2.jpeg',
+        '/images/vintage-shortlet/living-1.jpeg',
+        '/images/vintage-shortlet/living-2.jpeg',
+        '/images/vintage-shortlet/tv-area.jpeg',
+        '/images/vintage-shortlet/kitchen-1.jpeg',
+        '/images/vintage-shortlet/kitchen-2.jpeg',
+        '/images/vintage-shortlet/kitchen-3.jpeg',
+        '/images/vintage-shortlet/entrance.jpeg',
+        '/images/vintage-shortlet/bathroom.jpeg'
+      ],
+      description: 'A tastefully finished studio apartment located off Sani Abacha Road, GRA, Port Harcourt. Fully self-contained with air conditioning, a smart TV, kitchenette, and washing machine — ideal for a comfortable, private stay. (Refundable caution fee: ₦20,000 | Total initial payment: ₦110,000).'
+    },
+    {
+      id: 'vintage-studio-2',
+      name: 'Vintage (Studio 2)',
+      location: 'off Sani Abacha Road, GRA, Port Harcourt',
+      price: '90,000',
+      cautionFee: '20,000',
+      features: ['Studio Apartment', 'Air Conditioning', 'Mood Lighting', 'Kitchenette', 'Microwave', 'Washing Machine'],
+      images: [
+        '/images/vintage-shortlet-2/bed-1.jpeg',
+        '/images/vintage-shortlet-2/bed-2.jpeg',
+        '/images/vintage-shortlet-2/living-1.jpeg',
+        '/images/vintage-shortlet-2/kitchen-1.jpeg',
+        '/images/vintage-shortlet-2/kitchen-2.jpeg',
+        '/images/vintage-shortlet-2/bathroom-1.jpeg',
+        '/images/vintage-shortlet-2/bathroom-2.jpeg'
+      ],
+      description: 'A second tastefully finished studio apartment at Vintage, off Sani Abacha Road, GRA, Port Harcourt. Fully self-contained with air conditioning, ambient mood lighting, kitchenette with microwave, and washing machine — ideal for a comfortable, private stay. (Refundable caution fee: ₦20,000 | Total initial payment: ₦110,000).'
+    },
     {
       id: 'treasure-court-4bed',
       name: 'Treasure Court (4-Bed Duplex)',
@@ -3213,6 +3399,51 @@ export default function App() {
     }
   ];
 
+  const phJets = [
+    {
+      id: 'citation-cj3',
+      name: 'Cessna Citation CJ3',
+      location: 'Port Harcourt, Rivers State',
+      price: '',
+      images: [
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Cessna_Citation_CJ3_N297KH_1.jpg/1280px-Cessna_Citation_CJ3_N297KH_1.jpg'
+      ],
+      description: 'Light Jet — swift and efficient for short to medium-haul trips. Ideal for quick domestic charters with up to 6 passengers in refined comfort.'
+    },
+    {
+      id: 'challenger-350',
+      name: 'Bombardier Challenger 350',
+      location: 'Port Harcourt, Rivers State',
+      price: '',
+      images: [
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Netjets_Bombardier_Challenger_350_N757QS_BWI_MD1.jpg/1280px-Netjets_Bombardier_Challenger_350_N757QS_BWI_MD1.jpg'
+      ],
+      description: 'Midsize Jet — the benchmark for midsize luxury, with a spacious stand-up cabin and generous range for regional and cross-country charters.'
+    },
+    {
+      id: 'legacy-650',
+      name: 'Embraer Legacy 650',
+      location: 'Port Harcourt, Rivers State',
+      price: '',
+      images: [
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/G-RBNS_Embraer_ERJ_135BJ_Legacy_650_%287608178118%29.jpg/1280px-G-RBNS_Embraer_ERJ_135BJ_Legacy_650_%287608178118%29.jpg'
+      ],
+      description: 'Super-Midsize Jet — exceptional cabin space and long-range capability, perfect for extended journeys with up to 13 passengers in first-class comfort.'
+    },
+    {
+      id: 'gulfstream-g550',
+      name: 'Gulfstream G550',
+      location: 'Port Harcourt, Rivers State',
+      price: '',
+      images: [
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Gulfstream_G550%2C_EBACE_2018%2C_Le_Grand-Saconnex_%28BL7C0707%29.jpg/1280px-Gulfstream_G550%2C_EBACE_2018%2C_Le_Grand-Saconnex_%28BL7C0707%29.jpg'
+      ],
+      description: 'Heavy Jet — the pinnacle of private aviation, with ultra-long-range performance for intercontinental travel in unmatched comfort and privacy.'
+    }
+  ];
+  const abujaJets: typeof phJets = [];
+  const lagosJets: typeof phJets = [];
+
   const categories = [
     {
       id: 'stays' as const,
@@ -3237,6 +3468,14 @@ export default function App() {
       icon: <Car className="w-6 h-6" />,
       image: 'https://images.dealersync.com/2174/Photos/826466/20220510223658719_IMG_6371.jpg?_=743cb49fa9df567a3ddcfc880d45e73cbc146174',
       description: 'A fleet of exceptional vehicles for your most refined journeys.'
+    },
+    {
+      id: 'jets' as const,
+      title: 'Private Jets',
+      subtitle: 'Elite Aviation',
+      icon: <Plane className="w-6 h-6" />,
+      image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Gulfstream_G550%2C_EBACE_2018%2C_Le_Grand-Saconnex_%28BL7C0707%29.jpg/1280px-Gulfstream_G550%2C_EBACE_2018%2C_Le_Grand-Saconnex_%28BL7C0707%29.jpg',
+      description: 'Chartered private jets for seamless, discreet, and effortless travel.'
     }
   ];
 
@@ -3259,6 +3498,7 @@ export default function App() {
       setSelectedHotel(null);
       setSelectedShortlet(null);
       setSelectedCar(null);
+      setSelectedJet(null);
       setShowBookingOptions(null);
       setShowEmailPopup(false);
       setIsAdminOpen(false);
@@ -3274,13 +3514,8 @@ export default function App() {
     setEmailSubmitStatus('saving');
     setErrorMessage('');
 
-    const formattedCheckin = checkinDate 
-      ? `${checkinDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${checkinHour}:${checkinMinute} ${checkinPeriod}` 
-      : 'N/A';
-
-    const formattedCheckout = checkoutDate 
-      ? `${checkoutDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}` 
-      : 'N/A';
+    const formattedCheckin = formatDateTime(checkinDate);
+    const formattedCheckout = formatDateTime(checkoutDate);
 
     const kindLabel = bookingType === 'reservation' ? 'availability' : 'booking';
     const capKindLabel = bookingType === 'reservation' ? 'Availability' : 'Booking';
@@ -3456,126 +3691,6 @@ Best regards.`;
     );
   };
 
-  const renderCalendar = (mode: 'checkin' | 'checkout') => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayIndex = new Date(year, month, 1).getDay();
-
-    const days = [];
-    for (let i = 0; i < firstDayIndex; i++) {
-      days.push(null);
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-      days.push(new Date(year, month, d));
-    }
-
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-
-    const handleMonthChange = (direction: 'prev' | 'next') => {
-      setCurrentMonth(prev => {
-        const newMonth = new Date(prev);
-        if (direction === 'prev') {
-          newMonth.setMonth(newMonth.getMonth() - 1);
-        } else {
-          newMonth.setMonth(newMonth.getMonth() + 1);
-        }
-        return newMonth;
-      });
-    };
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return (
-      <div className="w-full">
-        {/* Month Navigation */}
-        <div className="flex justify-between items-center mb-6">
-          <button 
-            type="button"
-            onClick={() => handleMonthChange('prev')}
-            className="p-2 border border-charcoal/10 rounded-full hover:bg-gold/10 hover:border-gold transition-colors text-charcoal cursor-pointer flex items-center justify-center"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <h4 className="font-serif text-charcoal font-medium text-base md:text-lg leading-none">
-            {monthNames[month]} {year}
-          </h4>
-          <button 
-            type="button"
-            onClick={() => handleMonthChange('next')}
-            className="p-2 border border-charcoal/10 rounded-full hover:bg-gold/10 hover:border-gold transition-colors text-charcoal cursor-pointer flex items-center justify-center"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Days of Week Header */}
-        <div className="grid grid-cols-7 gap-1 text-center mb-3">
-          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-            <span key={day} className="text-[10px] uppercase font-mono tracking-wider font-semibold text-charcoal/40">
-              {day}
-            </span>
-          ))}
-        </div>
-
-        {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1.5 text-center">
-          {days.map((date, idx) => {
-            if (!date) {
-              return <div key={`empty-${idx}`} className="aspect-square" />;
-            }
-
-            const targetDate = mode === 'checkin' ? checkinDate : checkoutDate;
-            const isSelected = targetDate && 
-              date.getDate() === targetDate.getDate() &&
-              date.getMonth() === targetDate.getMonth() &&
-              date.getFullYear() === targetDate.getFullYear();
-
-            let isPast = date < today;
-            if (mode === 'checkout' && checkinDate) {
-              const checkinCompare = new Date(checkinDate);
-              checkinCompare.setHours(0, 0, 0, 0);
-              isPast = isPast || date < checkinCompare;
-            }
-
-            return (
-              <button
-                key={`day-${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${idx}`}
-                type="button"
-                disabled={isPast}
-                onClick={() => {
-                  if (mode === 'checkin') {
-                    handleCheckinDateChange(date);
-                    setTimeout(() => {
-                      setActiveDateTab('checkout');
-                    }, 180);
-                  } else {
-                    setCheckoutDate(date);
-                  }
-                }}
-                className={`
-                  aspect-square flex items-center justify-center rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer
-                  ${isPast 
-                    ? 'text-charcoal/20 cursor-not-allowed hover:bg-transparent' 
-                    : isSelected 
-                      ? 'bg-gold text-white font-bold scale-105 shadow-md shadow-gold/25' 
-                      : 'text-charcoal hover:bg-gold/10 hover:text-gold'
-                  }
-                `}
-              >
-                {date.getDate()}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-gold/30">
@@ -3627,6 +3742,13 @@ Best regards.`;
             className="hover:text-gold transition-colors cursor-pointer hidden sm:inline-block"
           >
             Home
+          </button>
+          <button
+            onClick={() => setIsAIConciergeOpen(true)}
+            className="flex items-center space-x-2 bg-gradient-to-r from-gold via-amber-300 to-gold text-charcoal px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-full border border-gold/60 shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer font-bold tracking-wider text-[10px] sm:text-xs uppercase"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-charcoal fill-charcoal/20" />
+            <span className="font-extrabold">AI Concierge</span>
           </button>
         </motion.div>
       </nav>
@@ -3690,7 +3812,7 @@ Best regards.`;
                 ))}
               </div>
             </motion.section>
-          ) : ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive') && !selectedLocation) ? (
+          ) : ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive' || selectedCategory === 'jets') && !selectedLocation) ? (
             <motion.section 
               key="location-landing"
               initial={{ opacity: 0, y: 20 }}
@@ -3708,10 +3830,10 @@ Best regards.`;
               <div className="text-center mb-16">
                 <span className="text-[12px] uppercase tracking-[0.5em] text-gold font-bold mb-4 block">Select Your Destination</span>
                 <h2 className="text-5xl md:text-7xl font-light tracking-tight mb-6">
-                  {selectedCategory === 'stays' ? 'Hotels' : selectedCategory === 'homes' ? 'Shortlets' : 'Car Rentals'} in <span className="italic font-serif">Nigeria</span>
+                  {selectedCategory === 'stays' ? 'Hotels' : selectedCategory === 'homes' ? 'Shortlets' : selectedCategory === 'jets' ? 'Private Jets' : 'Car Rentals'} in <span className="italic font-serif">Nigeria</span>
                 </h2>
                 <p className="text-charcoal/60 max-w-lg mx-auto font-normal">
-                  Explore our curated selection of ultra-luxury {selectedCategory === 'stays' ? 'stays' : selectedCategory === 'homes' ? 'private estates' : 'private fleet'} in the most exclusive regions.
+                  Explore our curated selection of ultra-luxury {selectedCategory === 'stays' ? 'stays' : selectedCategory === 'homes' ? 'private estates' : selectedCategory === 'jets' ? 'chartered aircraft' : 'private fleet'} in the most exclusive regions.
                 </p>
               </div>
 
@@ -4199,8 +4321,105 @@ Best regards.`;
 
               {renderOtherCategoryMatches('drive')}
             </motion.section>
+          ) : (selectedCategory === 'jets' && selectedLocation && !selectedJet) ? (
+            <motion.section
+              key="jet-list"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-6xl mt-12 mb-24 relative"
+            >
+              <button
+                onClick={() => {
+                  setSelectedLocation(null);
+                  setSearchQuery('');
+                }}
+                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to locations
+              </button>
+
+              <div className="mb-10 text-center md:text-left">
+                <span className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold block mb-2 font-sans">Elite Aviation</span>
+                <h2 className="text-4xl md:text-5xl font-serif text-charcoal font-light">
+                  Private Jets &amp; Charter
+                </h2>
+                <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
+                  Chartered aircraft for seamless, discreet travel — arranged from {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : selectedLocation && selectedLocation.includes('Abuja') ? 'Abuja' : 'Port Harcourt'}.
+                </p>
+              </div>
+
+              {renderSearchBar('jets')}
+
+              {getFilteredJets().length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-[2rem] border border-charcoal/5 shadow-2xl shadow-gold/5 font-sans mb-12">
+                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50 animate-pulse" />
+                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">No Matching Jets Found</h1>
+                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4">
+                    We couldn&rsquo;t find any charter aircraft matching &ldquo;{searchQuery}&rdquo;. Try using other search keywords or explore other categories below.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-12">
+                  {getFilteredJets().map((jet, idx) => (
+                    <motion.div
+                      key={jet.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
+                    >
+                      <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
+                        <HotelImageSlider images={jet.images} name={jet.name} />
+                      </div>
+                      <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
+                        <div className="flex justify-between items-start mb-6 font-sans">
+                          <div>
+                            <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{jet.name}</h3>
+                            <div className="flex items-center text-charcoal/40 text-sm">
+                              <MapPin className="w-4 h-4 mr-2 text-gold" />
+                              {jet.location}
+                            </div>
+                          </div>
+                          <div className="text-right font-sans">
+                            {!jet.price && (
+                              <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Price on Request</span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md font-sans">
+                          {jet.description}
+                        </p>
+                        <div className="flex flex-wrap gap-4 font-sans">
+                          <button
+                            onClick={() => {
+                              setBookingType('booking');
+                              setShowBookingOptions(jet);
+                            }}
+                            className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
+                          >
+                            Charter Now
+                          </button>
+                          <button
+                            onClick={() => {
+                              setBookingType('reservation');
+                              setShowBookingOptions(jet);
+                            }}
+                            className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
+                          >
+                            Check Availability
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {renderOtherCategoryMatches('jets')}
+            </motion.section>
           ) : (
-            <motion.section 
+            <motion.section
               key="enquiry"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -4215,7 +4434,9 @@ Best regards.`;
                     setSelectedShortlet(null);
                   } else if (selectedCategory === 'drive' && selectedCar) {
                     setSelectedCar(null);
-                  } else if ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive') && selectedLocation) {
+                  } else if (selectedCategory === 'jets' && selectedJet) {
+                    setSelectedJet(null);
+                  } else if ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive' || selectedCategory === 'jets') && selectedLocation) {
                     setSelectedLocation(null);
                   } else {
                     setSelectedCategory(null);
@@ -4223,7 +4444,7 @@ Best regards.`;
                 }}
                 className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
               >
-                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to {selectedHotel || selectedShortlet || selectedCar ? (selectedCategory === 'stays' ? 'hotels' : selectedCategory === 'homes' ? 'shortlets' : 'cars') : selectedLocation ? 'locations' : 'selection'}
+                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to {selectedHotel || selectedShortlet || selectedCar || selectedJet ? (selectedCategory === 'stays' ? 'hotels' : selectedCategory === 'homes' ? 'shortlets' : selectedCategory === 'jets' ? 'jets' : 'cars') : selectedLocation ? 'locations' : 'selection'}
               </button>
 
               <div className="bg-white rounded-3xl shadow-2xl shadow-gold/5 overflow-hidden min-h-[600px] flex flex-col md:flex-row">
@@ -4310,7 +4531,7 @@ Best regards.`;
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative bg-white rounded-3xl p-6 md:p-10 max-w-lg w-full shadow-2xl z-10 overflow-hidden"
+                className="relative bg-white rounded-3xl p-6 md:p-10 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl z-10"
               >
                 <button 
                   onClick={() => setShowBookingOptions(null)}
@@ -4486,93 +4707,37 @@ Best regards.`;
                   </div>
                 ) : bookingStep === 1 ? (
                   <div className="flex flex-col h-full">
-                    <div className="text-center mb-6">
+                    <div className="text-center mb-8">
                       <h3 className="text-2xl font-serif text-charcoal mb-1">Select Dates &amp; Times</h3>
-                      <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out dates and times to check availability for {showBookingOptions.name}</p>
+                      <p className="text-charcoal/50 text-xs text-balance">Choose your desired check-in and check-out date and time for {showBookingOptions.name}</p>
                     </div>
 
-                    {/* Tabs for Check-in / Check-out */}
-                    <div className="flex bg-charcoal/5 p-1 rounded-xl mb-6">
-                      <button
-                        type="button"
-                        onClick={() => setActiveDateTab('checkin')}
-                        className={`flex-1 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer
-                          ${activeDateTab === 'checkin'
-                            ? 'bg-white text-charcoal shadow-sm'
-                            : 'text-charcoal/60 hover:text-charcoal'
-                          }
-                        `}
-                      >
-                        Check-in
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveDateTab('checkout')}
-                        className={`flex-1 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer
-                          ${activeDateTab === 'checkout'
-                            ? 'bg-white text-charcoal shadow-sm'
-                            : 'text-charcoal/60 hover:text-charcoal'
-                          }
-                        `}
-                      >
-                        Check-out
-                      </button>
-                    </div>
+                    {/* One combined date + time control per field — no separate calendar step or AM/PM dropdowns */}
+                    <div className="space-y-5 mb-8">
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-[0.2em] text-gold font-bold mb-2 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" /> Check-in
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={toDateTimeLocalValue(checkinDate)}
+                          min={toDateTimeLocalValue(new Date())}
+                          onChange={(e) => handleCheckinDateTimeChange(e.target.value)}
+                          className="w-full bg-charcoal/5 hover:bg-charcoal/10 transition-colors border border-charcoal/10 rounded-xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:border-gold text-charcoal cursor-pointer"
+                        />
+                      </div>
 
-                    <div className="mb-6">
-                      {renderCalendar(activeDateTab)}
-                    </div>
-
-                    {/* Time Selector */}
-                    <div className="mb-6 border-t border-charcoal/5 pt-5">
-                      <label className="block text-center mb-3">
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-gold font-bold flex items-center justify-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" /> {activeDateTab === 'checkin' ? 'Check-in Time' : 'Check-out Time'}
-                        </span>
-                      </label>
-                      <div className="flex justify-center items-center gap-2">
-                        {/* Hour */}
-                        <div className="relative">
-                          <select
-                            value={activeDateTab === 'checkin' ? checkinHour : checkoutHour}
-                            onChange={(e) => activeDateTab === 'checkin' ? setCheckinHour(e.target.value) : setCheckoutHour(e.target.value)}
-                            className="appearance-none bg-charcoal/5 hover:bg-charcoal/10 transition-colors border border-charcoal/10 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-gold text-charcoal pr-8 cursor-pointer"
-                          >
-                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(h => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-charcoal/40 text-[10px]">▼</div>
-                        </div>
-
-                        <span className="text-charcoal/40 font-bold">:</span>
-
-                        {/* Minute */}
-                        <div className="relative">
-                          <select
-                            value={activeDateTab === 'checkin' ? checkinMinute : checkoutMinute}
-                            onChange={(e) => activeDateTab === 'checkin' ? setCheckinMinute(e.target.value) : setCheckoutMinute(e.target.value)}
-                            className="appearance-none bg-charcoal/5 hover:bg-charcoal/10 transition-colors border border-charcoal/10 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-gold text-charcoal pr-8 cursor-pointer"
-                          >
-                            {['00', '15', '30', '45'].map(m => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-charcoal/40 text-[10px]">▼</div>
-                        </div>
-
-                        {/* Period AM/PM */}
-                        <div className="relative">
-                          <select
-                            value={activeDateTab === 'checkin' ? checkinPeriod : checkoutPeriod}
-                            onChange={(e) => activeDateTab === 'checkin' ? setCheckinPeriod(e.target.value) : setCheckoutPeriod(e.target.value)}
-                            className="appearance-none bg-charcoal/5 hover:bg-charcoal/10 transition-colors border border-charcoal/10 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-gold text-charcoal pr-8 cursor-pointer"
-                          >
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-charcoal/40 text-[10px]">▼</div>
-                        </div>
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-[0.2em] text-gold font-bold mb-2 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" /> Check-out
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={toDateTimeLocalValue(checkoutDate)}
+                          min={toDateTimeLocalValue(checkinDate) || toDateTimeLocalValue(new Date())}
+                          onChange={(e) => handleCheckoutDateTimeChange(e.target.value)}
+                          className="w-full bg-charcoal/5 hover:bg-charcoal/10 transition-colors border border-charcoal/10 rounded-xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:border-gold text-charcoal cursor-pointer"
+                        />
                       </div>
                     </div>
 
@@ -4582,27 +4747,24 @@ Best regards.`;
                         <div>
                           <p className="text-[10px] text-gold uppercase tracking-wider font-bold mb-0.5">Check-in</p>
                           <p className="text-[11px] font-semibold text-charcoal">
-                            {checkinDate ? checkinDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Select'} at {checkinHour}:{checkinMinute} {checkinPeriod}
+                            {formatShortDateTime(checkinDate)}
                           </p>
                         </div>
                         <div className="border-l border-gold/15">
                           <p className="text-[10px] text-gold uppercase tracking-wider font-bold mb-0.5">Check-out</p>
                           <p className={`text-[11px] font-semibold ${checkoutDate ? 'text-charcoal' : 'text-red-500 font-bold animate-pulse'}`}>
-                            {checkoutDate 
-                              ? `${checkoutDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${checkoutHour}:${checkoutMinute} ${checkoutPeriod}` 
-                              : 'Selection Required'
-                            }
+                            {checkoutDate ? formatShortDateTime(checkoutDate) : 'Selection Required'}
                           </p>
                         </div>
                       </div>
-                      
+
                       <button
                         type="button"
                         onClick={() => setBookingStep(2)}
                         disabled={!checkinDate || !checkoutDate}
                         className={`w-full py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-2 transition-all duration-300
-                          ${(checkinDate && checkoutDate) 
-                            ? 'bg-charcoal text-cream hover:bg-gold hover:shadow-lg hover:shadow-gold/20 cursor-pointer' 
+                          ${(checkinDate && checkoutDate)
+                            ? 'bg-charcoal text-cream hover:bg-gold hover:shadow-lg hover:shadow-gold/20 cursor-pointer'
                             : 'bg-charcoal/20 text-charcoal/40 cursor-not-allowed'
                           }
                         `}
@@ -4627,14 +4789,14 @@ Best regards.`;
                           <span className="text-xs font-bold text-charcoal block">
                             {checkinDate ? checkinDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                           </span>
-                          <span className="text-[11px] text-charcoal/60 mt-0.5 block">{checkinHour}:{checkinMinute} {checkinPeriod}</span>
+                          <span className="text-[11px] text-charcoal/60 mt-0.5 block">{checkinDate ? checkinDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''}</span>
                         </div>
                         <div className="border-l border-charcoal/10 pl-4">
                           <span className="text-[10px] uppercase font-bold tracking-widest text-charcoal/40 block mb-0.5">Check-out</span>
                           <span className="text-xs font-bold text-charcoal block">
                             {checkoutDate ? checkoutDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                           </span>
-                          <span className="text-[11px] text-charcoal/60 mt-0.5 block">{checkoutHour}:{checkoutMinute} {checkoutPeriod}</span>
+                          <span className="text-[11px] text-charcoal/60 mt-0.5 block">{checkoutDate ? checkoutDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''}</span>
                         </div>
                       </div>
                       {selectedPackage ? (
@@ -4709,6 +4871,21 @@ Best regards.`;
         </div>
       </footer>
 
+      {/* Floating AI Concierge Quick Trigger (Bottom-Left) */}
+      {!isAIConciergeOpen && (
+        <div className="fixed bottom-4 left-3 sm:bottom-6 sm:left-6 z-50 max-w-[48vw]">
+          <motion.button
+            onClick={() => setIsAIConciergeOpen(true)}
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="flex items-center gap-1.5 sm:gap-2.5 bg-charcoal text-gold px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-full shadow-[0_8px_30px_rgba(212,175,55,0.35)] hover:shadow-[0_12px_36px_rgba(212,175,55,0.5)] border border-gold/60 transition-all duration-300 group cursor-pointer hover:scale-105 active:scale-95 font-bold text-[10px] sm:text-xs uppercase tracking-wider"
+          >
+            <Sparkles className="w-4 h-4 text-gold fill-gold/30 animate-pulse flex-shrink-0" />
+            <span className="font-extrabold whitespace-nowrap">AI Concierge</span>
+          </motion.button>
+        </div>
+      )}
+
       {/* Floating WhatsApp Assistance Button (Bottom-Right) */}
       <div className="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 z-50 flex flex-col items-end max-w-[48vw]">
           <motion.a
@@ -4756,6 +4933,12 @@ Best regards.`;
       <AdminDashboard
         isOpen={isAdminOpen}
         onClose={() => handleNavigateBack(() => setIsAdminOpen(false))}
+      />
+
+      {/* AI Concierge Modal */}
+      <AIConciergeModal
+        isOpen={isAIConciergeOpen}
+        onClose={() => handleNavigateBack(() => setIsAIConciergeOpen(false))}
       />
     </div>
   );
