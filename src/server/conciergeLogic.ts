@@ -332,11 +332,14 @@ type SearchCategory = "Hotel" | "Shortlet" | "Car Rental" | "Private Jet";
 // detectCategory below), which is what lets a customer switch categories
 // mid-conversation instead of getting stuck on whatever they asked for first.
 const CATEGORY_TERMS: [RegExp, SearchCategory][] = [
-  // "room(s)" is deliberately excluded here — it's a room-COUNT word, not a
-  // category word (shortlets have rooms too), and since it often trails a
-  // sentence ("shortlet ... 2 rooms") it would otherwise win the last-mention
-  // race and silently override an explicit category the customer just stated.
-  [/\bhotels?\b/i, "Hotel"], [/\bsuites?\b/i, "Hotel"], [/\bstays?\b/i, "Hotel"], [/\blodge\b/i, "Hotel"],
+  // "room" only counts as a Hotel signal when it's NOT part of a room-COUNT
+  // phrase ("2 rooms", "3 bedrooms") — shortlets have rooms too, so "shortlet
+  // ... 2 rooms" must not let "rooms" win the last-mention race and override
+  // the category the customer actually stated. But a bare "I need a room" (no
+  // preceding number) is a genuine, common way to mean "a hotel" and should
+  // count — excluding it entirely meant "room above 60k" matched no category
+  // at all and silently fell back to whatever was mentioned earlier in the chat.
+  [/\bhotels?\b/i, "Hotel"], [/\bsuites?\b/i, "Hotel"], [/\bstays?\b/i, "Hotel"], [/\blodge\b/i, "Hotel"], [/(?<!\d)(?<!\d )\brooms?\b/i, "Hotel"],
   [/\bshortlets?\b/i, "Shortlet"], [/\bapartments?\b/i, "Shortlet"], [/\bvillas?\b/i, "Shortlet"], [/\bpenthouses?\b/i, "Shortlet"], [/\bduplex(es)?\b/i, "Shortlet"],
   [/\bcars?\b/i, "Car Rental"], [/\bsuvs?\b/i, "Car Rental"], [/\bprado\b/i, "Car Rental"], [/\bg63\b/i, "Car Rental"], [/\bg-wagon\b/i, "Car Rental"], [/\bchauffeur\b/i, "Car Rental"], [/rental car/i, "Car Rental"], [/\bride\b/i, "Car Rental"], [/\bbus(es)?\b/i, "Car Rental"], [/\btrucks?\b/i, "Car Rental"], [/\bdelivery\b/i, "Car Rental"], [/\blogistics\b/i, "Car Rental"],
   [/\bjets?\b/i, "Private Jet"], [/charter flight/i, "Private Jet"], [/charter a plane/i, "Private Jet"], [/private plane/i, "Private Jet"], [/private aviation/i, "Private Jet"], [/\bgulfstream\b/i, "Private Jet"], [/\bbombardier\b/i, "Private Jet"], [/\bcitation\b/i, "Private Jet"], [/\bembraer\b/i, "Private Jet"], [/challenger 350/i, "Private Jet"],
