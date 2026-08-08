@@ -32,7 +32,9 @@ import {
   ShieldCheck,
   Layers,
   Crown,
-  Plane
+  Plane,
+  Sun,
+  Moon
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
@@ -78,6 +80,27 @@ interface EnquiryData {
 export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAIConciergeOpen, setIsAIConciergeOpen] = useState(false);
+
+  // Light/dark theme — defaults to whatever the inline script in index.html
+  // already applied (stored preference, or OS preference) so this never
+  // fights that first paint.
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
+      return 'dark';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    try {
+      localStorage.setItem('theme', theme);
+    } catch (e) {
+      // Ignore - e.g. storage disabled in a private/incognito context.
+    }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
@@ -3776,6 +3799,13 @@ Best regards.`;
             className="hover:text-gold transition-colors cursor-pointer hidden sm:inline-block"
           >
             Home
+          </button>
+          <button
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-charcoal/15 flex items-center justify-center text-charcoal hover:border-gold hover:text-gold transition-colors cursor-pointer flex-shrink-0"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <button
             onClick={() => setIsAIConciergeOpen(true)}
