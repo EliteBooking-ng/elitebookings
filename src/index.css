@@ -15,9 +15,19 @@
   body {
     @apply bg-cream text-charcoal font-sans antialiased;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif;
+  }
+}
+
+/* iOS Safari auto-zooms the whole page on focus for any text input/select
+   with a computed font-size under 16px, which then leaves the layout
+   zoomed in and clipped after the keyboard closes. Forcing 16px on mobile
+   prevents that zoom without changing the visual size on desktop. */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
   }
 }
 
