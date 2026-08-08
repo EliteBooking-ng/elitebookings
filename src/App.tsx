@@ -3462,7 +3462,21 @@ export default function App() {
     }
   ];
   const abujaJets: typeof phJets = [];
-  const lagosJets: typeof phJets = [];
+  const lagosJets: typeof phJets = [
+    {
+      id: 'challenger-604',
+      name: 'Bombardier Challenger 604',
+      location: 'Lagos, Lagos State',
+      price: '',
+      images: [
+        '/images/challenger-604/exterior.jpeg',
+        '/images/challenger-604/cabin-1.jpeg',
+        '/images/challenger-604/cabin-2.jpeg',
+        '/images/challenger-604/dining.jpeg'
+      ],
+      description: 'Super-Midsize Jet — long-range private travel designed for comfort, privacy, and performance. Accommodates up to 10 passengers in a spacious, stand-up cabin with executive seating, generous legroom, an enclosed lavatory, and large baggage capacity. Customized catering and dedicated CRM support for onboard preferences make it ideal for executive trips, group travel, and cross-border missions.'
+    }
+  ];
 
   const categories = [
     {

@@ -1668,4 +1668,15 @@ export const CATALOG_ITEMS: CatalogItem[] = [
     highlights: ['Heavy Jet', 'Ultra-long-range'],
     description: 'Heavy Jet — the pinnacle of private aviation, with ultra-long-range performance for intercontinental travel in unmatched comfort and privacy.'
   },
+  {
+    id: 'challenger-604',
+    name: 'Bombardier Challenger 604',
+    category: 'Private Jet',
+    city: 'Lagos',
+    location: 'Lagos, Lagos State',
+    price: '',
+    image: '/images/challenger-604/exterior.jpeg',
+    highlights: ['Super-Midsize Jet', 'Up to 10 passengers', 'Enclosed lavatory', 'Customized catering'],
+    description: 'Super-Midsize Jet — long-range private travel designed for comfort, privacy, and performance. Accommodates up to 10 passengers in a spacious, stand-up cabin with executive seating, generous legroom, an enclosed lavatory, and large baggage capacity. Customized catering and dedicated CRM support for onboard preferences make it ideal for executive trips, group travel, and cross-border missions.'
+  },
 ];
