@@ -1405,6 +1405,17 @@ export const CATALOG_ITEMS: CatalogItem[] = [
     tiers: [{ name: 'Gold', price: '257,000' }, { name: 'Diamond', price: '165,000' }, { name: 'Exclusive', price: '135,000' }, { name: 'Silver', price: '115,000' }, { name: 'Top Tier', price: '110,000' }, { name: 'Bronze', price: '102,500' }, { name: 'Basic', price: '99,000' }]
   },
   {
+    id: 'the-aura',
+    name: 'The Aura',
+    category: 'Shortlet',
+    city: 'Abuja',
+    location: 'Jahi, Abuja',
+    price: '310,000',
+    image: '/images/the-aura/bed-1.jpeg',
+    highlights: ['Two-Bedroom (Ground Floor)', '24/7 Light ⚡', '24/7 Water Supply 🚿', '24/7 Security 🔒', 'Gym 🏋️', 'Laundry Service 🧺', 'Swimming Pool 🏊', 'Rooftop Jacuzzi 🛁', '24/7 Room Service 🛎️', 'Elevator 🛗', 'WiFi 🛜', 'Standby Generator', 'Smart TV 📺', 'Well-Equipped Kitchen 🍳'],
+    description: 'A serene and calm Two-Bedroom ground-floor unit at The Aura, Jahi, Abuja. Fully self-contained with 24/7 light, water, and security, a gym, laundry service, swimming pool, rooftop jacuzzi, 24/7 room service, elevator access, WiFi, standby generator, Smart TV, and a well-equipped kitchen.'
+  },
+  {
     id: 'isadora-d-glides',
     name: 'Isadora D Glides',
     category: 'Shortlet',

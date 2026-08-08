@@ -3222,7 +3222,27 @@ export default function App() {
     }
   ];
   const lagosCars: any[] = [];
-  const abujaShortlets: any[] = [];
+  const abujaShortlets: any[] = [
+    {
+      id: 'the-aura',
+      name: 'The Aura',
+      location: 'Jahi, Abuja',
+      price: '310,000',
+      features: ['Two-Bedroom (Ground Floor)', '24/7 Light ⚡', '24/7 Water Supply 🚿', '24/7 Security 🔒', 'Gym 🏋️', 'Laundry Service 🧺', 'Swimming Pool 🏊', 'Rooftop Jacuzzi 🛁', '24/7 Room Service 🛎️', 'Elevator 🛗', 'WiFi 🛜', 'Standby Generator', 'Smart TV 📺', 'Well-Equipped Kitchen 🍳'],
+      images: [
+        '/images/the-aura/bed-1.jpeg',
+        '/images/the-aura/bed-2.jpeg',
+        '/images/the-aura/bed-3.jpeg',
+        '/images/the-aura/window.jpeg',
+        '/images/the-aura/living-1.jpeg',
+        '/images/the-aura/living-2.jpeg',
+        '/images/the-aura/living-3.jpeg',
+        '/images/the-aura/dining.jpeg',
+        '/images/the-aura/entrance.jpeg'
+      ],
+      description: 'A serene and calm Two-Bedroom ground-floor unit at The Aura, Jahi, Abuja. Fully self-contained with 24/7 light, water, and security, a gym, laundry service, swimming pool, rooftop jacuzzi, 24/7 room service, elevator access, WiFi, standby generator, Smart TV, and a well-equipped kitchen.'
+    }
+  ];
   const abujaCars: any[] = [];
 
   const phShortlets = [
