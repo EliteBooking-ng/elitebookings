@@ -6,9 +6,10 @@
 import React, { useState, useEffect, useRef, Component } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Hotel, 
-  Home, 
-  Car, 
+  Hotel,
+  Home,
+  Car,
+  Truck,
   BedDouble,
   ChevronLeft, 
   ChevronRight,
@@ -34,7 +35,8 @@ import {
   Crown,
   Plane,
   Sun,
-  Moon
+  Moon,
+  Users
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
@@ -43,6 +45,8 @@ import abujaImg from './assets/images/abuja_landmark_1785093118297.jpg';
 import lagosImg from './assets/images/lagos_landmark_1785093272541.jpg';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AIConciergeModal } from './components/AIConciergeModal';
+import { PrivateJetRequestModal } from './components/PrivateJetRequestModal';
+import { MovingRequestModal } from './components/MovingRequestModal';
 import {
   collection,
   addDoc
@@ -68,7 +72,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
-type Category = 'stays' | 'homes' | 'drive' | 'jets' | null;
+type Category = 'stays' | 'homes' | 'drive' | 'jets' | 'moving' | null;
 
 interface EnquiryData {
   location: string;
@@ -106,7 +110,9 @@ export default function App() {
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
   const [selectedShortlet, setSelectedShortlet] = useState<any | null>(null);
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
-  const [selectedJet, setSelectedJet] = useState<any | null>(null);
+  const [showJetRequestForm, setShowJetRequestForm] = useState(false);
+  const [jetRequestPreset, setJetRequestPreset] = useState<string | null>(null);
+  const [showMovingRequestForm, setShowMovingRequestForm] = useState(false);
 
   // Luxury unified search states and helper functions
   const [searchQuery, setSearchQuery] = useState('');
@@ -190,33 +196,11 @@ export default function App() {
     );
   };
 
-  const getFilteredJets = () => {
-    const query = searchQuery.trim().toLowerCase();
-    const sourceJets = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
-      ? lagosJets
-      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
-      ? abujaJets
-      : phJets;
-    if (!query) return sourceJets;
-    return sourceJets.filter(jet =>
-      jet.name.toLowerCase().includes(query) ||
-      jet.location.toLowerCase().includes(query) ||
-      jet.description.toLowerCase().includes(query) ||
-      'jets'.includes(query) ||
-      'private jets'.includes(query) ||
-      'charter'.includes(query) ||
-      'aviation'.includes(query) ||
-      'flight'.includes(query) ||
-      'plane'.includes(query)
-    );
-  };
-
-  const renderSearchBar = (currentCategory: 'stays' | 'homes' | 'drive' | 'jets') => {
+  const renderSearchBar = (currentCategory: 'stays' | 'homes' | 'drive') => {
     const catLabels = {
       stays: { singular: 'hotel', plural: 'hotels' },
       homes: { singular: 'shortlet', plural: 'shortlets' },
-      drive: { singular: 'car rental', plural: 'car rentals' },
-      jets: { singular: 'private jet', plural: 'private jets' }
+      drive: { singular: 'car rental', plural: 'car rentals' }
     };
 
     return (
@@ -356,42 +340,21 @@ export default function App() {
                 #{tag.label}
               </button>
             ))}
-
-            {currentCategory === 'jets' && [
-              { label: 'Light Jet', value: 'Citation' },
-              { label: 'Midsize Jet', value: 'Challenger' },
-              { label: 'Super-Midsize Jet', value: 'Legacy' },
-              { label: 'Heavy Jet', value: 'Gulfstream' }
-            ].map(tag => (
-              <button
-                key={tag.label}
-                type="button"
-                onClick={() => setSearchQuery(tag.value)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
-                  searchQuery.toLowerCase() === tag.value.toLowerCase()
-                    ? 'bg-charcoal text-cream shadow-sm'
-                    : 'bg-charcoal/[0.03] text-charcoal hover:bg-charcoal/10'
-                }`}
-              >
-                #{tag.label}
-              </button>
-            ))}
           </div>
         </div>
       </div>
     );
   };
 
-  const renderOtherCategoryMatches = (activeCat: 'stays' | 'homes' | 'drive' | 'jets') => {
+  const renderOtherCategoryMatches = (activeCat: 'stays' | 'homes' | 'drive') => {
     if (!searchQuery.trim()) return null;
 
     const query = searchQuery.trim();
     const otherHotels = activeCat !== 'stays' ? getFilteredHotels() : [];
     const otherShortlets = activeCat !== 'homes' ? getFilteredShortlets() : [];
     const otherCars = activeCat !== 'drive' ? getFilteredCars() : [];
-    const otherJets = activeCat !== 'jets' ? getFilteredJets() : [];
 
-    const totalMatches = otherHotels.length + otherShortlets.length + otherCars.length + otherJets.length;
+    const totalMatches = otherHotels.length + otherShortlets.length + otherCars.length;
     if (totalMatches === 0) return null;
 
     return (
@@ -660,57 +623,6 @@ export default function App() {
             </motion.div>
           ))}
 
-          {otherJets.map((jet) => (
-            <motion.div
-              key={`other-jet-${jet.id}`}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/80 border border-charcoal/5 rounded-[2rem] overflow-hidden shadow-lg flex flex-col md:flex-row group hover:shadow-2xl hover:bg-white transition-all duration-500"
-            >
-              <div className="md:w-2/5 relative overflow-hidden aspect-video md:aspect-auto h-[240px] md:h-auto font-sans">
-                <HotelImageSlider images={jet.images} name={jet.name} />
-                <span className="absolute top-4 left-4 bg-charcoal text-gold text-[9px] uppercase tracking-[0.25em] font-bold px-3 py-1.5 rounded-full z-10 shadow-md">
-                  Private Aviation
-                </span>
-              </div>
-              <div className="md:w-3/5 p-8 flex flex-col justify-center font-sans font-sans">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="text-2xl font-serif text-charcoal mb-1">{jet.name}</h4>
-                    <div className="flex items-center text-charcoal/40 text-xs">
-                      <MapPin className="w-3.5 h-3.5 mr-1 text-gold" />
-                      {jet.location}
-                    </div>
-                  </div>
-                </div>
-                <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-6 line-clamp-2">
-                  {jet.description}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => {
-                      setSelectedCategory('jets');
-                      setBookingType('booking');
-                      setShowBookingOptions(jet);
-                    }}
-                    className="bg-charcoal text-cream px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors shadow-md inline-block cursor-pointer font-sans"
-                  >
-                    Charter Jet
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedCategory('jets');
-                      setBookingType('reservation');
-                      setShowBookingOptions(jet);
-                    }}
-                    className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
-                  >
-                    Check Availability
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
         </div>
       </div>
     );
@@ -3442,65 +3354,6 @@ export default function App() {
     }
   ];
 
-  const phJets = [
-    {
-      id: 'citation-cj3',
-      name: 'Cessna Citation CJ3',
-      location: 'Port Harcourt, Rivers State',
-      price: '',
-      images: [
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Cessna_Citation_CJ3_N297KH_1.jpg/1280px-Cessna_Citation_CJ3_N297KH_1.jpg'
-      ],
-      description: 'Light Jet — swift and efficient for short to medium-haul trips. Ideal for quick domestic charters with up to 6 passengers in refined comfort.'
-    },
-    {
-      id: 'challenger-350',
-      name: 'Bombardier Challenger 350',
-      location: 'Port Harcourt, Rivers State',
-      price: '',
-      images: [
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Netjets_Bombardier_Challenger_350_N757QS_BWI_MD1.jpg/1280px-Netjets_Bombardier_Challenger_350_N757QS_BWI_MD1.jpg'
-      ],
-      description: 'Midsize Jet — the benchmark for midsize luxury, with a spacious stand-up cabin and generous range for regional and cross-country charters.'
-    },
-    {
-      id: 'legacy-650',
-      name: 'Embraer Legacy 650',
-      location: 'Port Harcourt, Rivers State',
-      price: '',
-      images: [
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/G-RBNS_Embraer_ERJ_135BJ_Legacy_650_%287608178118%29.jpg/1280px-G-RBNS_Embraer_ERJ_135BJ_Legacy_650_%287608178118%29.jpg'
-      ],
-      description: 'Super-Midsize Jet — exceptional cabin space and long-range capability, perfect for extended journeys with up to 13 passengers in first-class comfort.'
-    },
-    {
-      id: 'gulfstream-g550',
-      name: 'Gulfstream G550',
-      location: 'Port Harcourt, Rivers State',
-      price: '',
-      images: [
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Gulfstream_G550%2C_EBACE_2018%2C_Le_Grand-Saconnex_%28BL7C0707%29.jpg/1280px-Gulfstream_G550%2C_EBACE_2018%2C_Le_Grand-Saconnex_%28BL7C0707%29.jpg'
-      ],
-      description: 'Heavy Jet — the pinnacle of private aviation, with ultra-long-range performance for intercontinental travel in unmatched comfort and privacy.'
-    }
-  ];
-  const abujaJets: typeof phJets = [];
-  const lagosJets: typeof phJets = [
-    {
-      id: 'challenger-604',
-      name: 'Bombardier Challenger 604',
-      location: 'Lagos, Lagos State',
-      price: '',
-      images: [
-        '/images/challenger-604/exterior.jpeg',
-        '/images/challenger-604/cabin-1.jpeg',
-        '/images/challenger-604/cabin-2.jpeg',
-        '/images/challenger-604/dining.jpeg'
-      ],
-      description: 'Super-Midsize Jet — long-range private travel designed for comfort, privacy, and performance. Accommodates up to 10 passengers in a spacious, stand-up cabin with executive seating, generous legroom, an enclosed lavatory, and large baggage capacity. Customized catering and dedicated CRM support for onboard preferences make it ideal for executive trips, group travel, and cross-border missions.'
-    }
-  ];
-
   const categories = [
     {
       id: 'stays' as const,
@@ -3531,8 +3384,16 @@ export default function App() {
       title: 'Private Jets',
       subtitle: 'Elite Aviation',
       icon: <Plane className="w-6 h-6" />,
-      image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Gulfstream_G550%2C_EBACE_2018%2C_Le_Grand-Saconnex_%28BL7C0707%29.jpg/1280px-Gulfstream_G550%2C_EBACE_2018%2C_Le_Grand-Saconnex_%28BL7C0707%29.jpg',
-      description: 'Chartered private jets for seamless, discreet, and effortless travel.'
+      image: '/images/challenger-604/exterior.jpeg',
+      description: 'Your destination. Your schedule. Your aircraft.'
+    },
+    {
+      id: 'moving' as const,
+      title: 'Moving & Relocation',
+      subtitle: 'Elite Logistics',
+      icon: <Truck className="w-6 h-6" />,
+      image: '/images/moving/hero-graphic.svg',
+      description: 'Let us arrange the right vehicle and moving assistance for you.'
     }
   ];
 
@@ -3555,10 +3416,12 @@ export default function App() {
       setSelectedHotel(null);
       setSelectedShortlet(null);
       setSelectedCar(null);
-      setSelectedJet(null);
       setShowBookingOptions(null);
       setShowEmailPopup(false);
       setIsAdminOpen(false);
+      setShowJetRequestForm(false);
+      setJetRequestPreset(null);
+      setShowMovingRequestForm(false);
       setStep(1);
       setFormData({ location: '', dates: '', guests: '', preferences: '' });
     }
@@ -3876,8 +3739,195 @@ Best regards.`;
                 ))}
               </div>
             </motion.section>
-          ) : ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive' || selectedCategory === 'jets') && !selectedLocation) ? (
-            <motion.section 
+          ) : (selectedCategory === 'jets') ? (
+            <motion.section
+              key="private-aviation"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-6xl mt-12 mb-24 relative"
+            >
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
+              >
+                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to selection
+              </button>
+
+              <div className="relative rounded-[2.5rem] overflow-hidden bg-black min-h-[560px] md:min-h-[620px] flex items-end shadow-2xl">
+                <img
+                  src="/images/challenger-604/exterior.jpeg"
+                  alt="Elite Booking private jet on the tarmac"
+                  className="absolute inset-0 w-full h-full object-cover opacity-45"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-slate-900/50" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/20 to-transparent" />
+
+                <div className="relative z-10 p-8 sm:p-12 md:p-16 max-w-2xl">
+                  <span className="inline-flex items-center gap-2 text-blue-400 text-[11px] uppercase tracking-[0.5em] font-bold mb-6">
+                    <Plane className="w-3.5 h-3.5" /> Private Aviation
+                  </span>
+                  <h1 className="text-4xl md:text-6xl font-serif font-light text-white leading-tight mb-6">
+                    Your Destination. Your Schedule. <span className="italic text-blue-300">Your Aircraft.</span>
+                  </h1>
+                  <p className="text-white/70 text-base md:text-lg font-normal leading-relaxed mb-8 max-w-xl">
+                    Fly privately with Elite Booking. Tell us where you're going, when you're flying and how many people are travelling. We'll source the right aircraft and handle the arrangements for you.
+                  </p>
+                  <div className="flex w-fit items-center gap-3 bg-white/5 border border-blue-500/30 rounded-2xl px-5 py-3 mb-8">
+                    <span className="font-serif text-2xl md:text-3xl text-white font-semibold leading-none">$4,850</span>
+                    <span className="text-white/50 text-[10px] uppercase tracking-[0.2em] leading-tight">
+                      per hour<br />local trips
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => { setJetRequestPreset(null); setShowJetRequestForm(true); }}
+                    className="flex items-center gap-3 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-full text-xs uppercase tracking-[0.25em] font-bold shadow-lg shadow-blue-900/40 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] cursor-pointer"
+                  >
+                    Request a Private Jet Quote <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <p className="text-white/40 text-xs mt-5 tracking-wide">
+                    Rates from $4,850/hour for local trips. Final pricing is confirmed per route, aircraft, date and passenger count.
+                  </p>
+                </div>
+              </div>
+
+              {/* EMPTY LEG CHARTER */}
+              <div className="relative rounded-[2.5rem] overflow-hidden bg-[#0A0A0A] border border-white/10 mt-8 p-8 sm:p-12 md:p-14 shadow-2xl">
+                <div className="grid md:grid-cols-5 gap-10 md:gap-12 items-start">
+                  <div className="md:col-span-3">
+                    <span className="inline-flex items-center gap-2 text-blue-400 text-[11px] uppercase tracking-[0.5em] font-bold mb-5">
+                      <Sparkles className="w-3.5 h-3.5" /> Empty Leg Charter
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-serif font-light text-white leading-snug mb-4">
+                      Private Aviation, at a Preferred Rate
+                    </h2>
+                    <p className="text-white/60 text-sm md:text-base leading-relaxed mb-4">
+                      Access private jet travel at significantly reduced rates when an aircraft repositions without passengers. An empty leg becomes available when a jet is already scheduled to fly to another destination or return to base — rather than fly that route empty, we offer the same aircraft for the trip at a preferred rate.
+                    </p>
+                    <p className="text-white/40 text-xs leading-relaxed mb-8">
+                      Ideal for flexible travelers seeking genuine private aviation value without compromising on comfort or service.
+                    </p>
+                    <button
+                      onClick={() => { setJetRequestPreset('Empty Leg Charter'); setShowJetRequestForm(true); }}
+                      className="inline-flex items-center gap-3 border border-blue-500/40 hover:bg-blue-600 hover:border-blue-600 text-white px-7 py-3.5 rounded-full text-xs uppercase tracking-[0.25em] font-bold transition-all duration-300 cursor-pointer"
+                    >
+                      Enquire About Empty Legs <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="md:col-span-2 bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+                    <p className="text-white/40 text-[10px] uppercase tracking-[0.25em] font-bold mb-4">What to Expect</p>
+                    <ul className="space-y-3.5">
+                      {[
+                        'Substantial cost savings compared to standard charter',
+                        'Same aircraft quality and onboard experience',
+                        'Fixed route and departure schedule',
+                        'Limited availability — first come, first served',
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-3">
+                          <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                          <span className="text-white/70 text-sm leading-snug">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* CO-SHARE CHARTER */}
+              <div className="relative rounded-[2.5rem] overflow-hidden bg-[#0A0A0A] border border-white/10 mt-8 p-8 sm:p-12 md:p-14 shadow-2xl">
+                <div className="grid md:grid-cols-5 gap-10 md:gap-12 items-start">
+                  <div className="md:col-span-3">
+                    <span className="inline-flex items-center gap-2 text-blue-400 text-[11px] uppercase tracking-[0.5em] font-bold mb-5">
+                      <Users className="w-3.5 h-3.5" /> Co-Share Charter
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-serif font-light text-white leading-snug mb-4">
+                      Private Aviation, Shared Efficiently
+                    </h2>
+                    <p className="text-white/60 text-sm md:text-base leading-relaxed mb-4">
+                      Share a private jet flight with other vetted passengers travelling on the same route and schedule. Co-share access gives you the comfort, discretion and efficiency of private aviation at a lower individual cost — structured, pre-scheduled and coordinated so every passenger is aligned on departure time and destination.
+                    </p>
+                    <p className="text-white/40 text-xs leading-relaxed mb-8">
+                      An efficient alternative for clients who value private travel but are open to sharing the journey.
+                    </p>
+                    <button
+                      onClick={() => { setJetRequestPreset('Co-Share Charter'); setShowJetRequestForm(true); }}
+                      className="inline-flex items-center gap-3 border border-blue-500/40 hover:bg-blue-600 hover:border-blue-600 text-white px-7 py-3.5 rounded-full text-xs uppercase tracking-[0.25em] font-bold transition-all duration-300 cursor-pointer"
+                    >
+                      Enquire About Co-Sharing <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="md:col-span-2 bg-white/[0.03] border border-white/10 rounded-2xl p-6">
+                    <p className="text-white/40 text-[10px] uppercase tracking-[0.25em] font-bold mb-4">What to Expect</p>
+                    <ul className="space-y-3.5">
+                      {[
+                        'Reduced cost compared to full aircraft charter',
+                        'Shared cabin with a limited number of passengers',
+                        'Fixed route and departure schedule',
+                        'Private terminal experience',
+                        'Curated passenger matching',
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-3">
+                          <Check className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                          <span className="text-white/70 text-sm leading-snug">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          ) : (selectedCategory === 'moving') ? (
+            <motion.section
+              key="moving-relocation"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-6xl mt-12 mb-24 relative"
+            >
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
+              >
+                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to selection
+              </button>
+
+              <div className="relative rounded-[2.5rem] overflow-hidden bg-black min-h-[560px] md:min-h-[620px] flex items-end shadow-2xl">
+                <img
+                  src="/images/moving/hero-graphic.svg"
+                  alt="Elite Booking moving and relocation"
+                  className="absolute inset-0 w-full h-full object-cover opacity-70"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-slate-900/50" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/20 to-transparent" />
+
+                <div className="relative z-10 p-8 sm:p-12 md:p-16 max-w-2xl">
+                  <span className="inline-flex items-center gap-2 text-blue-400 text-[11px] uppercase tracking-[0.5em] font-bold mb-6">
+                    <Truck className="w-3.5 h-3.5" /> Moving &amp; Relocation
+                  </span>
+                  <h1 className="text-4xl md:text-6xl font-serif font-light text-white leading-tight mb-6">
+                    Your Move. Your Schedule. <span className="italic text-blue-300">Your Vehicle.</span>
+                  </h1>
+                  <p className="text-white/70 text-base md:text-lg font-normal leading-relaxed mb-8 max-w-xl">
+                    Moving to a new home, office or location? Let us arrange the right vehicle and moving assistance for you.
+                  </p>
+                  <button
+                    onClick={() => setShowMovingRequestForm(true)}
+                    className="flex items-center gap-3 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-full text-xs uppercase tracking-[0.25em] font-bold shadow-lg shadow-blue-900/40 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] cursor-pointer"
+                  >
+                    Request a Move <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <p className="text-white/40 text-xs mt-5 tracking-wide">
+                    Tell us what you're moving, and we'll arrange the right vehicle for your move.
+                  </p>
+                </div>
+              </div>
+            </motion.section>
+          ) : ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive') && !selectedLocation) ? (
+            <motion.section
               key="location-landing"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -3894,10 +3944,10 @@ Best regards.`;
               <div className="text-center mb-16">
                 <span className="text-[12px] uppercase tracking-[0.5em] text-gold font-bold mb-4 block">Select Your Destination</span>
                 <h2 className="text-5xl md:text-7xl font-light tracking-tight mb-6">
-                  {selectedCategory === 'stays' ? 'Hotels' : selectedCategory === 'homes' ? 'Shortlets' : selectedCategory === 'jets' ? 'Private Jets' : 'Car Rentals'} in <span className="italic font-serif">Nigeria</span>
+                  {selectedCategory === 'stays' ? 'Hotels' : selectedCategory === 'homes' ? 'Shortlets' : 'Car Rentals'} in <span className="italic font-serif">Nigeria</span>
                 </h2>
                 <p className="text-charcoal/60 max-w-lg mx-auto font-normal">
-                  Explore our curated selection of ultra-luxury {selectedCategory === 'stays' ? 'stays' : selectedCategory === 'homes' ? 'private estates' : selectedCategory === 'jets' ? 'chartered aircraft' : 'private fleet'} in the most exclusive regions.
+                  Explore our curated selection of ultra-luxury {selectedCategory === 'stays' ? 'stays' : selectedCategory === 'homes' ? 'private estates' : 'private fleet'} in the most exclusive regions.
                 </p>
               </div>
 
@@ -4385,103 +4435,6 @@ Best regards.`;
 
               {renderOtherCategoryMatches('drive')}
             </motion.section>
-          ) : (selectedCategory === 'jets' && selectedLocation && !selectedJet) ? (
-            <motion.section
-              key="jet-list"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="w-full max-w-6xl mt-12 mb-24 relative"
-            >
-              <button
-                onClick={() => {
-                  setSelectedLocation(null);
-                  setSearchQuery('');
-                }}
-                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to locations
-              </button>
-
-              <div className="mb-10 text-center md:text-left">
-                <span className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold block mb-2 font-sans">Elite Aviation</span>
-                <h2 className="text-4xl md:text-5xl font-serif text-charcoal font-light">
-                  Private Jets &amp; Charter
-                </h2>
-                <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
-                  Chartered aircraft for seamless, discreet travel — arranged from {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : selectedLocation && selectedLocation.includes('Abuja') ? 'Abuja' : 'Port Harcourt'}.
-                </p>
-              </div>
-
-              {renderSearchBar('jets')}
-
-              {getFilteredJets().length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-[2rem] border border-charcoal/5 shadow-2xl shadow-gold/5 font-sans mb-12">
-                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50 animate-pulse" />
-                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">No Matching Jets Found</h1>
-                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4">
-                    We couldn&rsquo;t find any charter aircraft matching &ldquo;{searchQuery}&rdquo;. Try using other search keywords or explore other categories below.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-12">
-                  {getFilteredJets().map((jet, idx) => (
-                    <motion.div
-                      key={jet.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
-                    >
-                      <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
-                        <HotelImageSlider images={jet.images} name={jet.name} />
-                      </div>
-                      <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
-                        <div className="flex justify-between items-start mb-6 font-sans">
-                          <div>
-                            <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{jet.name}</h3>
-                            <div className="flex items-center text-charcoal/40 text-sm">
-                              <MapPin className="w-4 h-4 mr-2 text-gold" />
-                              {jet.location}
-                            </div>
-                          </div>
-                          <div className="text-right font-sans">
-                            {!jet.price && (
-                              <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Price on Request</span>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md font-sans">
-                          {jet.description}
-                        </p>
-                        <div className="flex flex-wrap gap-4 font-sans">
-                          <button
-                            onClick={() => {
-                              setBookingType('booking');
-                              setShowBookingOptions(jet);
-                            }}
-                            className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
-                          >
-                            Charter Now
-                          </button>
-                          <button
-                            onClick={() => {
-                              setBookingType('reservation');
-                              setShowBookingOptions(jet);
-                            }}
-                            className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
-                          >
-                            Check Availability
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {renderOtherCategoryMatches('jets')}
-            </motion.section>
           ) : (
             <motion.section
               key="enquiry"
@@ -4498,9 +4451,7 @@ Best regards.`;
                     setSelectedShortlet(null);
                   } else if (selectedCategory === 'drive' && selectedCar) {
                     setSelectedCar(null);
-                  } else if (selectedCategory === 'jets' && selectedJet) {
-                    setSelectedJet(null);
-                  } else if ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive' || selectedCategory === 'jets') && selectedLocation) {
+                  } else if ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive') && selectedLocation) {
                     setSelectedLocation(null);
                   } else {
                     setSelectedCategory(null);
@@ -4508,7 +4459,7 @@ Best regards.`;
                 }}
                 className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
               >
-                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to {selectedHotel || selectedShortlet || selectedCar || selectedJet ? (selectedCategory === 'stays' ? 'hotels' : selectedCategory === 'homes' ? 'shortlets' : selectedCategory === 'jets' ? 'jets' : 'cars') : selectedLocation ? 'locations' : 'selection'}
+                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to {selectedHotel || selectedShortlet || selectedCar ? (selectedCategory === 'stays' ? 'hotels' : selectedCategory === 'homes' ? 'shortlets' : 'cars') : selectedLocation ? 'locations' : 'selection'}
               </button>
 
               <div className="bg-white rounded-3xl shadow-2xl shadow-gold/5 overflow-hidden min-h-[600px] flex flex-col md:flex-row">
@@ -5003,6 +4954,19 @@ Best regards.`;
       <AIConciergeModal
         isOpen={isAIConciergeOpen}
         onClose={() => handleNavigateBack(() => setIsAIConciergeOpen(false))}
+      />
+
+      {/* Private Jet Request Modal */}
+      <PrivateJetRequestModal
+        isOpen={showJetRequestForm}
+        onClose={() => setShowJetRequestForm(false)}
+        defaultRequirement={jetRequestPreset}
+      />
+
+      {/* Moving & Relocation Request Modal */}
+      <MovingRequestModal
+        isOpen={showMovingRequestForm}
+        onClose={() => setShowMovingRequestForm(false)}
       />
     </div>
   );

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#050607"/>
+      <stop offset="45%" stop-color="#0a0d12"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <radialGradient id="horizonGlow" cx="50%" cy="46%" r="40%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.55"/>
+      <stop offset="55%" stop-color="#1d4ed8" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="road" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#12161c"/>
+      <stop offset="100%" stop-color="#1c222b"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="25%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="80%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#sky)"/>
+  <circle cx="600" cy="552" r="430" fill="url(#horizonGlow)"/>
+  <polygon points="600,552 20,1200 1180,1200" fill="url(#road)"/>
+  <polygon points="600,552 20,1200 1180,1200" fill="none" stroke="#3b82f6" stroke-opacity="0.14" stroke-width="2"/>
+  <line x1="600" y1="612" x2="600" y2="1200" stroke="#ffffff" stroke-opacity="0.22" stroke-width="7" stroke-dasharray="42 36"/>
+  <line x1="600" y1="552" x2="120" y2="1200" stroke="#60a5fa" stroke-opacity="0.4" stroke-width="3"/>
+  <line x1="600" y1="552" x2="1080" y2="1200" stroke="#60a5fa" stroke-opacity="0.4" stroke-width="3"/>
+  <rect width="1200" height="1200" fill="url(#vignette)"/>
+</svg>
