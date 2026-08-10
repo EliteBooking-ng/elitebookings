@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07080a"/>
+      <stop offset="55%" stop-color="#101215"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <radialGradient id="glowGold" cx="76%" cy="20%" r="48%">
+      <stop offset="0%" stop-color="#d9b26a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#d9b26a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBlue" cx="12%" cy="88%" r="42%">
+      <stop offset="0%" stop-color="#2563eb" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#2563eb" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e8c98a" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#e8c98a" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#e8c98a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.45"/>
+      <stop offset="30%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="75%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <rect width="1200" height="1200" fill="url(#glowGold)"/>
+  <rect width="1200" height="1200" fill="url(#glowBlue)"/>
+  <polygon points="-150,950 680,120 830,120 0,950" fill="url(#beam)"/>
+  <polygon points="80,1080 910,250 1060,250 230,1080" fill="url(#beam)"/>
+  <g stroke="#d9b26a" stroke-opacity="0.14" stroke-width="1">
+    <line x1="0" y1="260" x2="1200" y2="260"/>
+    <line x1="0" y1="560" x2="1200" y2="560"/>
+    <line x1="0" y1="860" x2="1200" y2="860"/>
+  </g>
+  <circle cx="905" cy="255" r="5" fill="#e8c98a" fill-opacity="0.9"/>
+  <circle cx="905" cy="255" r="16" fill="#e8c98a" fill-opacity="0.25"/>
+  <rect width="1200" height="1200" fill="url(#vignette)"/>
+</svg>

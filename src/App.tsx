@@ -47,6 +47,10 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { AIConciergeModal } from './components/AIConciergeModal';
 import { PrivateJetRequestModal } from './components/PrivateJetRequestModal';
 import { MovingRequestModal } from './components/MovingRequestModal';
+import { CarFleetBrowser } from './components/CarFleetBrowser';
+import { CarDetailView } from './components/CarDetailView';
+import { CarRequestModal } from './components/CarRequestModal';
+import type { Vehicle } from './data/cars';
 import {
   collection,
   addDoc
@@ -109,10 +113,12 @@ export default function App() {
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
   const [selectedShortlet, setSelectedShortlet] = useState<any | null>(null);
-  const [selectedCar, setSelectedCar] = useState<any | null>(null);
+  const [selectedCar, setSelectedCar] = useState<Vehicle | null>(null);
   const [showJetRequestForm, setShowJetRequestForm] = useState(false);
   const [jetRequestPreset, setJetRequestPreset] = useState<string | null>(null);
   const [showMovingRequestForm, setShowMovingRequestForm] = useState(false);
+  const [showCarRequestForm, setShowCarRequestForm] = useState(false);
+  const [carRequestVehicle, setCarRequestVehicle] = useState<Vehicle | null>(null);
 
   // Luxury unified search states and helper functions
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,34 +179,10 @@ export default function App() {
     );
   };
 
-  const getFilteredCars = () => {
-    const query = searchQuery.trim().toLowerCase();
-    const sourceCars = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
-      ? lagosCars
-      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
-      ? abujaCars
-      : phCars;
-    if (!query) return sourceCars;
-    return sourceCars.filter(car => 
-      car.name.toLowerCase().includes(query) ||
-      car.location.toLowerCase().includes(query) ||
-      car.description.toLowerCase().includes(query) ||
-      'cars'.includes(query) ||
-      'rentals'.includes(query) ||
-      'fleet'.includes(query) ||
-      'drive'.includes(query) ||
-      'vehicles'.includes(query) ||
-      'transport'.includes(query) ||
-      'truck'.includes(query) ||
-      'bus'.includes(query)
-    );
-  };
-
-  const renderSearchBar = (currentCategory: 'stays' | 'homes' | 'drive') => {
+  const renderSearchBar = (currentCategory: 'stays' | 'homes') => {
     const catLabels = {
       stays: { singular: 'hotel', plural: 'hotels' },
-      homes: { singular: 'shortlet', plural: 'shortlets' },
-      drive: { singular: 'car rental', plural: 'car rentals' }
+      homes: { singular: 'shortlet', plural: 'shortlets' }
     };
 
     return (
@@ -320,41 +302,20 @@ export default function App() {
                 #{tag.label}
               </button>
             ))}
-
-            {currentCategory === 'drive' && [
-              { label: 'Lexus GX 460', value: 'GX' },
-              { label: 'Range Rover Velar', value: 'Velar' },
-              { label: 'Luxury Bus', value: 'bus' },
-              { label: 'Delivery Trucks', value: 'truck' }
-            ].map(tag => (
-              <button
-                key={tag.label}
-                type="button"
-                onClick={() => setSearchQuery(tag.value)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${
-                  searchQuery.toLowerCase() === tag.value.toLowerCase()
-                    ? 'bg-charcoal text-cream shadow-sm'
-                    : 'bg-charcoal/[0.03] text-charcoal hover:bg-charcoal/10'
-                }`}
-              >
-                #{tag.label}
-              </button>
-            ))}
           </div>
         </div>
       </div>
     );
   };
 
-  const renderOtherCategoryMatches = (activeCat: 'stays' | 'homes' | 'drive') => {
+  const renderOtherCategoryMatches = (activeCat: 'stays' | 'homes') => {
     if (!searchQuery.trim()) return null;
 
     const query = searchQuery.trim();
     const otherHotels = activeCat !== 'stays' ? getFilteredHotels() : [];
     const otherShortlets = activeCat !== 'homes' ? getFilteredShortlets() : [];
-    const otherCars = activeCat !== 'drive' ? getFilteredCars() : [];
 
-    const totalMatches = otherHotels.length + otherShortlets.length + otherCars.length;
+    const totalMatches = otherHotels.length + otherShortlets.length;
     if (totalMatches === 0) return null;
 
     return (
@@ -555,64 +516,6 @@ export default function App() {
                       setSelectedCategory('homes');
                       setBookingType('reservation');
                       setShowBookingOptions(shortlet);
-                    }}
-                    className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
-                  >
-                    Check Availability
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-
-          {otherCars.map((car) => (
-            <motion.div
-              key={`other-car-${car.id}`}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/80 border border-charcoal/5 rounded-[2rem] overflow-hidden shadow-lg flex flex-col md:flex-row group hover:shadow-2xl hover:bg-white transition-all duration-500"
-            >
-              <div className="md:w-2/5 relative overflow-hidden aspect-video md:aspect-auto h-[240px] md:h-auto font-sans">
-                <HotelImageSlider images={car.images} name={car.name} />
-                <span className="absolute top-4 left-4 bg-cream border border-gold/40 text-gold text-[9px] uppercase tracking-[0.25em] font-bold px-3 py-1.5 rounded-full z-10 shadow-md">
-                  Luxury Fleet
-                </span>
-              </div>
-              <div className="md:w-3/5 p-8 flex flex-col justify-center font-sans font-sans">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="text-2xl font-serif text-charcoal mb-1">{car.name}</h4>
-                    <div className="flex items-center text-charcoal/40 text-xs">
-                      <MapPin className="w-3.5 h-3.5 mr-1 text-gold" />
-                      {car.location}
-                    </div>
-                  </div>
-                  {car.price && (
-                    <div className="text-right font-sans">
-                      <span className="text-[9px] uppercase tracking-widest text-gold font-bold block">Per Day</span>
-                      <span className="text-xl font-serif text-charcoal">₦{car.price}</span>
-                    </div>
-                  )}
-                </div>
-                <p className="text-charcoal/60 text-xs font-normal leading-relaxed mb-6 line-clamp-2">
-                  {car.description}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <button 
-                    onClick={() => {
-                      setSelectedCategory('drive');
-                      setBookingType('booking');
-                      setShowBookingOptions(car);
-                    }}
-                    className="bg-charcoal text-cream px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold transition-colors shadow-md inline-block cursor-pointer font-sans"
-                  >
-                    Rent Vehicle
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedCategory('drive');
-                      setBookingType('reservation');
-                      setShowBookingOptions(car);
                     }}
                     className="bg-white text-charcoal border border-charcoal/20 px-6 py-3 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-sm inline-block cursor-pointer font-sans"
                   >
@@ -3156,7 +3059,6 @@ export default function App() {
       description: 'Chic shortlet studio apartment in Akoka, Lagos offering affordable luxury and convenient access.'
     }
   ];
-  const lagosCars: any[] = [];
   const abujaShortlets: any[] = [
     {
       id: 'the-aura',
@@ -3178,7 +3080,6 @@ export default function App() {
       description: 'A serene and calm Two-Bedroom ground-floor unit at The Aura, Jahi, Abuja. Fully self-contained with 24/7 light, water, and security, a gym, laundry service, swimming pool, rooftop jacuzzi, 24/7 room service, elevator access, WiFi, standby generator, Smart TV, and a well-equipped kitchen.'
     }
   ];
-  const abujaCars: any[] = [];
 
   const phShortlets = [
     {
@@ -3308,52 +3209,6 @@ export default function App() {
     }
   ];
 
-  const phCars = [
-    {
-      id: 'gx-460',
-      name: 'GX 460',
-      location: 'Port Harcourt, Rivers State',
-      price: '',
-      images: [
-        'https://images.dealersync.com/2174/Photos/826466/20220510223658719_IMG_6371.jpg?_=743cb49fa9df567a3ddcfc880d45e73cbc146174',
-        'https://img.nigeriacarmart.com/upload/25/8p/iz7d/2015-lexus-gx-gx-460-jd.webp'
-      ],
-      description: 'Commanding presence and peerless luxury. Perfect for navigating the city in absolute comfort.'
-    },
-    {
-      id: 'range-rover-velar',
-      name: 'Range Rover velar',
-      location: 'Port Harcourt, Rivers State',
-      price: '',
-      images: [
-        'https://www.autocollectionofmurfreesboro.com/imagetag/17619/main/l/Used-2018-Land-Rover-Range-Rover-Velar-P380-FIRST-EDITION-W94K-MSRP!!-1718852884.jpg',
-        'https://images.cars.ng/images/cars-ng/product_ca603791s_foreign_used_2018_range_rover_velar_p250_s_for_sale_in_lagos_1771920743850_5gi5jj_5eeb1c_4_500x500.jpg'
-      ],
-      description: 'The ultimate blend of reliability and luxury. Ideal for both city drives and longer journeys.'
-    },
-    {
-      id: 'luxury-bus',
-      name: '43 seater luxury bus',
-      location: 'Port Harcourt, Rivers State',
-      price: '',
-      images: [
-        'https://s.alicdn.com/@sc04/kf/He3c64517b48a4684b9369555a8fa9a08g/Best-Selling-Used-Youtong-Second-Hand-Bus-49-Seats-Bus-Transports-Coach-Buss-for-Sale.jpg'
-      ],
-      description: 'Premium group travel experience with maximum comfort, climate control, and spacious seating for large delegations.'
-    },
-    {
-      id: 'delivery-trucks',
-      name: 'Delivery Trucks',
-      location: 'Port Harcourt, Rivers State',
-      price: '',
-      images: [
-        'https://www.truck1.com.ng/img/xxl/7117/Scania-P-270-6x2-manual-9-85-box-Netherlands_7117_312397052339.jpg',
-        'https://www.daibau.ng/showfile.php?id=23861'
-      ],
-      description: 'Reliable logistics and haulage solutions for all your delivery needs. Professional service for safe and timely transport.'
-    }
-  ];
-
   const categories = [
     {
       id: 'stays' as const,
@@ -3376,7 +3231,7 @@ export default function App() {
       title: 'Car Rentals',
       subtitle: 'Private Fleet',
       icon: <Car className="w-6 h-6" />,
-      image: 'https://images.dealersync.com/2174/Photos/826466/20220510223658719_IMG_6371.jpg?_=743cb49fa9df567a3ddcfc880d45e73cbc146174',
+      image: '/images/cars/gx-460.svg',
       description: 'A fleet of exceptional vehicles for your most refined journeys.'
     },
     {
@@ -3422,6 +3277,8 @@ export default function App() {
       setShowJetRequestForm(false);
       setJetRequestPreset(null);
       setShowMovingRequestForm(false);
+      setShowCarRequestForm(false);
+      setCarRequestVehicle(null);
       setStep(1);
       setFormData({ location: '', dates: '', guests: '', preferences: '' });
     }
@@ -3926,7 +3783,59 @@ Best regards.`;
                 </div>
               </div>
             </motion.section>
-          ) : ((selectedCategory === 'stays' || selectedCategory === 'homes' || selectedCategory === 'drive') && !selectedLocation) ? (
+          ) : (selectedCategory === 'drive' && !selectedLocation) ? (
+            <motion.section
+              key="car-rentals-landing"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-6xl mt-12 mb-24 relative"
+            >
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
+              >
+                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to selection
+              </button>
+
+              <div className="relative rounded-[2.5rem] overflow-hidden bg-[#0A0A0A] border border-white/10 p-8 sm:p-12 md:p-16 shadow-2xl">
+                <div className="text-center max-w-2xl mx-auto mb-14">
+                  <span className="inline-flex items-center gap-2 text-blue-400 text-[11px] uppercase tracking-[0.5em] font-bold mb-6">
+                    <Car className="w-3.5 h-3.5" /> Car Rentals
+                  </span>
+                  <h1 className="text-4xl md:text-6xl font-serif font-light text-white leading-tight mb-6">
+                    The Right Car for <span className="italic text-blue-300">Every Journey.</span>
+                  </h1>
+                  <p className="text-white/60 text-base md:text-lg font-normal leading-relaxed">
+                    Choose from premium vehicles for business travel, personal trips, airport transfers, events and more.
+                  </p>
+                </div>
+
+                <div className="max-w-3xl mx-auto">
+                  <p className="text-center text-white/40 text-[11px] uppercase tracking-[0.3em] font-bold mb-6">Where do you need a car?</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Lagos', value: 'Lagos, Lagos State' },
+                      { label: 'Abuja', value: 'Abuja, Federal Capital Territory' },
+                      { label: 'Port Harcourt', value: 'Port Harcourt, Rivers State' },
+                      { label: 'Other Locations', value: 'Other Locations' },
+                    ].map((loc) => (
+                      <motion.button
+                        key={loc.label}
+                        whileHover={{ y: -4 }}
+                        onClick={() => setSelectedLocation(loc.value)}
+                        className="flex flex-col items-center justify-center gap-3 bg-white/5 border border-white/10 hover:border-blue-500/50 hover:bg-white/[0.08] rounded-2xl px-4 py-8 text-center transition-all cursor-pointer group"
+                      >
+                        <MapPin className="w-5 h-5 text-blue-400" />
+                        <span className="text-white text-sm font-serif">{loc.label}</span>
+                        <span className="text-white/30 text-[9px] uppercase tracking-[0.2em] group-hover:text-blue-300 transition-colors">View Fleet</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          ) : ((selectedCategory === 'stays' || selectedCategory === 'homes') && !selectedLocation) ? (
             <motion.section
               key="location-landing"
               initial={{ opacity: 0, y: 20 }}
@@ -3934,7 +3843,7 @@ Best regards.`;
               exit={{ opacity: 0, y: -20 }}
               className="w-full max-w-5xl mt-12 mb-24 relative"
             >
-              <button 
+              <button
                 onClick={() => setSelectedCategory(null)}
                 className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group"
               >
@@ -3944,10 +3853,10 @@ Best regards.`;
               <div className="text-center mb-16">
                 <span className="text-[12px] uppercase tracking-[0.5em] text-gold font-bold mb-4 block">Select Your Destination</span>
                 <h2 className="text-5xl md:text-7xl font-light tracking-tight mb-6">
-                  {selectedCategory === 'stays' ? 'Hotels' : selectedCategory === 'homes' ? 'Shortlets' : 'Car Rentals'} in <span className="italic font-serif">Nigeria</span>
+                  {selectedCategory === 'stays' ? 'Hotels' : 'Shortlets'} in <span className="italic font-serif">Nigeria</span>
                 </h2>
                 <p className="text-charcoal/60 max-w-lg mx-auto font-normal">
-                  Explore our curated selection of ultra-luxury {selectedCategory === 'stays' ? 'stays' : selectedCategory === 'homes' ? 'private estates' : 'private fleet'} in the most exclusive regions.
+                  Explore our curated selection of ultra-luxury {selectedCategory === 'stays' ? 'stays' : 'private estates'} in the most exclusive regions.
                 </p>
               </div>
 
@@ -4336,105 +4245,24 @@ Best regards.`;
               {renderOtherCategoryMatches('homes')}
             </motion.section>
           ) : (selectedCategory === 'drive' && selectedLocation && !selectedCar) ? (
-            <motion.section 
-              key="car-list"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="w-full max-w-6xl mt-12 mb-24 relative"
-            >
-              <button 
-                onClick={() => {
-                  setSelectedLocation(null);
-                  setSearchQuery('');
-                }}
-                className="absolute -top-16 left-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full text-[11px] uppercase tracking-[0.3em] text-charcoal font-bold shadow-sm hover:bg-gold hover:text-cream transition-all group cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to locations
-              </button>
-
-              <div className="mb-10 text-center md:text-left">
-                <span className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold block mb-2 font-sans">Our Fleet</span>
-                <h2 className="text-4xl md:text-5xl font-serif text-charcoal font-light">
-                  Car Rentals &amp; Private Fleet
-                </h2>
-                <p className="text-sm text-charcoal/50 mt-1 max-w-lg font-sans">
-                  Premium luxury saloons and off-road SUVs for exquisite journeys.
-                </p>
-              </div>
-
-              {renderSearchBar('drive')}
-
-              {getFilteredCars().length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-[2rem] border border-charcoal/5 shadow-2xl shadow-gold/5 font-sans mb-12">
-                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50 animate-pulse" />
-                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">No Matching Cars Found</h1>
-                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4">
-                    We couldn&rsquo;t find any rental vehicles matching &ldquo;{searchQuery}&rdquo;. Try using other search keywords or explore other categories below.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-12">
-                  {getFilteredCars().map((car, idx) => (
-                    <motion.div
-                      key={car.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="bg-white rounded-[2rem] overflow-hidden shadow-xl shadow-gold/5 flex flex-col lg:flex-row group hover:shadow-2xl transition-all duration-500"
-                    >
-                      <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
-                        <HotelImageSlider images={car.images} name={car.name} />
-                      </div>
-                      <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
-                        <div className="flex justify-between items-start mb-6 font-sans">
-                          <div>
-                            <h3 className="text-3xl md:text-4xl font-serif text-charcoal mb-2">{car.name}</h3>
-                            <div className="flex items-center text-charcoal/40 text-sm">
-                              <MapPin className="w-4 h-4 mr-2 text-gold" />
-                              {car.location}
-                            </div>
-                          </div>
-                          <div className="text-right font-sans">
-                            {car.price && (
-                              <>
-                                <span className="text-[10px] uppercase tracking-widest text-gold font-bold block mb-1">Per Day</span>
-                                <span className="text-2xl font-serif text-charcoal">₦{car.price}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-charcoal/60 font-normal leading-relaxed mb-10 max-w-md font-sans">
-                          {car.description}
-                        </p>
-                        <div className="flex flex-wrap gap-4 font-sans">
-                          <button 
-                            onClick={() => {
-                              setBookingType('booking');
-                              setShowBookingOptions(car);
-                            }}
-                            className="bg-charcoal text-cream px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold transition-colors shadow-lg shadow-charcoal/10 inline-block cursor-pointer font-sans"
-                          >
-                            Rent Now
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setBookingType('reservation');
-                              setShowBookingOptions(car);
-                            }}
-                            className="bg-cream text-charcoal border border-charcoal/20 px-10 py-4 rounded-full text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-gold hover:text-cream hover:border-gold transition-all duration-300 shadow-md inline-block cursor-pointer font-sans"
-                          >
-                            Check Availability
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-
-              {renderOtherCategoryMatches('drive')}
-            </motion.section>
+            <CarFleetBrowser
+              location={selectedLocation}
+              locationLabel={selectedLocation.split(',')[0]}
+              onBack={() => {
+                setSelectedLocation(null);
+                setSearchQuery('');
+              }}
+              onSelectVehicle={(vehicle) => setSelectedCar(vehicle)}
+            />
+          ) : (selectedCategory === 'drive' && selectedLocation && selectedCar) ? (
+            <CarDetailView
+              vehicle={selectedCar}
+              onBack={() => setSelectedCar(null)}
+              onRequestVehicle={(vehicle) => {
+                setCarRequestVehicle(vehicle);
+                setShowCarRequestForm(true);
+              }}
+            />
           ) : (
             <motion.section
               key="enquiry"
@@ -4967,6 +4795,14 @@ Best regards.`;
       <MovingRequestModal
         isOpen={showMovingRequestForm}
         onClose={() => setShowMovingRequestForm(false)}
+      />
+
+      {/* Car Rental Request Modal */}
+      <CarRequestModal
+        isOpen={showCarRequestForm}
+        onClose={() => setShowCarRequestForm(false)}
+        vehicle={carRequestVehicle}
+        location={selectedLocation ? selectedLocation.split(',')[0] : ''}
       />
     </div>
   );

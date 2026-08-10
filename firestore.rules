@@ -34,5 +34,9 @@ service cloud.firestore {
     match /moving_requests/{requestId} {
       allow read, write: if true;
     }
+
+    match /car_requests/{requestId} {
+      allow read, write: if true;
+    }
   }
 }

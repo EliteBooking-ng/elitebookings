@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#05060a"/>
+      <stop offset="50%" stop-color="#0a0e18"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <radialGradient id="glowBlue" cx="50%" cy="30%" r="55%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bandGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#93c5fd" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.5"/>
+      <stop offset="30%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="75%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <rect width="1200" height="1200" fill="url(#glowBlue)"/>
+  <g stroke="#93c5fd" stroke-opacity="0.16" stroke-width="2">
+    <line x1="150" y1="0" x2="90" y2="1200"/>
+    <line x1="320" y1="0" x2="270" y2="1200"/>
+    <line x1="900" y1="0" x2="960" y2="1200"/>
+    <line x1="1060" y1="0" x2="1130" y2="1200"/>
+  </g>
+  <rect x="0" y="560" width="1200" height="80" fill="url(#bandGlow)"/>
+  <rect x="0" y="600" width="1200" height="2" fill="#bfdbfe" fill-opacity="0.5"/>
+  <rect width="1200" height="1200" fill="url(#vignette)"/>
+</svg>

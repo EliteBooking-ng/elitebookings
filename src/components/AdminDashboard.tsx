@@ -28,7 +28,9 @@ import {
   Building,
   Settings,
   Mail,
-  AlertCircle
+  AlertCircle,
+  Car,
+  Users
 } from 'lucide-react';
 import { db } from '../firebase';
 import { 
@@ -59,6 +61,50 @@ export interface Reservation {
   numberOfRooms?: string;
 }
 
+export interface CarRequestVehicleItem {
+  vehicleId: string;
+  name: string;
+  category: string;
+  pricingType: string;
+  unitPrice: number | null;
+  quantity: number;
+}
+
+export type CarRequestStatus =
+  | 'New Request' | 'Checking Availability' | 'Vehicle Available' | 'Quote Prepared'
+  | 'Quote Sent' | 'Awaiting Customer Confirmation' | 'Payment Pending' | 'Confirmed'
+  | 'Completed' | 'Cancelled';
+
+const CAR_REQUEST_STATUSES: CarRequestStatus[] = [
+  'New Request', 'Checking Availability', 'Vehicle Available', 'Quote Prepared',
+  'Quote Sent', 'Awaiting Customer Confirmation', 'Payment Pending', 'Confirmed',
+  'Completed', 'Cancelled',
+];
+
+export interface CarRequest {
+  id: string;
+  requestId: string;
+  vehicles: CarRequestVehicleItem[];
+  location: string;
+  driverPreference: string;
+  passengerCount?: string;
+  pickupLocation: string;
+  destination: string;
+  date: string;
+  time: string;
+  specialRequests: string[];
+  additionalNotes?: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  estimatedTotal: number | null;
+  status: CarRequestStatus;
+  createdAt?: any;
+  adminQuoteAmount?: number | null;
+  adminNotes?: string;
+  alternativeSuggestion?: string | null;
+}
+
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -80,12 +126,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'enquiries' | 'car-requests'>('enquiries');
+
+  // Car Requests state
+  const [carRequests, setCarRequests] = useState<CarRequest[]>([]);
+  const [carRequestsLoading, setCarRequestsLoading] = useState<boolean>(true);
+  const [carSearchTerm, setCarSearchTerm] = useState<string>('');
+  const [carStatusFilter, setCarStatusFilter] = useState<string>('all');
+  const [selectedCarRequest, setSelectedCarRequest] = useState<CarRequest | null>(null);
+  const [editingAdminQuote, setEditingAdminQuote] = useState<string>('');
+  const [editingAdminNotes, setEditingAdminNotes] = useState<string>('');
+  const [editingAlternative, setEditingAlternative] = useState<string>('');
+  const [savingCarAdmin, setSavingCarAdmin] = useState<boolean>(false);
+
   useEffect(() => {
     if (!isOpen) return;
 
     const handleAdminPopState = () => {
       if (selectedReservation) {
         setSelectedReservation(null);
+      } else if (selectedCarRequest) {
+        setSelectedCarRequest(null);
       } else if (showAddModal) {
         setShowAddModal(false);
       } else if (showSettingsModal) {
@@ -97,7 +159,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
     return () => {
       window.removeEventListener('popstate', handleAdminPopState);
     };
-  }, [isOpen, selectedReservation, showAddModal, showSettingsModal]);
+  }, [isOpen, selectedReservation, selectedCarRequest, showAddModal, showSettingsModal]);
   const [web3Key, setWeb3Key] = useState<string>(() => localStorage.getItem('elite_web3forms_key') || '');
   const [notifEmail, setNotifEmail] = useState<string>(() => localStorage.getItem('elite_notification_email') || 'Elitebooking.ng@gmail.com');
   const [settingsSavedMsg, setSettingsSavedMsg] = useState<string>('');
@@ -200,6 +262,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
     return () => unsubscribe();
   }, [isAuthenticated, isOpen]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !isOpen) return;
+
+    setCarRequestsLoading(true);
+    const q = query(collection(db, 'car_requests'), orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: CarRequest[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as CarRequest));
+
+      setCarRequests(docs);
+      setCarRequestsLoading(false);
+    }, (error) => {
+      console.error('Error listening to car_requests collection:', error);
+      setCarRequestsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, isOpen]);
+
   // Update status in Firestore
   const handleStatusChange = async (id: string, newStatus: Reservation['status']) => {
     try {
@@ -238,6 +322,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
       }
     } catch (err) {
       console.error('Error deleting document:', err);
+    }
+  };
+
+  // Update car request status in Firestore
+  const handleCarStatusChange = async (id: string, newStatus: CarRequestStatus) => {
+    try {
+      const docRef = doc(db, 'car_requests', id);
+      await updateDoc(docRef, { status: newStatus });
+      if (selectedCarRequest && selectedCarRequest.id === id) {
+        setSelectedCarRequest(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (err) {
+      console.error('Error updating car request status:', err);
+    }
+  };
+
+  // Save admin-only quote/notes/alternative fields (never shown to the customer)
+  const handleSaveCarAdminFields = async () => {
+    if (!selectedCarRequest) return;
+    setSavingCarAdmin(true);
+    try {
+      const docRef = doc(db, 'car_requests', selectedCarRequest.id);
+      const quoteValue = editingAdminQuote.trim() ? Number(editingAdminQuote.replace(/[^0-9.]/g, '')) : null;
+      await updateDoc(docRef, {
+        adminQuoteAmount: quoteValue,
+        adminNotes: editingAdminNotes,
+        alternativeSuggestion: editingAlternative.trim() || null,
+      });
+      setSelectedCarRequest(prev => prev ? {
+        ...prev,
+        adminQuoteAmount: quoteValue,
+        adminNotes: editingAdminNotes,
+        alternativeSuggestion: editingAlternative.trim() || null,
+      } : null);
+    } catch (err) {
+      console.error('Error saving car request admin fields:', err);
+    } finally {
+      setSavingCarAdmin(false);
+    }
+  };
+
+  // Delete car request
+  const handleDeleteCarRequest = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this car request record?')) return;
+    try {
+      await deleteDoc(doc(db, 'car_requests', id));
+      if (selectedCarRequest?.id === id) {
+        setSelectedCarRequest(null);
+      }
+    } catch (err) {
+      console.error('Error deleting car request:', err);
     }
   };
 
@@ -324,6 +459,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
 
     return matchesSearch && matchesStatus && matchesType;
   });
+
+  // Filter car requests
+  const filteredCarRequests = carRequests.filter(req => {
+    const term = carSearchTerm.toLowerCase();
+    const vehicleNames = (req.vehicles || []).map(v => v.name).join(' ').toLowerCase();
+    const matchesSearch =
+      (req.customerName || '').toLowerCase().includes(term) ||
+      (req.customerPhone || '').toLowerCase().includes(term) ||
+      (req.location || '').toLowerCase().includes(term) ||
+      vehicleNames.includes(term);
+
+    const matchesStatus = carStatusFilter === 'all' || (req.status || 'New Request') === carStatusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const carTotalCount = carRequests.length;
+  const carNewCount = carRequests.filter(r => (r.status || 'New Request') === 'New Request').length;
+  const carConfirmedCount = carRequests.filter(r => r.status === 'Confirmed').length;
+  const carCompletedCount = carRequests.filter(r => r.status === 'Completed').length;
 
   // Calculate Metrics
   const totalCount = reservations.length;
@@ -469,6 +624,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                 )}
               </div>
 
+              {/* Tab Switcher */}
+              <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-charcoal/10 shadow-sm w-fit">
+                <button
+                  onClick={() => setActiveTab('enquiries')}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'enquiries' ? 'bg-charcoal text-cream shadow-sm' : 'text-charcoal/60 hover:text-charcoal'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" /> Enquiries
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'enquiries' ? 'bg-cream/20 text-cream' : 'bg-charcoal/10 text-charcoal/60'}`}>{totalCount}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('car-requests')}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'car-requests' ? 'bg-charcoal text-cream shadow-sm' : 'text-charcoal/60 hover:text-charcoal'
+                  }`}
+                >
+                  <Car className="w-3.5 h-3.5" /> Car Requests
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'car-requests' ? 'bg-cream/20 text-cream' : 'bg-charcoal/10 text-charcoal/60'}`}>{carTotalCount}</span>
+                </button>
+              </div>
+
+              {activeTab === 'enquiries' && (
+              <>
               {/* Analytics Metric Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex items-center justify-between">
@@ -727,6 +906,228 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                   </div>
                 )}
               </div>
+              </>
+              )}
+
+              {activeTab === 'car-requests' && (
+              <>
+              {/* Car Requests Metric Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-charcoal/50 block">Total Requests</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-charcoal">{carTotalCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-charcoal/5 text-charcoal flex items-center justify-center">
+                    <Car className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gold/30 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-gold block">New Requests</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-gold">{carNewCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-gold/10 text-gold flex items-center justify-center">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-green-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-green-700 block">Confirmed</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-green-700">{carConfirmedCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-blue-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-blue-700 block">Completed</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-blue-700">{carCompletedCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Car Requests Search & Filter */}
+              <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full md:w-80">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40" />
+                  <input
+                    type="text"
+                    value={carSearchTerm}
+                    onChange={(e) => setCarSearchTerm(e.target.value)}
+                    placeholder="Search customer, phone, vehicle..."
+                    className="w-full pl-10 pr-4 py-2 bg-cream/50 border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold transition-all text-charcoal"
+                  />
+                  {carSearchTerm && (
+                    <button
+                      onClick={() => setCarSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/40 hover:text-charcoal"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1 bg-cream/60 p-1 rounded-xl border border-charcoal/10 text-xs w-full md:w-auto overflow-x-auto">
+                  <span className="text-[10px] uppercase font-bold text-charcoal/40 px-2 flex-shrink-0">Status:</span>
+                  {['all', ...CAR_REQUEST_STATUSES].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setCarStatusFilter(st)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer flex-shrink-0 ${
+                        carStatusFilter === st
+                          ? 'bg-charcoal text-cream shadow-sm'
+                          : 'text-charcoal/60 hover:text-charcoal'
+                      }`}
+                    >
+                      {st === 'all' ? 'All' : st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Car Requests Table */}
+              <div className="bg-white rounded-2xl border border-charcoal/10 shadow-sm overflow-hidden">
+                {carRequestsLoading ? (
+                  <div className="py-20 text-center flex flex-col items-center justify-center">
+                    <RefreshCw className="w-8 h-8 text-gold animate-spin mb-3" />
+                    <p className="text-xs text-charcoal/60 font-mono">Syncing car requests from Firestore cloud...</p>
+                  </div>
+                ) : filteredCarRequests.length === 0 ? (
+                  <div className="py-20 text-center flex flex-col items-center justify-center px-4">
+                    <Car className="w-12 h-12 text-charcoal/20 mb-3" />
+                    <h4 className="text-lg font-serif text-charcoal font-medium">No car requests found</h4>
+                    <p className="text-xs text-charcoal/50 max-w-sm mt-1">
+                      {carSearchTerm || carStatusFilter !== 'all'
+                        ? 'Try clearing your search term or active status filter.'
+                        : 'No car rental requests submitted yet. New requests will appear here automatically.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-charcoal text-cream uppercase tracking-wider text-[10px] font-mono border-b border-gold/20">
+                          <th className="p-4 font-semibold">Customer</th>
+                          <th className="p-4 font-semibold">Vehicles</th>
+                          <th className="p-4 font-semibold">Location</th>
+                          <th className="p-4 font-semibold">Trip</th>
+                          <th className="p-4 font-semibold">Status</th>
+                          <th className="p-4 font-semibold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-charcoal/10 font-sans">
+                        {filteredCarRequests.map((req) => {
+                          const status = req.status || 'New Request';
+                          let statusBadgeClass = 'bg-yellow-50 text-yellow-800 border-yellow-200';
+                          if (status === 'Confirmed') statusBadgeClass = 'bg-green-50 text-green-800 border-green-200';
+                          if (status === 'Cancelled') statusBadgeClass = 'bg-red-50 text-red-800 border-red-200';
+                          if (status === 'Completed') statusBadgeClass = 'bg-blue-50 text-blue-800 border-blue-200';
+
+                          return (
+                            <tr
+                              key={req.id}
+                              className="hover:bg-cream/40 transition-colors group cursor-pointer"
+                              onClick={() => {
+                                setSelectedCarRequest(req);
+                                setEditingAdminQuote(req.adminQuoteAmount != null ? String(req.adminQuoteAmount) : '');
+                                setEditingAdminNotes(req.adminNotes || '');
+                                setEditingAlternative(req.alternativeSuggestion || '');
+                              }}
+                            >
+                              <td className="p-4 font-mono font-medium text-charcoal">
+                                <div className="flex items-center space-x-2">
+                                  <Phone className="w-3.5 h-3.5 text-gold flex-shrink-0" />
+                                  <a
+                                    href={`tel:${req.customerPhone}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="hover:underline hover:text-gold"
+                                  >
+                                    {req.customerPhone}
+                                  </a>
+                                </div>
+                                {req.customerName && (
+                                  <span className="text-[10px] text-charcoal/50 block font-sans font-normal mt-0.5">
+                                    {req.customerName}
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="p-4 font-medium text-charcoal max-w-xs">
+                                {(req.vehicles || []).map((v) => (
+                                  <div key={v.vehicleId} className="font-serif text-sm text-charcoal truncate">{v.name} <span className="text-charcoal/40 text-xs">× {v.quantity}</span></div>
+                                ))}
+                                <span className="inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-charcoal/5 text-charcoal/60 mt-1">
+                                  {req.driverPreference || 'N/A'}
+                                </span>
+                              </td>
+
+                              <td className="p-4 text-charcoal/70 max-w-xs truncate">
+                                <div className="flex items-center space-x-1 text-charcoal/60">
+                                  <MapPin className="w-3 h-3 text-gold flex-shrink-0" />
+                                  <span className="truncate">{req.location}</span>
+                                </div>
+                              </td>
+
+                              <td className="p-4 text-charcoal/80 text-[11px] space-y-0.5">
+                                <div className="truncate max-w-[160px]">{req.pickupLocation} &rarr; {req.destination}</div>
+                                <div className="flex items-center space-x-1">
+                                  <Calendar className="w-3 h-3 text-charcoal/40" />
+                                  <span className="font-mono text-[10px]">{req.date || 'N/A'} {req.time}</span>
+                                </div>
+                              </td>
+
+                              <td className="p-4">
+                                <select
+                                  value={status}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => handleCarStatusChange(req.id, e.target.value as CarRequestStatus)}
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border cursor-pointer focus:outline-none ${statusBadgeClass}`}
+                                >
+                                  {CAR_REQUEST_STATUSES.map((s) => (
+                                    <option key={s} value={s}>{s}</option>
+                                  ))}
+                                </select>
+                              </td>
+
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                                  <a
+                                    href={`https://wa.me/${req.customerPhone.replace(/[^0-9]/g, '')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                    title="WhatsApp Customer"
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </a>
+
+                                  <button
+                                    onClick={() => handleDeleteCarRequest(req.id)}
+                                    className="p-1.5 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete Record"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              </>
+              )}
             </div>
           )}
 
@@ -821,6 +1222,152 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                     <Send className="w-4 h-4" />
                     <span>Open WhatsApp Chat with Client</span>
                   </a>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Car Request Details Drawer / Modal */}
+          {selectedCarRequest && (
+            <div className="fixed inset-0 z-[110] bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border border-gold/30 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl text-charcoal"
+              >
+                <div className="bg-charcoal text-cream p-5 flex justify-between items-center border-b border-gold/20">
+                  <h3 className="font-serif text-lg font-medium text-gold">Car Request — {selectedCarRequest.requestId}</h3>
+                  <button onClick={() => setSelectedCarRequest(null)} className="text-cream/60 hover:text-cream">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
+                  <div className="bg-cream/40 p-4 rounded-2xl border border-charcoal/10 space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-gold block mb-1">Vehicle Request</span>
+                    {(selectedCarRequest.vehicles || []).map((v) => (
+                      <div key={v.vehicleId} className="flex justify-between items-center font-mono text-[11px] text-charcoal">
+                        <span className="font-serif text-sm text-charcoal">{v.name}</span>
+                        <span>Qty: {v.quantity}</span>
+                      </div>
+                    ))}
+                    {selectedCarRequest.estimatedTotal != null ? (
+                      <p className="text-sm font-mono font-bold text-gold pt-1.5 border-t border-charcoal/10">
+                        Estimated Starting Price: ₦{selectedCarRequest.estimatedTotal.toLocaleString()}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-charcoal/50 pt-1.5 border-t border-charcoal/10">Final price to be confirmed.</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-charcoal/10">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Customer</span>
+                      <span className="font-semibold text-charcoal block">{selectedCarRequest.customerName}</span>
+                      <a href={`tel:${selectedCarRequest.customerPhone}`} className="block font-mono text-charcoal/70 hover:text-gold">{selectedCarRequest.customerPhone}</a>
+                      {selectedCarRequest.customerEmail && (
+                        <a href={`mailto:${selectedCarRequest.customerEmail}`} className="block font-mono text-charcoal/70 hover:text-gold truncate">{selectedCarRequest.customerEmail}</a>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-charcoal/10">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Status</span>
+                      <select
+                        value={selectedCarRequest.status || 'New Request'}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleCarStatusChange(selectedCarRequest.id, e.target.value as CarRequestStatus)}
+                        className="w-full font-bold uppercase tracking-wider text-[10px] text-gold bg-transparent outline-none cursor-pointer"
+                      >
+                        {CAR_REQUEST_STATUSES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-xl border border-charcoal/10 space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Trip Details</span>
+                    <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Location</span><span>{selectedCarRequest.location}</span></div>
+                    <div className="flex justify-between font-mono text-[11px] text-charcoal gap-4"><span className="text-charcoal/50 flex-shrink-0">Pickup</span><span className="text-right">{selectedCarRequest.pickupLocation}</span></div>
+                    <div className="flex justify-between font-mono text-[11px] text-charcoal gap-4"><span className="text-charcoal/50 flex-shrink-0">Destination</span><span className="text-right">{selectedCarRequest.destination}</span></div>
+                    <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Date / Time</span><span>{selectedCarRequest.date} {selectedCarRequest.time}</span></div>
+                    <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Driver</span><span>{selectedCarRequest.driverPreference}</span></div>
+                    {selectedCarRequest.passengerCount && (
+                      <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Passengers</span><span>{selectedCarRequest.passengerCount}</span></div>
+                    )}
+                    {selectedCarRequest.specialRequests && selectedCarRequest.specialRequests.length > 0 && (
+                      <div className="flex justify-between font-mono text-[11px] text-charcoal gap-4"><span className="text-charcoal/50 flex-shrink-0">Special Requests</span><span className="text-right">{selectedCarRequest.specialRequests.join(', ')}</span></div>
+                    )}
+                    {selectedCarRequest.additionalNotes && (
+                      <div className="pt-1.5 border-t border-charcoal/10">
+                        <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Customer Notes</span>
+                        <p className="text-charcoal/70">{selectedCarRequest.additionalNotes}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Admin-only fields — never exposed to the customer */}
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1.5">
+                      <Lock className="w-3 h-3" /> Admin Only — Not Visible to Customer
+                    </span>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-charcoal/60 block mb-1">Quote Amount (₦)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 450000"
+                        value={editingAdminQuote}
+                        onChange={(e) => setEditingAdminQuote(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-charcoal/60 block mb-1">Suggested Alternative Vehicle</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. BMW 5 Series — 2 cars (if requested vehicle is unavailable)"
+                        value={editingAlternative}
+                        onChange={(e) => setEditingAlternative(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-charcoal/60 block mb-1">Internal Notes (partner, cost, markup, etc.)</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Partner/supplier, cost price, markup, availability notes..."
+                        value={editingAdminNotes}
+                        onChange={(e) => setEditingAdminNotes(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSaveCarAdminFields}
+                      disabled={savingCarAdmin}
+                      className="w-full py-2 bg-charcoal hover:bg-charcoal/90 text-cream font-semibold rounded-xl text-xs transition-all cursor-pointer"
+                    >
+                      {savingCarAdmin ? 'Saving...' : 'Save Admin Details'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
+                      href={`https://wa.me/${selectedCarRequest.customerPhone.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-3 bg-green-600 hover:bg-green-700 text-white font-semibold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>WhatsApp</span>
+                    </a>
+                    <a
+                      href={`mailto:${selectedCarRequest.customerEmail}?subject=${encodeURIComponent(`Your Elite Booking car request ${selectedCarRequest.requestId}`)}`}
+                      className="py-3 bg-charcoal hover:bg-charcoal/90 text-cream font-semibold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                    >
+                      <Mail className="w-4 h-4" />
+                      <span>Email</span>
+                    </a>
+                  </div>
                 </div>
               </motion.div>
             </div>
