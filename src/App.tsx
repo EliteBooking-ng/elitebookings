@@ -3649,6 +3649,49 @@ Best regards.`;
                 </div>
               </div>
 
+              {/* AIRCRAFT GALLERY */}
+              <div className="relative rounded-[2.5rem] overflow-hidden bg-[#0A0A0A] border border-white/10 mt-8 p-8 sm:p-12 shadow-2xl">
+                <span className="inline-flex items-center gap-2 text-blue-400 text-[11px] uppercase tracking-[0.5em] font-bold mb-2">
+                  <Plane className="w-3.5 h-3.5" /> Inside The Cabin
+                </span>
+                <h2 className="text-2xl md:text-3xl font-serif font-light text-white leading-snug mb-6">
+                  A Glimpse of the Experience
+                </h2>
+                <div className="overflow-hidden -mx-8 sm:-mx-12">
+                  <div className="animate-gallery-slide flex gap-4 w-fit px-8 sm:px-12">
+                    {[
+                      { src: '/images/challenger-604/cabin-aisle-wide.jpeg', alt: 'Private jet cabin aisle with club seating' },
+                      { src: '/images/challenger-604/cabin-suite.jpeg', alt: 'Private jet cabin seat and table suite' },
+                      { src: '/images/challenger-604/seat-detail.jpeg', alt: 'Quilted leather cabin seat detail' },
+                      { src: '/images/challenger-604/cabin-refreshments.jpeg', alt: 'Cabin table with onboard refreshments' },
+                      { src: '/images/challenger-604/rear-bench.jpeg', alt: 'Rear cabin bench seating' },
+                      { src: '/images/challenger-604/exterior-side-profile.jpeg', alt: 'Elite Booking private jet on the tarmac' },
+                      { src: '/images/challenger-604/exterior-tail-detail.jpeg', alt: 'Private jet tail and engine detail' },
+                      // Duplicated to enable the seamless -50% looping slide.
+                      { src: '/images/challenger-604/cabin-aisle-wide.jpeg', alt: 'Private jet cabin aisle with club seating' },
+                      { src: '/images/challenger-604/cabin-suite.jpeg', alt: 'Private jet cabin seat and table suite' },
+                      { src: '/images/challenger-604/seat-detail.jpeg', alt: 'Quilted leather cabin seat detail' },
+                      { src: '/images/challenger-604/cabin-refreshments.jpeg', alt: 'Cabin table with onboard refreshments' },
+                      { src: '/images/challenger-604/rear-bench.jpeg', alt: 'Rear cabin bench seating' },
+                      { src: '/images/challenger-604/exterior-side-profile.jpeg', alt: 'Elite Booking private jet on the tarmac' },
+                      { src: '/images/challenger-604/exterior-tail-detail.jpeg', alt: 'Private jet tail and engine detail' },
+                    ].map((img, idx) => (
+                      <div key={`${img.src}-${idx}`} className="relative flex-shrink-0 w-64 sm:w-72 h-48 sm:h-52 rounded-2xl overflow-hidden">
+                        <img
+                          src={img.src}
+                          alt={img.alt}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-white/30 text-[11px] mt-4">
+                  Sample cabin and aircraft photography — the aircraft assigned to your trip is confirmed at the time of booking.
+                </p>
+              </div>
+
               {/* EMPTY LEG CHARTER */}
               <div className="relative rounded-[2.5rem] overflow-hidden bg-[#0A0A0A] border border-white/10 mt-8 p-8 sm:p-12 md:p-14 shadow-2xl">
                 <div className="grid md:grid-cols-5 gap-10 md:gap-12 items-start">

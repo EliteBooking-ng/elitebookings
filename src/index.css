@@ -91,3 +91,19 @@
 .sparkle-button:hover::after {
   opacity: 1;
 }
+
+/* Continuous auto-sliding image gallery (e.g. the Private Aviation cabin
+   gallery) — same seamless-loop technique as the assistance ticker banner:
+   the content is duplicated and translated by exactly -50%. */
+@keyframes gallery-slide {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-gallery-slide {
+  animation: gallery-slide 40s linear infinite;
+}
+
+.animate-gallery-slide:hover {
+  animation-play-state: paused;
+}
