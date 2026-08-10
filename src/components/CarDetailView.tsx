@@ -14,6 +14,7 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
   const interStateLabel = formatInterStatePrice(vehicle);
   const startingDiscount = formatDiscountBadge(vehicle.startingPriceDiscountPercent);
   const interStateDiscount = formatDiscountBadge(vehicle.interStatePriceDiscountPercent);
+  const homeLabel = vehicle.locations.join(' / ');
 
   const specs = [
     { icon: Users, label: `${vehicle.seats} Passengers` },
@@ -78,16 +79,16 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
 
             <p className="text-white/50 text-sm leading-relaxed mb-8 max-w-md">{vehicle.description}</p>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6 mb-8 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-3">
                 <span className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-bold">{PRICING_TYPE_LABEL[vehicle.pricingType]}</span>
                 <span className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-bold">Availability: {vehicle.status}</span>
               </div>
 
-              <div className={interStateLabel ? 'flex items-center justify-between gap-4 pb-3 mb-3 border-b border-white/10' : ''}>
+              <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${interStateLabel ? 'pb-3 mb-3 border-b border-white/10' : ''}`}>
                 <div>
-                  <span className="text-white/30 text-[10px] uppercase tracking-[0.15em] font-bold block mb-0.5">Port Harcourt Rate</span>
-                  <span className="text-2xl font-serif text-white font-semibold">{formatStartingPrice(vehicle)}</span>
+                  <span className="text-white/30 text-[10px] uppercase tracking-[0.15em] font-bold block mb-0.5">{homeLabel} Rate</span>
+                  <span className="text-2xl font-serif text-white font-semibold break-words">{formatStartingPrice(vehicle)}</span>
                 </div>
                 {startingDiscount && (
                   <span className="bg-blue-600 text-white text-[9px] uppercase tracking-[0.2em] font-bold px-3 py-1.5 rounded-full flex-shrink-0">{startingDiscount}</span>
@@ -95,10 +96,10 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
               </div>
 
               {interStateLabel && (
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                   <div>
                     <span className="text-white/30 text-[10px] uppercase tracking-[0.15em] font-bold block mb-0.5">Inter-State Rate</span>
-                    <span className="text-2xl font-serif text-white font-semibold">{interStateLabel}</span>
+                    <span className="text-2xl font-serif text-white font-semibold break-words">{interStateLabel}</span>
                   </div>
                   {interStateDiscount && (
                     <span className="bg-blue-600 text-white text-[9px] uppercase tracking-[0.2em] font-bold px-3 py-1.5 rounded-full flex-shrink-0">{interStateDiscount}</span>
@@ -109,7 +110,7 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
               {(vehicle.startingPrice != null || interStateLabel) && (
                 <p className="text-white/30 text-[11px] mt-3 leading-relaxed">
                   {interStateLabel
-                    ? 'Inter-State rate applies to trips that cross Rivers State lines — this vehicle remains based in Port Harcourt. Starting from — final price confirmed after availability.'
+                    ? `Inter-State rate applies to trips that leave ${homeLabel}. Starting from — final price confirmed after availability.`
                     : 'Starting from — final price confirmed after availability.'}
                 </p>
               )}

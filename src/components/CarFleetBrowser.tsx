@@ -212,12 +212,12 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
                     {vehicle.transmission} · {vehicle.seats} Seats · {vehicle.airConditioning ? 'AC' : 'No AC'}
                   </p>
                   <p className="text-white/50 text-xs mb-5">{vehicle.driverOptions.join(' · ')}</p>
-                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
-                    <span className="text-white font-semibold text-sm">{formatStartingPrice(vehicle)}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3 pt-4 border-t border-white/10">
+                    <span className="text-white font-semibold text-sm break-words">{formatStartingPrice(vehicle)}</span>
                     <button
                       type="button"
                       onClick={() => onSelectVehicle(vehicle)}
-                      className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold transition-all cursor-pointer"
+                      className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold transition-all cursor-pointer flex-shrink-0"
                     >
                       View Car
                     </button>
