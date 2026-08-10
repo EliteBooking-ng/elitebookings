@@ -413,11 +413,13 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
     setBookingSuccess(true);
     confetti({ particleCount: 120, spread: 75, origin: { y: 0.6 } });
 
-    // Proactive follow-up: a personal concierge doesn't just take the booking
-    // and go quiet — it looks for the next thing the guest will need.
+    // Proactive follow-up: a personal concierge doesn't just take the request
+    // and go quiet — it looks for the next thing the guest will need. Posted
+    // to the underlying chat feed, independent of how long the success screen
+    // stays open (that's now dismissed by the guest, not a timer).
     const nudgeText = isHotel || bookingProperty.category === 'Shortlet'
-      ? "Wonderful — that's booked! Would you like help arranging airport pickup, a driver, or dinner reservations for your stay?"
-      : "Wonderful — that's booked! Would you like help finding a place to stay as well, or anything else for your trip?";
+      ? "Wonderful — your request is in! Would you like help arranging airport pickup, a driver, or dinner reservations for your stay?"
+      : "Wonderful — your request is in! Would you like help finding a place to stay as well, or anything else for your trip?";
 
     setTimeout(() => {
       setMessages((prev) => [
@@ -430,17 +432,21 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
         }
       ]);
     }, 300);
+  };
 
-    setTimeout(() => {
-      setBookingSuccess(false);
-      setBookingProperty(null);
-      setGuestName('');
-      setGuestPhone('');
-      setCheckIn('');
-      setCheckOut('');
-      setNumberOfRooms('1 Room');
-      setPlannedDefaults(null);
-    }, 2200);
+  // Clears the booking form/success state. Used when the guest explicitly
+  // dismisses the success screen (WhatsApp or Back to Home) — previously this
+  // ran on a 2.2s timer, which closed the confirmation before most people
+  // could read it or tap anything.
+  const resetBookingState = () => {
+    setBookingSuccess(false);
+    setBookingProperty(null);
+    setGuestName('');
+    setGuestPhone('');
+    setCheckIn('');
+    setCheckOut('');
+    setNumberOfRooms('1 Room');
+    setPlannedDefaults(null);
   };
 
   const openBooking = (rec: RecommendationItem) => {
@@ -768,7 +774,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           setPlanCategory(next);
                           setPlanRooms(next === 'Car Rental' ? '1 Car' : '1 Room');
                         }}
-                        className="w-full bg-white border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50"
+                        className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                       >
                         <option value="Hotel">Hotel</option>
                         <option value="Shortlet">Shortlet</option>
@@ -778,7 +784,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                       <select
                         value={planCity}
                         onChange={(e) => setPlanCity(e.target.value as typeof planCity)}
-                        className="w-full bg-white border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50"
+                        className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                       >
                         <option value="Lagos">Lagos</option>
                         <option value="Abuja">Abuja</option>
@@ -791,7 +797,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                       placeholder="Specific area (e.g. Lekki, GRA, Wuse) — optional"
                       value={planArea}
                       onChange={(e) => setPlanArea(e.target.value)}
-                      className="w-full bg-white border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                      className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
                     />
 
                     <div className="relative">
@@ -802,7 +808,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                         placeholder="Your budget — optional"
                         value={planBudget}
                         onChange={(e) => setPlanBudget(e.target.value)}
-                        className="w-full bg-white border border-charcoal/15 rounded-xl pl-8 pr-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                        className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-4 py-2.5 text-sm outline-none focus:border-gold/50"
                       />
                     </div>
 
@@ -813,7 +819,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           type="date"
                           value={planCheckIn}
                           onChange={(e) => setPlanCheckIn(e.target.value)}
-                          className="w-full bg-white border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-xs outline-none focus:border-gold/50"
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                         />
                       </div>
                       <div className="relative">
@@ -822,7 +828,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           type="date"
                           value={planCheckOut}
                           onChange={(e) => setPlanCheckOut(e.target.value)}
-                          className="w-full bg-white border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-xs outline-none focus:border-gold/50"
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                         />
                       </div>
                     </div>
@@ -833,7 +839,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                         <select
                           value={planGuests}
                           onChange={(e) => setPlanGuests(e.target.value)}
-                          className="w-full bg-white border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-sm outline-none focus:border-gold/50"
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                         >
                           <option>1 Guest</option>
                           <option>2 Guests</option>
@@ -845,7 +851,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                         <select
                           value={planRooms}
                           onChange={(e) => setPlanRooms(e.target.value)}
-                          className="w-full bg-white border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50"
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                         >
                           <option>1 Room</option>
                           <option>2 Rooms</option>
@@ -858,7 +864,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                         <select
                           value={planRooms}
                           onChange={(e) => setPlanRooms(e.target.value)}
-                          className="w-full bg-white border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50"
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                         >
                           <option>1 Car</option>
                           <option>2 Cars</option>
@@ -873,7 +879,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                       placeholder="Must-haves (e.g. pool, wifi, near airport) — optional"
                       value={planFeatures}
                       onChange={(e) => setPlanFeatures(e.target.value)}
-                      className="w-full bg-white border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                      className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
                     />
 
                     <button
@@ -922,7 +928,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           placeholder="Full Name"
                           value={guestName}
                           onChange={(e) => setGuestName(e.target.value)}
-                          className="w-full bg-white border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
                         />
                         <input
                           type="tel"
@@ -930,26 +936,26 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           placeholder="Phone Number"
                           value={guestPhone}
                           onChange={(e) => setGuestPhone(e.target.value)}
-                          className="w-full bg-white border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
                         />
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             type="date"
                             value={checkIn}
                             onChange={(e) => setCheckIn(e.target.value)}
-                            className="w-full bg-white border border-charcoal/15 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-gold/50"
+                            className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                           />
                           <input
                             type="date"
                             value={checkOut}
                             onChange={(e) => setCheckOut(e.target.value)}
-                            className="w-full bg-white border border-charcoal/15 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-gold/50"
+                            className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                           />
                         </div>
                         <select
                           value={guestCount}
                           onChange={(e) => setGuestCount(e.target.value)}
-                          className="w-full bg-white border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                         >
                           <option>1 Guest</option>
                           <option>2 Guests</option>
@@ -960,7 +966,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           <select
                             value={numberOfRooms}
                             onChange={(e) => setNumberOfRooms(e.target.value)}
-                            className="w-full bg-white border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                            className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                           >
                             <option>1 Room</option>
                             <option>2 Rooms</option>
@@ -973,7 +979,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           <select
                             value={numberOfRooms}
                             onChange={(e) => setNumberOfRooms(e.target.value)}
-                            className="w-full bg-white border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                            className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
                           >
                             <option>1 Car</option>
                             <option>2 Cars</option>
@@ -991,7 +997,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <>
-                              <Sparkles className="w-3.5 h-3.5" /> Confirm via WhatsApp
+                              <Sparkles className="w-3.5 h-3.5" /> Confirm Availability
                             </>
                           )}
                         </button>
@@ -1001,17 +1007,27 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                     <div className="text-center py-6">
                       <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
                       <h3 className="font-serif text-lg text-charcoal font-semibold">Request Sent!</h3>
-                      <p className="text-xs text-charcoal/50 mt-1 mb-4">Our concierge will confirm your booking shortly.</p>
-                      {bookingProperty && (
-                        <a
-                          href={`https://wa.me/2347072253857?text=${encodeURIComponent(`Hello Elite Concierge! 👑\n\nFollowing up on my request for *${bookingProperty.name}* — Name: ${guestName}, Phone: ${guestPhone}.`)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-bold uppercase tracking-wider py-3 px-5 rounded-full shadow-md transition-all cursor-pointer"
+                      <p className="text-xs text-charcoal/50 mt-1 mb-5">Our concierge will confirm availability shortly.</p>
+                      <div className="space-y-2.5">
+                        {bookingProperty && (
+                          <a
+                            href={`https://wa.me/2347072253857?text=${encodeURIComponent(`Hello Elite Concierge! 👑\n\nFollowing up on my request for *${bookingProperty.name}* — Name: ${guestName}, Phone: ${guestPhone}.`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={resetBookingState}
+                            className="flex items-center justify-center gap-2 w-full bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-bold uppercase tracking-wider py-3 px-5 rounded-full shadow-md transition-all cursor-pointer"
+                          >
+                            Message Us On WhatsApp To Confirm
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { resetBookingState(); onClose(); }}
+                          className="w-full bg-white border border-charcoal/15 hover:bg-charcoal/5 text-charcoal text-xs font-bold uppercase tracking-wider py-3 px-5 rounded-full transition-all cursor-pointer"
                         >
-                          Message Us On WhatsApp To Confirm
-                        </a>
-                      )}
+                          Back to Home
+                        </button>
+                      </div>
                     </div>
                   )}
                 </motion.div>
