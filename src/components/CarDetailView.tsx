@@ -35,7 +35,7 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
 
       <div className="relative rounded-[2.5rem] overflow-hidden bg-[#0A0A0A] border border-white/10 shadow-2xl">
         <div className="grid lg:grid-cols-2">
-          <div>
+          <div className="min-w-0">
             <div className="relative aspect-[4/3] lg:aspect-auto lg:h-full bg-black min-h-[320px]">
               <img
                 src={activeImage}
@@ -64,20 +64,20 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
             )}
           </div>
 
-          <div className="p-8 sm:p-12 flex flex-col justify-center">
+          <div className="min-w-0 p-8 sm:p-12 flex flex-col justify-center overflow-hidden">
             <span className="text-blue-400 text-[11px] uppercase tracking-[0.4em] font-bold mb-3 block">{vehicle.category}</span>
-            <h1 className="text-3xl md:text-5xl font-serif font-light text-white leading-tight mb-6">{vehicle.name}</h1>
+            <h1 className="text-3xl md:text-5xl font-serif font-light text-white leading-tight mb-6 break-words">{vehicle.name}</h1>
 
             <div className="space-y-3.5 mb-8">
               {specs.map(({ icon: Icon, label }) => (
                 <div key={label} className="flex items-center gap-3 text-white/70 text-sm">
                   <Icon className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                  {label}
+                  <span className="break-words">{label}</span>
                 </div>
               ))}
             </div>
 
-            <p className="text-white/50 text-sm leading-relaxed mb-8 max-w-md">{vehicle.description}</p>
+            <p className="text-white/50 text-sm leading-relaxed mb-8 max-w-md break-words">{vehicle.description}</p>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6 mb-8 overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-3">
@@ -86,8 +86,8 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
               </div>
 
               <div className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${interStateLabel ? 'pb-3 mb-3 border-b border-white/10' : ''}`}>
-                <div>
-                  <span className="text-white/30 text-[10px] uppercase tracking-[0.15em] font-bold block mb-0.5">{homeLabel} Rate</span>
+                <div className="min-w-0">
+                  <span className="text-white/30 text-[10px] uppercase tracking-[0.15em] font-bold block mb-0.5 break-words">{homeLabel} Rate</span>
                   <span className="text-2xl font-serif text-white font-semibold break-words">{formatStartingPrice(vehicle)}</span>
                 </div>
                 {startingDiscount && (
@@ -97,7 +97,7 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
 
               {interStateLabel && (
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-white/30 text-[10px] uppercase tracking-[0.15em] font-bold block mb-0.5">Inter-State Rate</span>
                     <span className="text-2xl font-serif text-white font-semibold break-words">{interStateLabel}</span>
                   </div>
@@ -108,7 +108,7 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
               )}
 
               {(vehicle.startingPrice != null || interStateLabel) && (
-                <p className="text-white/30 text-[11px] mt-3 leading-relaxed">
+                <p className="text-white/30 text-[11px] mt-3 leading-relaxed break-words">
                   {interStateLabel
                     ? `Inter-State rate applies to trips that leave ${homeLabel}. Starting from — final price confirmed after availability.`
                     : 'Starting from — final price confirmed after availability.'}

@@ -187,7 +187,7 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.06 }}
-                className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-blue-500/40 transition-all duration-300 group"
+                className="min-w-0 bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-blue-500/40 transition-all duration-300 group"
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-black">
                   <img
@@ -206,7 +206,7 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
                   )}
                 </div>
                 <div className="p-6">
-                  <h3 className="text-xl font-serif text-white mb-0.5">{vehicle.name}</h3>
+                  <h3 className="text-xl font-serif text-white mb-0.5 break-words">{vehicle.name}</h3>
                   <p className="text-blue-400 text-[10px] uppercase tracking-[0.2em] font-bold mb-3">{vehicle.category}</p>
                   <p className="text-white/50 text-xs mb-1">
                     {vehicle.transmission} · {vehicle.seats} Seats · {vehicle.airConditioning ? 'AC' : 'No AC'}
