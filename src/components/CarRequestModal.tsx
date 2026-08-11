@@ -172,6 +172,19 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
       };
     });
 
+    // Staff-only text — includes the owning agency so whoever reads the
+    // notification email knows who to contact without opening the Admin
+    // Dashboard. Kept separate from `vehiclesSummaryText`, which also feeds
+    // the customer's own outgoing WhatsApp message and must stay agency-free.
+    const vehiclesAdminText = items.map((i) => {
+      const agency = getVehicleById(i.vehicleId)?.agency;
+      return `${i.name} × ${i.quantity}${agency ? ` [Owner: ${agency}]` : ''}`;
+    }).join(', ');
+    const agencies = Array.from(new Set(
+      items.map((i) => getVehicleById(i.vehicleId)?.agency).filter((a): a is string => !!a)
+    ));
+    const agencyLine = agencies.length > 0 ? agencies.join(', ') : 'Elite Booking Fleet';
+
     const requestDetails = {
       requestId: newId,
       vehicles: vehicleSnapshots,
@@ -197,7 +210,7 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
       alternativeSuggestion: null,
     };
 
-    const summaryText = `New Car Rental Request (${newId})\n\nVehicles: ${vehiclesSummaryText}\nLocation: ${location}\nTrip Type: ${tripType}\nDriver Preference: ${driverPreference}${passengerCount.trim() ? `\nPassengers: ${passengerCount.trim()}` : ''}\nPickup: ${pickupLocation.trim()}\nDestination: ${destination.trim()}\nDate: ${formatDateTime(tripDate, pickupTime)}\nSpecial Requests: ${specialRequests.length > 0 ? specialRequests.join(', ') : 'None'}\nNotes: ${additionalNotes.trim() || 'None'}\nEstimated Price: ${canCalculate ? `₦${estimateTotal.toLocaleString('en-NG')} (starting estimate)` : 'To be confirmed by Elite Booking'}\n\nContact Name: ${fullName.trim()}\nContact Phone: ${phone.trim()}\nContact Email: ${email.trim()}`;
+    const summaryText = `New Car Rental Request (${newId})\n\nVehicles: ${vehiclesAdminText}\nVehicle Owner(s): ${agencyLine}\nLocation: ${location}\nTrip Type: ${tripType}\nDriver Preference: ${driverPreference}${passengerCount.trim() ? `\nPassengers: ${passengerCount.trim()}` : ''}\nPickup: ${pickupLocation.trim()}\nDestination: ${destination.trim()}\nDate: ${formatDateTime(tripDate, pickupTime)}\nSpecial Requests: ${specialRequests.length > 0 ? specialRequests.join(', ') : 'None'}\nNotes: ${additionalNotes.trim() || 'None'}\nEstimated Price: ${canCalculate ? `₦${estimateTotal.toLocaleString('en-NG')} (starting estimate)` : 'To be confirmed by Elite Booking'}\n\nContact Name: ${fullName.trim()}\nContact Phone: ${phone.trim()}\nContact Email: ${email.trim()}`;
 
     const firestoreSave = addDoc(collection(db, 'car_requests'), requestDetails).catch((err) => {
       console.warn('Firestore car request save notice:', err);
@@ -214,7 +227,8 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
           _subject: `Elite Car Rental Request ${newId}: ${vehiclesSummaryText}`,
           _template: 'table',
           'Request ID': newId,
-          'Vehicles': vehiclesSummaryText,
+          'Vehicles': vehiclesAdminText,
+          'Vehicle Owner(s)': agencyLine,
           'Location': location,
           'Trip Type': tripType,
           'Driver Preference': driverPreference,
