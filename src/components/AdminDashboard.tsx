@@ -68,6 +68,7 @@ export interface CarRequestVehicleItem {
   pricingType: string;
   unitPrice: number | null;
   quantity: number;
+  agency?: string | null;
 }
 
 export type CarRequestStatus =
@@ -1062,7 +1063,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
 
                               <td className="p-4 font-medium text-charcoal max-w-xs">
                                 {(req.vehicles || []).map((v) => (
-                                  <div key={v.vehicleId} className="font-serif text-sm text-charcoal truncate">{v.name} <span className="text-charcoal/40 text-xs">× {v.quantity}</span></div>
+                                  <div key={v.vehicleId} className="font-serif text-sm text-charcoal truncate">
+                                    {v.name} <span className="text-charcoal/40 text-xs">× {v.quantity}</span>
+                                    {v.agency && <span className="text-gold/70 text-[10px] ml-1">({v.agency})</span>}
+                                  </div>
                                 ))}
                                 <span className="inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-charcoal/5 text-charcoal/60 mt-1">
                                   {req.driverPreference || 'N/A'}
@@ -1247,7 +1251,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                     <span className="text-[10px] uppercase font-bold text-gold block mb-1">Vehicle Request</span>
                     {(selectedCarRequest.vehicles || []).map((v) => (
                       <div key={v.vehicleId} className="flex justify-between items-center font-mono text-[11px] text-charcoal">
-                        <span className="font-serif text-sm text-charcoal">{v.name}</span>
+                        <span className="font-serif text-sm text-charcoal">
+                          {v.name}
+                          {v.agency && <span className="text-gold/70 text-[10px] block font-sans">Agency: {v.agency}</span>}
+                        </span>
                         <span>Qty: {v.quantity}</span>
                       </div>
                     ))}

@@ -116,6 +116,31 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
               )}
             </div>
 
+            {vehicle.rateCard && vehicle.rateCard.length > 0 && (
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6 mb-8 overflow-hidden">
+                <span className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-bold block mb-3">Full Rate Card</span>
+                <div className="space-y-2">
+                  {vehicle.rateCard.map((tier) => (
+                    <div key={tier.label} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+                      <span className="text-white/50 break-words">{tier.label}</span>
+                      <span className="text-white font-semibold break-words">₦{tier.price.toLocaleString('en-NG')}</span>
+                    </div>
+                  ))}
+                </div>
+                {vehicle.airportTransfer && vehicle.airportTransfer.length > 0 && (
+                  <div className="pt-3 mt-3 border-t border-white/10 space-y-2">
+                    <span className="text-white/30 text-[10px] uppercase tracking-[0.15em] font-bold block mb-1">Airport Transfer</span>
+                    {vehicle.airportTransfer.map((tier) => (
+                      <div key={tier.label} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+                        <span className="text-white/50 break-words">{tier.label}</span>
+                        <span className="text-white font-semibold break-words">₦{tier.price.toLocaleString('en-NG')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={() => onRequestVehicle(vehicle)}
               className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-full text-xs uppercase tracking-[0.25em] font-bold shadow-lg shadow-blue-900/40 transition-all duration-300 hover:shadow-xl cursor-pointer"

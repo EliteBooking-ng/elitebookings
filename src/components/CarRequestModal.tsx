@@ -168,6 +168,7 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
         pricingType: v?.pricingType ?? 'custom-quote',
         unitPrice: v ? getTierPrice(v, tier) : null,
         quantity: i.quantity,
+        agency: v?.agency ?? null,
       };
     });
 
