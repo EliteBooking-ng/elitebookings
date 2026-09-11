@@ -55,7 +55,11 @@ import {
   collection,
   addDoc
 } from 'firebase/firestore';
-
+declare global {
+  interface Window {
+    gtag: (...args: any[]) => void;
+  }
+}
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
