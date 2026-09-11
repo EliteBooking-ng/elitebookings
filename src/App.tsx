@@ -3410,7 +3410,23 @@ Best regards.`;
         promises.push(web3Promise);
       }
 
-      await Promise.allSettled(promises);
+      const results = await Promise.allSettled(promises);
+
+const successfulSubmission = results.some(
+  (result) => result.status === 'fulfilled' && result.value?.ok === true
+);
+
+if (!successfulSubmission) {
+  throw new Error('Booking request could not be submitted.');
+}
+
+// Send successful booking request to GA4
+if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+  window.gtag('event', 'availability_request_submitted', {
+    property_name: showBookingOptions.name,
+    booking_type: capKindLabel
+  });
+}
     } catch (emailError) {
       console.error('Error during email auto-transmit:', emailError);
     } finally {
