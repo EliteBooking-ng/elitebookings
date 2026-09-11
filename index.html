@@ -51,7 +51,7 @@
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-QHGQWW3PYB"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
+  window.gtag = function(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
   gtag('config', 'G-QHGQWW3PYB');
