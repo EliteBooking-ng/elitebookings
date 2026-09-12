@@ -4583,9 +4583,17 @@ if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
                         </div>
 
                         <div className="space-y-3 w-full">
-                          <a
-                            href={`https://wa.me/2347072253857?text=${encodeURIComponent(`Hello Elite Booking, I just submitted a booking inquiry for ${showBookingOptions.name}.`)}`}
-                            target="_blank"
+                         <a
+  href={`https://wa.me/2347072253857?text=${encodeURIComponent(`Hello Elite Booking, I just submitted a booking inquiry for ${showBookingOptions.name}.`)}`}
+  onClick={() => {
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'whatsapp_booking_request', {
+        property_name: showBookingOptions.name,
+        booking_type: capKindLabel
+      });
+    }
+  }}
+  target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-center gap-2.5 w-full bg-[#25D366] hover:bg-[#20bd5a] text-white py-3.5 px-6 rounded-full text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer"
                           >
