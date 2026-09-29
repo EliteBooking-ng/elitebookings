@@ -4595,7 +4595,7 @@ if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'whatsapp_booking_request', {
         property_name: showBookingOptions.name,
-        booking_type: capKindLabel
+        booking_type: bookingType === 'reservation' ? 'Availability' : 'Booking'
       });
     }
   }}
