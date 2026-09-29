@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { getNotificationEmails } from '../utils/notificationEmail';
 
 interface PrivateJetRequestModalProps {
   isOpen: boolean;
@@ -146,47 +147,54 @@ export function PrivateJetRequestModal({ isOpen, onClose, defaultRequirement = n
     });
 
     const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
-    const targetEmail = localStorage.getItem('elite_notification_email') || 'Elitebooking.ng@gmail.com';
+    // Send to every configured notification address — see
+    // src/utils/notificationEmail.ts for why a single address silently
+    // missed real customer traffic.
+    const targetEmails = getNotificationEmails();
 
-    const emailPromises: Promise<any>[] = [
-      fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          _subject: `Elite Aviation Request ${newId}: ${departureLabel} to ${destination.trim()}`,
-          _template: 'table',
-          'Request ID': newId,
-          'From': departureLabel,
-          'To': destination.trim(),
-          'Trip Type': tripType,
-          'Departure': formatDateTime(departureDate, departureTime),
-          ...(tripType === 'Round Trip' ? { 'Return': formatDateTime(returnDate, returnTime) } : {}),
-          'Passengers': passengers,
-          'Aircraft Preference': aircraftPreference,
-          'Special Requests': specialRequirements.length > 0 ? specialRequirements.join(', ') : 'None',
-          'Notes': additionalNotes.trim() || 'None',
-          'Contact Name': contactName.trim(),
-          'Contact Phone': contactPhone.trim(),
-          'Full Message': summaryText,
-        }),
-      }).catch((err) => console.warn('FormSubmit jet request notice:', err)),
-    ];
+    const emailPromises: Promise<any>[] = [];
 
-    if (accessKey && accessKey.trim() !== '') {
+    for (const targetEmail of targetEmails) {
       emailPromises.push(
-        fetch('https://api.web3forms.com/submit', {
+        fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify({
-            access_key: accessKey,
-            subject: `Elite Aviation Request ${newId}: ${departureLabel} to ${destination.trim()}`,
-            from_name: 'Elite Bookings Private Aviation',
-            to_email: targetEmail,
-            message: summaryText,
-            phone: contactPhone.trim(),
+            _subject: `Elite Aviation Request ${newId}: ${departureLabel} to ${destination.trim()}`,
+            _template: 'table',
+            'Request ID': newId,
+            'From': departureLabel,
+            'To': destination.trim(),
+            'Trip Type': tripType,
+            'Departure': formatDateTime(departureDate, departureTime),
+            ...(tripType === 'Round Trip' ? { 'Return': formatDateTime(returnDate, returnTime) } : {}),
+            'Passengers': passengers,
+            'Aircraft Preference': aircraftPreference,
+            'Special Requests': specialRequirements.length > 0 ? specialRequirements.join(', ') : 'None',
+            'Notes': additionalNotes.trim() || 'None',
+            'Contact Name': contactName.trim(),
+            'Contact Phone': contactPhone.trim(),
+            'Full Message': summaryText,
           }),
-        }).catch((err) => console.warn('Web3Forms jet request notice:', err))
+        }).catch((err) => console.warn('FormSubmit jet request notice:', err)),
       );
+
+      if (accessKey && accessKey.trim() !== '') {
+        emailPromises.push(
+          fetch('https://api.web3forms.com/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+              access_key: accessKey,
+              subject: `Elite Aviation Request ${newId}: ${departureLabel} to ${destination.trim()}`,
+              from_name: 'Elite Bookings Private Aviation',
+              to_email: targetEmail,
+              message: summaryText,
+              phone: contactPhone.trim(),
+            }),
+          }).catch((err) => console.warn('Web3Forms jet request notice:', err))
+        );
+      }
     }
 
     await Promise.allSettled([firestoreSave, ...emailPromises]);

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { getNotificationEmails } from '../utils/notificationEmail';
 
 interface MovingRequestModalProps {
   isOpen: boolean;
@@ -154,51 +155,58 @@ export function MovingRequestModal({ isOpen, onClose }: MovingRequestModalProps)
     });
 
     const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
-    const targetEmail = localStorage.getItem('elite_notification_email') || 'Elitebooking.ng@gmail.com';
+    // Send to every configured notification address — see
+    // src/utils/notificationEmail.ts for why a single address silently
+    // missed real customer traffic.
+    const targetEmails = getNotificationEmails();
 
-    const emailPromises: Promise<any>[] = [
-      fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          _subject: `Elite Moving Request ${newId}: ${pickupCity.trim()} to ${dropoffCity.trim()}`,
-          _template: 'table',
-          'Request ID': newId,
-          'Moving': moveTypes.join(', '),
-          'Pickup': `${pickupAddress.trim()}, ${pickupCity.trim()}, ${pickupState}`,
-          'Drop-off': `${dropoffAddress.trim()}, ${dropoffCity.trim()}, ${dropoffState}`,
-          'Moving Date': formatDateTime(movingDate, movingTime),
-          'Rooms/Items': roomsItems.trim(),
-          'Floor (Pickup)': pickupFloor.trim() || 'N/A',
-          'Floor (Drop-off)': dropoffFloor.trim() || 'N/A',
-          'Elevator Available': elevatorAvailable,
-          'Heavy/Large Items': heavyItems,
-          'Loading Assistance': loadingAssistance,
-          'Unloading Assistance': unloadingAssistance,
-          'Notes': additionalNotes.trim() || 'None',
-          'Contact Name': fullName.trim(),
-          'Contact Phone': phone.trim(),
-          'Contact Email': email.trim() || 'Not provided',
-          'Full Message': summaryText,
-        }),
-      }).catch((err) => console.warn('FormSubmit moving request notice:', err)),
-    ];
+    const emailPromises: Promise<any>[] = [];
 
-    if (accessKey && accessKey.trim() !== '') {
+    for (const targetEmail of targetEmails) {
       emailPromises.push(
-        fetch('https://api.web3forms.com/submit', {
+        fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify({
-            access_key: accessKey,
-            subject: `Elite Moving Request ${newId}: ${pickupCity.trim()} to ${dropoffCity.trim()}`,
-            from_name: 'Elite Bookings Moving & Relocation',
-            to_email: targetEmail,
-            message: summaryText,
-            phone: phone.trim(),
+            _subject: `Elite Moving Request ${newId}: ${pickupCity.trim()} to ${dropoffCity.trim()}`,
+            _template: 'table',
+            'Request ID': newId,
+            'Moving': moveTypes.join(', '),
+            'Pickup': `${pickupAddress.trim()}, ${pickupCity.trim()}, ${pickupState}`,
+            'Drop-off': `${dropoffAddress.trim()}, ${dropoffCity.trim()}, ${dropoffState}`,
+            'Moving Date': formatDateTime(movingDate, movingTime),
+            'Rooms/Items': roomsItems.trim(),
+            'Floor (Pickup)': pickupFloor.trim() || 'N/A',
+            'Floor (Drop-off)': dropoffFloor.trim() || 'N/A',
+            'Elevator Available': elevatorAvailable,
+            'Heavy/Large Items': heavyItems,
+            'Loading Assistance': loadingAssistance,
+            'Unloading Assistance': unloadingAssistance,
+            'Notes': additionalNotes.trim() || 'None',
+            'Contact Name': fullName.trim(),
+            'Contact Phone': phone.trim(),
+            'Contact Email': email.trim() || 'Not provided',
+            'Full Message': summaryText,
           }),
-        }).catch((err) => console.warn('Web3Forms moving request notice:', err))
+        }).catch((err) => console.warn('FormSubmit moving request notice:', err)),
       );
+
+      if (accessKey && accessKey.trim() !== '') {
+        emailPromises.push(
+          fetch('https://api.web3forms.com/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+              access_key: accessKey,
+              subject: `Elite Moving Request ${newId}: ${pickupCity.trim()} to ${dropoffCity.trim()}`,
+              from_name: 'Elite Bookings Moving & Relocation',
+              to_email: targetEmail,
+              message: summaryText,
+              phone: phone.trim(),
+            }),
+          }).catch((err) => console.warn('Web3Forms moving request notice:', err))
+        );
+      }
     }
 
     await Promise.allSettled([firestoreSave, ...emailPromises]);

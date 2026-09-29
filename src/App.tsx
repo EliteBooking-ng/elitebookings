@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
+import { getNotificationEmails } from './utils/notificationEmail';
 import portHarcourtImg from './assets/images/port_harcourt_landmark_1785093104193.jpg';
 import abujaImg from './assets/images/abuja_landmark_1785093118297.jpg';
 import lagosImg from './assets/images/lagos_landmark_1785093272541.jpg';
@@ -3364,54 +3365,59 @@ Best regards.`;
 
     // 2. Automated background email sending via FormSubmit & Web3Forms
     const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
-    const targetEmail = localStorage.getItem('elite_notification_email') || 'Elitebooking.ng@gmail.com';
+    // Send to every configured notification address (always includes the
+    // hardcoded default, plus a custom one if this browser has set a
+    // different one in Admin > Settings) — see src/utils/notificationEmail.ts
+    // for why a single address silently missed real customer traffic.
+    const targetEmails = getNotificationEmails();
 
     setEmailSubmitStatus('sending');
 
     try {
-      // Primary: FormSubmit.co instant dispatch (no API key required!)
-      const formSubmitPromise = fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          _subject: `Elite Booking Alert: ${showBookingOptions.name}`,
-          _template: 'table',
-          "Property / Asset": showBookingOptions.name,
-          "Location": showBookingOptions.location,
-          "Rate": effectivePrice ? `₦${effectivePrice}` : 'N/A',
-          ...(packageTierText ? { "Package / Tier": packageTierText } : {}),
-          ...(isHotelBooking ? { "Rooms Needed": numberOfRooms || '1 Room' } : {}),
-          "Client Phone Number": userPhoneNumber,
-          "Check-In": formattedCheckin,
-          "Check-Out": formattedCheckout,
-          "Type": capKindLabel,
-          "Full Message": bookingText
-        })
-      });
+      const promises: Promise<any>[] = [];
 
-      // Secondary: Web3Forms if key is present
-      const promises: Promise<any>[] = [formSubmitPromise];
-
-      if (accessKey && accessKey.trim() !== '') {
-        const web3Promise = fetch('https://api.web3forms.com/submit', {
+      for (const targetEmail of targetEmails) {
+        // Primary: FormSubmit.co instant dispatch (no API key required!)
+        promises.push(fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            access_key: accessKey,
-            subject: `Elite Booking Enquiry: ${showBookingOptions.name}`,
-            from_name: 'Elite Bookings System',
-            to_email: targetEmail,
-            message: bookingText,
-            phone: userPhoneNumber
+            _subject: `Elite Booking Alert: ${showBookingOptions.name}`,
+            _template: 'table',
+            "Property / Asset": showBookingOptions.name,
+            "Location": showBookingOptions.location,
+            "Rate": effectivePrice ? `₦${effectivePrice}` : 'N/A',
+            ...(packageTierText ? { "Package / Tier": packageTierText } : {}),
+            ...(isHotelBooking ? { "Rooms Needed": numberOfRooms || '1 Room' } : {}),
+            "Client Phone Number": userPhoneNumber,
+            "Check-In": formattedCheckin,
+            "Check-Out": formattedCheckout,
+            "Type": capKindLabel,
+            "Full Message": bookingText
           })
-        });
-        promises.push(web3Promise);
+        }));
+
+        // Secondary: Web3Forms if key is present
+        if (accessKey && accessKey.trim() !== '') {
+          promises.push(fetch('https://api.web3forms.com/submit', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              access_key: accessKey,
+              subject: `Elite Booking Enquiry: ${showBookingOptions.name}`,
+              from_name: 'Elite Bookings System',
+              to_email: targetEmail,
+              message: bookingText,
+              phone: userPhoneNumber
+            })
+          }));
+        }
       }
 
       const results = await Promise.allSettled(promises);

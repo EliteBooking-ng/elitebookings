@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti';
 import { CATALOG_ITEMS, CatalogItem } from '../data/catalog';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { getNotificationEmails } from '../utils/notificationEmail';
 
 export interface RecommendationItem {
   id: string;
@@ -366,45 +367,52 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
     });
 
     const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
-    const targetEmail = localStorage.getItem('elite_notification_email') || 'Elitebooking.ng@gmail.com';
+    // Send to every configured notification address — see
+    // src/utils/notificationEmail.ts for why a single address silently
+    // missed real customer traffic.
+    const targetEmails = getNotificationEmails();
 
-    const emailPromises: Promise<any>[] = [
-      fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          _subject: `Elite Concierge Booking: ${bookingProperty.name}`,
-          _template: 'table',
-          'Property / Asset': bookingProperty.name,
-          'Location': bookingProperty.location,
-          'Price': bookingProperty.price,
-          'Guest Name': guestName,
-          'Guest Phone': guestPhone,
-          'Check-In': checkIn || 'Flexible',
-          'Check-Out': checkOut || 'Flexible',
-          'Guests': guestCount,
-          ...(needsQuantity ? { [quantityLabel]: numberOfRooms } : {}),
-          'Source': 'AI Concierge',
-          'Full Message': messageText
-        })
-      }).catch((err) => console.warn('FormSubmit email notice:', err))
-    ];
+    const emailPromises: Promise<any>[] = [];
 
-    if (accessKey && accessKey.trim() !== '') {
+    for (const targetEmail of targetEmails) {
       emailPromises.push(
-        fetch('https://api.web3forms.com/submit', {
+        fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           body: JSON.stringify({
-            access_key: accessKey,
-            subject: `Elite Concierge Booking: ${bookingProperty.name}`,
-            from_name: 'Elite Bookings AI Concierge',
-            to_email: targetEmail,
-            message: messageText,
-            phone: guestPhone
+            _subject: `Elite Concierge Booking: ${bookingProperty.name}`,
+            _template: 'table',
+            'Property / Asset': bookingProperty.name,
+            'Location': bookingProperty.location,
+            'Price': bookingProperty.price,
+            'Guest Name': guestName,
+            'Guest Phone': guestPhone,
+            'Check-In': checkIn || 'Flexible',
+            'Check-Out': checkOut || 'Flexible',
+            'Guests': guestCount,
+            ...(needsQuantity ? { [quantityLabel]: numberOfRooms } : {}),
+            'Source': 'AI Concierge',
+            'Full Message': messageText
           })
-        }).catch((err) => console.warn('Web3Forms email notice:', err))
+        }).catch((err) => console.warn('FormSubmit email notice:', err))
       );
+
+      if (accessKey && accessKey.trim() !== '') {
+        emailPromises.push(
+          fetch('https://api.web3forms.com/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+              access_key: accessKey,
+              subject: `Elite Concierge Booking: ${bookingProperty.name}`,
+              from_name: 'Elite Bookings AI Concierge',
+              to_email: targetEmail,
+              message: messageText,
+              phone: guestPhone
+            })
+          }).catch((err) => console.warn('Web3Forms email notice:', err))
+        );
+      }
     }
 
     await Promise.allSettled([firestoreSave, ...emailPromises]);
