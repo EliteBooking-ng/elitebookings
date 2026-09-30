@@ -10,7 +10,6 @@ import {
   getVehiclesByLocation, getVehicleById, getTierPrice, isTierPriceCalculable,
   type Vehicle, type PriceTier
 } from '../data/cars';
-import { getNotificationEmails } from '../utils/notificationEmail';
 
 interface CarRequestModalProps {
   isOpen: boolean;
@@ -217,60 +216,16 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
       console.warn('Firestore car request save notice:', err);
     });
 
-    const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
-    // Send to every configured notification address — see
-    // src/utils/notificationEmail.ts for why a single address silently
-    // missed real customer traffic.
-    const targetEmails = getNotificationEmails();
-
-    const emailPromises: Promise<any>[] = [];
-
-    for (const targetEmail of targetEmails) {
-      emailPromises.push(
-        fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({
-            _subject: `Elite Car Rental Request ${newId}: ${vehiclesSummaryText}`,
-            _template: 'table',
-            'Request ID': newId,
-            'Vehicles': vehiclesAdminText,
-            'Vehicle Owner(s)': agencyLine,
-            'Location': location,
-            'Trip Type': tripType,
-            'Driver Preference': driverPreference,
-            'Passengers': passengerCount.trim() || 'N/A',
-            'Pickup': pickupLocation.trim(),
-            'Destination': destination.trim(),
-            'Date': formatDateTime(tripDate, pickupTime),
-            'Special Requests': specialRequests.length > 0 ? specialRequests.join(', ') : 'None',
-            'Notes': additionalNotes.trim() || 'None',
-            'Estimated Price': canCalculate ? `₦${estimateTotal.toLocaleString('en-NG')} (starting estimate)` : 'To be confirmed',
-            'Contact Name': fullName.trim(),
-            'Contact Phone': phone.trim(),
-            'Contact Email': email.trim(),
-            'Full Message': summaryText,
-          }),
-        }).catch((err) => console.warn('FormSubmit car request notice:', err)),
-      );
-
-      if (accessKey && accessKey.trim() !== '') {
-        emailPromises.push(
-          fetch('https://api.web3forms.com/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({
-              access_key: accessKey,
-              subject: `Elite Car Rental Request ${newId}: ${vehiclesSummaryText}`,
-              from_name: 'Elite Bookings Car Rentals',
-              to_email: targetEmail,
-              message: summaryText,
-              phone: phone.trim(),
-            }),
-          }).catch((err) => console.warn('Web3Forms car request notice:', err))
-        );
-      }
-    }
+    const emailPromises: Promise<any>[] = [
+      fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: `Elite Car Rental Request ${newId}: ${vehiclesSummaryText}`,
+          text: summaryText
+        })
+      }).catch((err) => console.warn('Notification send notice:', err))
+    ];
 
     await Promise.allSettled([firestoreSave, ...emailPromises]);
 

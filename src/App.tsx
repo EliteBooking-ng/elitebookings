@@ -40,7 +40,6 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
-import { getNotificationEmails } from './utils/notificationEmail';
 import portHarcourtImg from './assets/images/port_harcourt_landmark_1785093104193.jpg';
 import abujaImg from './assets/images/abuja_landmark_1785093118297.jpg';
 import lagosImg from './assets/images/lagos_landmark_1785093272541.jpg';
@@ -3363,80 +3362,38 @@ Best regards.`;
       }
     }
 
-    // 2. Automated background email sending via FormSubmit & Web3Forms
-    const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
-    // Send to every configured notification address (always includes the
-    // hardcoded default, plus a custom one if this browser has set a
-    // different one in Admin > Settings) — see src/utils/notificationEmail.ts
-    // for why a single address silently missed real customer traffic.
-    const targetEmails = getNotificationEmails();
-
+    // 2. Automated notification email — sent server-side via /api/notify
+    // (Resend), not directly from the customer's browser. The previous
+    // direct-from-browser approach (FormSubmit/Web3Forms) made delivery
+    // depend on each customer's own device/network/carrier, which proved
+    // unreliable (FormSubmit returns a hard 500 for this business's address
+    // regardless of caller; Web3Forms refuses server calls on the free plan
+    // and wasn't consistently reachable from some mobile browsers/carriers).
+    // Routing through our own same-origin endpoint means delivery always
+    // goes through the same reliable server-side connection.
     setEmailSubmitStatus('sending');
 
     try {
-      const promises: Promise<any>[] = [];
+      const notifySubject = `Elite Booking Alert: ${showBookingOptions.name}`;
+      const notifyText = `${bookingText}\n\n---\nProperty / Asset: ${showBookingOptions.name}\nLocation: ${showBookingOptions.location}\nRate: ${effectivePrice ? `₦${effectivePrice}` : 'N/A'}${packageTierText ? `\nPackage / Tier: ${packageTierText}` : ''}${isHotelBooking ? `\nRooms Needed: ${numberOfRooms || '1 Room'}` : ''}\nClient Phone Number: ${userPhoneNumber}\nCheck-In: ${formattedCheckin}\nCheck-Out: ${formattedCheckout}\nType: ${capKindLabel}`;
 
-      for (const targetEmail of targetEmails) {
-        // Primary: FormSubmit.co instant dispatch (no API key required!)
-        promises.push(fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            _subject: `Elite Booking Alert: ${showBookingOptions.name}`,
-            _template: 'table',
-            "Property / Asset": showBookingOptions.name,
-            "Location": showBookingOptions.location,
-            "Rate": effectivePrice ? `₦${effectivePrice}` : 'N/A',
-            ...(packageTierText ? { "Package / Tier": packageTierText } : {}),
-            ...(isHotelBooking ? { "Rooms Needed": numberOfRooms || '1 Room' } : {}),
-            "Client Phone Number": userPhoneNumber,
-            "Check-In": formattedCheckin,
-            "Check-Out": formattedCheckout,
-            "Type": capKindLabel,
-            "Full Message": bookingText
-          })
-        }));
+      const notifyRes = await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: notifySubject, text: notifyText })
+      });
 
-        // Secondary: Web3Forms if key is present
-        if (accessKey && accessKey.trim() !== '') {
-          promises.push(fetch('https://api.web3forms.com/submit', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-              access_key: accessKey,
-              subject: `Elite Booking Enquiry: ${showBookingOptions.name}`,
-              from_name: 'Elite Bookings System',
-              to_email: targetEmail,
-              message: bookingText,
-              phone: userPhoneNumber
-            })
-          }));
-        }
+      if (!notifyRes.ok) {
+        throw new Error('Booking request could not be submitted.');
       }
 
-      const results = await Promise.allSettled(promises);
-
-const successfulSubmission = results.some(
-  (result) => result.status === 'fulfilled' && result.value?.ok === true
-);
-
-if (!successfulSubmission) {
-  throw new Error('Booking request could not be submitted.');
-}
-
-// Send successful booking request to GA4
-if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
-  window.gtag('event', 'availability_request_submitted', {
-    property_name: showBookingOptions.name,
-    booking_type: capKindLabel
-  });
-}
+      // Send successful booking request to GA4
+      if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+        window.gtag('event', 'availability_request_submitted', {
+          property_name: showBookingOptions.name,
+          booking_type: capKindLabel
+        });
+      }
     } catch (emailError) {
       console.error('Error during email auto-transmit:', emailError);
     } finally {

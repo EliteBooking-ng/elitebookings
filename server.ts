@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { handleConciergeRequest } from "./src/server/conciergeLogic";
+import { handleNotifyRequest } from "./src/server/notifyLogic";
 
 async function startServer() {
   const app = express();
@@ -15,6 +16,11 @@ async function startServer() {
 
   app.post("/api/concierge", async (req, res) => {
     const result = await handleConciergeRequest(req.body);
+    res.status(result.statusCode).json(result.body);
+  });
+
+  app.post("/api/notify", async (req, res) => {
+    const result = await handleNotifyRequest(req.body);
     res.status(result.statusCode).json(result.body);
   });
 
