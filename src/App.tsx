@@ -4774,7 +4774,11 @@ if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
 
       </main>
 
-      <footer className="p-12 border-t border-charcoal/10 flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
+      {/* Extra bottom padding (pb-32/40) keeps this content clear of the fixed
+          AI Concierge / WhatsApp pill buttons, which are pinned to the
+          viewport bottom and would otherwise render on top of it once the
+          page is scrolled all the way down. */}
+      <footer className="pt-12 px-12 pb-32 sm:pb-36 md:pb-40 border-t border-charcoal/10 flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
         <div className="text-[11px] uppercase tracking-[0.3em] text-charcoal/60 font-medium">
           &copy; 2026 Elite Bookings Luxury Travel. All rights reserved.
         </div>
@@ -4788,6 +4792,12 @@ if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
             </a>
           </div>
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            className="text-[10px] text-charcoal/50 hover:text-gold transition-colors cursor-pointer normal-case tracking-widest font-semibold"
+          >
+            Admin
+          </button>
         </div>
       </footer>
 
