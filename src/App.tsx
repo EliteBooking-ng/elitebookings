@@ -45,15 +45,32 @@ import abujaImg from './assets/images/abuja_landmark_1785093118297.jpg';
 import lagosImg from './assets/images/lagos_landmark_1785093272541.jpg';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AIConciergeModal } from './components/AIConciergeModal';
+import { DiscoveryAssistantModal } from './components/DiscoveryAssistantModal';
 import { PrivateJetRequestModal } from './components/PrivateJetRequestModal';
 import { MovingRequestModal } from './components/MovingRequestModal';
 import { CarFleetBrowser } from './components/CarFleetBrowser';
 import { CarDetailView } from './components/CarDetailView';
 import { CarRequestModal } from './components/CarRequestModal';
-import type { Vehicle } from './data/cars';
+import { PartnerAuthModal } from './components/PartnerAuthModal';
+import { PartnerDashboardModal } from './components/PartnerDashboardModal';
+import { CompleteYourTripPanel } from './components/CompleteYourTripPanel';
+import { TripSummaryModal } from './components/TripSummaryModal';
+import { TripAttachPrompt } from './components/TripAttachPrompt';
+import { getVehicleById, type Vehicle } from './data/cars';
+import type { RecommendationItem } from './types/assistant';
+import type { PartnerListing } from './types/partnerListing';
+import type { Trip, TripService, ServiceType } from './types/trip';
+import { usePartnerAuth } from './hooks/usePartnerAuth';
+import { useActiveTrip } from './hooks/useActiveTrip';
+import { useTripRecommendations } from './hooks/useTripRecommendations';
+import { RecommendationToast } from './components/RecommendationToast';
+import { AddServiceModal } from './components/AddServiceModal';
 import {
   collection,
-  addDoc
+  addDoc,
+  onSnapshot,
+  query,
+  where
 } from 'firebase/firestore';
 declare global {
   interface Window {
@@ -92,6 +109,8 @@ interface EnquiryData {
 export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAIConciergeOpen, setIsAIConciergeOpen] = useState(false);
+  const [isDiscoveryAssistantOpen, setIsDiscoveryAssistantOpen] = useState(false);
+  const [discoveryHandoffProperty, setDiscoveryHandoffProperty] = useState<RecommendationItem | null>(null);
 
   // Light/dark theme — defaults to whatever the inline script in index.html
   // already applied (stored preference, or OS preference) so this never
@@ -124,6 +143,45 @@ export default function App() {
   const [showCarRequestForm, setShowCarRequestForm] = useState(false);
   const [carRequestVehicle, setCarRequestVehicle] = useState<Vehicle | null>(null);
 
+  // Partner self-service listings — approved ones merge into the normal
+  // browsing arrays below; partner auth/dashboard entry points live in the footer.
+  const [approvedPartnerListings, setApprovedPartnerListings] = useState<PartnerListing[]>([]);
+  const [isPartnerAuthModalOpen, setIsPartnerAuthModalOpen] = useState(false);
+  const [isPartnerDashboardOpen, setIsPartnerDashboardOpen] = useState(false);
+  const partnerUser = usePartnerAuth();
+
+  useEffect(() => {
+    const q = query(collection(db, 'partner_listings'), where('status', '==', 'approved'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setApprovedPartnerListings(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as PartnerListing)));
+    }, (error) => {
+      console.error('Error listening to approved partner listings:', error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const approvedPartnerHotels = approvedPartnerListings.filter((l) => l.category === 'Hotel');
+  const approvedPartnerShortlets = approvedPartnerListings.filter((l) => l.category === 'Shortlet');
+  const approvedPartnerVehicles: Vehicle[] = approvedPartnerListings
+    .filter((l) => l.category === 'Car Rental')
+    .map((l) => ({
+      id: l.id,
+      name: l.name,
+      category: l.vehicleType || 'Sedan',
+      type: l.vehicleType || 'Sedan',
+      transmission: l.transmission || 'Automatic',
+      seats: l.seats ?? 4,
+      airConditioning: l.airConditioning ?? true,
+      driverOptions: l.driverOptions && l.driverOptions.length > 0 ? l.driverOptions : ['With Driver'],
+      locations: [l.city],
+      primaryImage: l.images[0] || '',
+      additionalImages: l.images.slice(1),
+      description: l.description,
+      pricingType: l.pricingType || 'day',
+      startingPrice: parseInt(l.price.replace(/[^0-9]/g, ''), 10) || null,
+      status: 'On Request'
+    }));
+
   // Luxury unified search states and helper functions
   const [searchQuery, setSearchQuery] = useState('');
   const [hotelRoomsMap, setHotelRoomsMap] = useState<Record<string, string>>({});
@@ -145,13 +203,22 @@ export default function App() {
 
   const getFilteredHotels = () => {
     const query = searchQuery.trim().toLowerCase();
-    const sourceHotels = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+    const staticHotels = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
       ? lagosHotels
       : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
       ? abujaHotels
       : phHotels;
+    const cityLabel = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+      ? 'Lagos'
+      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      ? 'Abuja'
+      : 'Port Harcourt';
+    const partnerHotels = approvedPartnerHotels
+      .filter((l) => l.city === cityLabel)
+      .map((l) => ({ id: l.id, name: l.name, location: l.location, price: l.price, images: l.images, description: l.description, tiers: l.tiers, note: l.note }));
+    const sourceHotels = [...staticHotels, ...partnerHotels];
     if (!query) return sourceHotels;
-    return sourceHotels.filter(hotel => 
+    return sourceHotels.filter(hotel =>
       hotel.name.toLowerCase().includes(query) ||
       hotel.location.toLowerCase().includes(query) ||
       hotel.description.toLowerCase().includes(query) ||
@@ -164,13 +231,22 @@ export default function App() {
 
   const getFilteredShortlets = () => {
     const query = searchQuery.trim().toLowerCase();
-    const sourceShortlets = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+    const staticShortlets = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
       ? lagosShortlets
       : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
       ? abujaShortlets
       : phShortlets;
+    const cityLabel = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+      ? 'Lagos'
+      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      ? 'Abuja'
+      : 'Port Harcourt';
+    const partnerShortlets = approvedPartnerShortlets
+      .filter((l) => l.city === cityLabel)
+      .map((l) => ({ id: l.id, name: l.name, location: l.location, price: l.price, cautionFee: l.cautionFee, features: l.features || [], images: l.images, description: l.description }));
+    const sourceShortlets = [...staticShortlets, ...partnerShortlets];
     if (!query) return sourceShortlets;
-    return sourceShortlets.filter(shortlet => 
+    return sourceShortlets.filter(shortlet =>
       shortlet.name.toLowerCase().includes(query) ||
       shortlet.location.toLowerCase().includes(query) ||
       shortlet.description.toLowerCase().includes(query) ||
@@ -548,6 +624,8 @@ export default function App() {
   const [bookingStep, setBookingStep] = useState<1 | 2>(1); // 1 = Date/Time, 2 = WhatsApp Options
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [userPhoneNumber, setUserPhoneNumber] = useState('');
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [numberOfRooms, setNumberOfRooms] = useState<string>('1 Room');
   const [emailSubmitStatus, setEmailSubmitStatus] = useState<'idle' | 'saving' | 'sending' | 'success' | 'manual_fallback'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -577,6 +655,28 @@ export default function App() {
 
   const isPoppingState = useRef(false);
 
+  // Discovery Assistant never books — picking a shortlist card hands off to
+  // whichever real booking flow already exists for that category, closing
+  // Discovery and opening the right one.
+  const handleDiscoveryHandoff = (rec: RecommendationItem) => {
+    setIsDiscoveryAssistantOpen(false);
+    if (rec.category === 'Car Rental') {
+      const vehicle = getVehicleById(rec.id) ?? approvedPartnerVehicles.find((v) => v.id === rec.id);
+      if (vehicle) {
+        setCarRequestVehicle(vehicle);
+        setShowCarRequestForm(true);
+      }
+    } else if (rec.category === 'Private Jet') {
+      setJetRequestPreset(rec.name);
+      setShowJetRequestForm(true);
+    } else {
+      // Hotel / Shortlet — no dedicated request modal exists yet, so hand off
+      // to Concierge's retained direct-booking form, pre-filled.
+      setDiscoveryHandoffProperty(rec);
+      setIsAIConciergeOpen(true);
+    }
+  };
+
   // Helper for UI back/close buttons to cleanly pop browser history when available
   const handleNavigateBack = (fallbackFn: () => void) => {
     if (window.history.state && typeof window.history.state.depth === 'number' && window.history.state.depth > 0) {
@@ -598,7 +698,8 @@ export default function App() {
         bookingOptions: null,
         emailPopup: false,
         adminOpen: false,
-        conciergeOpen: false
+        conciergeOpen: false,
+        discoveryOpen: false
       }, '');
     }
 
@@ -612,6 +713,7 @@ export default function App() {
         setShowEmailPopup(state.emailPopup ?? false);
         setIsAdminOpen(state.adminOpen ?? false);
         setIsAIConciergeOpen(state.conciergeOpen ?? false);
+        setIsDiscoveryAssistantOpen(state.discoveryOpen ?? false);
       } else {
         // Fallback to home root
         setSelectedCategory(null);
@@ -620,6 +722,7 @@ export default function App() {
         setShowEmailPopup(false);
         setIsAdminOpen(false);
         setIsAIConciergeOpen(false);
+        setIsDiscoveryAssistantOpen(false);
       }
       setTimeout(() => {
         isPoppingState.current = false;
@@ -636,7 +739,7 @@ export default function App() {
   useEffect(() => {
     if (isPoppingState.current) return;
 
-    const isRoot = !selectedCategory && !selectedLocation && !showBookingOptions && !showEmailPopup && !isAdminOpen && !isAIConciergeOpen;
+    const isRoot = !selectedCategory && !selectedLocation && !showBookingOptions && !showEmailPopup && !isAdminOpen && !isAIConciergeOpen && !isDiscoveryAssistantOpen;
 
     const currentState = {
       ebRoot: isRoot,
@@ -645,7 +748,8 @@ export default function App() {
       bookingOptions: showBookingOptions,
       emailPopup: showEmailPopup,
       adminOpen: isAdminOpen,
-      conciergeOpen: isAIConciergeOpen
+      conciergeOpen: isAIConciergeOpen,
+      discoveryOpen: isDiscoveryAssistantOpen
     };
 
     const histState = window.history.state || {};
@@ -656,13 +760,14 @@ export default function App() {
       (histState.bookingOptions?.id ?? null) === (currentState.bookingOptions?.id ?? null) &&
       histState.emailPopup === currentState.emailPopup &&
       histState.adminOpen === currentState.adminOpen &&
-      histState.conciergeOpen === currentState.conciergeOpen;
+      histState.conciergeOpen === currentState.conciergeOpen &&
+      histState.discoveryOpen === currentState.discoveryOpen;
 
     if (!isSameState) {
       const currentDepth = typeof histState.depth === 'number' ? histState.depth : 0;
       window.history.pushState({ ...currentState, depth: currentDepth + 1 }, '');
     }
-  }, [selectedCategory, selectedLocation, showBookingOptions, showEmailPopup, isAdminOpen, isAIConciergeOpen]);
+  }, [selectedCategory, selectedLocation, showBookingOptions, showEmailPopup, isAdminOpen, isAIConciergeOpen, isDiscoveryAssistantOpen]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -688,6 +793,8 @@ export default function App() {
       setCheckoutDate(null);
       setShowEmailPopup(false);
       setUserPhoneNumber('');
+      setUserName('');
+      setUserEmail('');
       setEmailSubmitStatus('idle');
       setErrorMessage('');
     }
@@ -711,6 +818,39 @@ export default function App() {
     localStorage.setItem('guestId', newId);
     return newId;
   });
+
+  const activeTrip = useActiveTrip(guestId);
+  const tripRecommendations = useTripRecommendations(activeTrip.trip, activeTrip.services, guestId);
+  const [showRecommendationAddModal, setShowRecommendationAddModal] = useState(false);
+  const handleRecommendationAdd = async (type: ServiceType, details: Record<string, any>, summary: string) => {
+    const serviceId = await activeTrip.addServiceToTrip(type, details, summary);
+    tripRecommendations.markServiceCreated(serviceId);
+    return serviceId;
+  };
+  const [isTripSummaryOpen, setIsTripSummaryOpen] = useState(false);
+  const [pendingTripAttach, setPendingTripAttach] = useState<{
+    seedType: ServiceType; seedDetails: Record<string, any>; seedSummary: string;
+    customer: { name: string; phone: string; email: string }; location: string;
+  } | null>(null);
+
+  // Fires once, when "Submit Trip Request" is clicked — a single consolidated
+  // notification covering every service on the trip, rather than one email
+  // per service (which already write immediately and don't notify on their own).
+  const notifyTeamOfSubmission = (trip: Trip, services: TripService[]) => {
+    // Sent server-side via /api/notify (Resend) — same reliable path as every
+    // other booking form, not the direct-from-browser FormSubmit/Web3Forms
+    // calls this previously used (proven unreliable: FormSubmit returns a
+    // hard 500 for this business's address; Web3Forms refuses server calls
+    // and was flaky from some mobile carriers even client-side).
+    const servicesText = services.map((s, i) => `${i + 1}. [${s.type}] ${s.summary}`).join('\n');
+    const text = `Trip ${trip.tripCode} submitted by ${trip.customerName} (${trip.customerPhone}, ${trip.customerEmail}) in ${trip.location}.\n\nServices requested:\n${servicesText}`;
+
+    fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject: `Elite Booking Trip Submitted: ${trip.tripCode}`, text }),
+    }).catch((err) => console.warn('Trip submission notification failed:', err));
+  };
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<EnquiryData>({
     location: '',
@@ -3304,7 +3444,7 @@ export default function App() {
     const isHotelBooking = selectedCategory === 'stays' || 
       showBookingOptions?.type === 'hotel' || 
       showBookingOptions?.category === 'stays' || 
-      (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels].some((h: any) => h.id === showBookingOptions.id));
+      (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels, ...approvedPartnerHotels].some((h: any) => h.id === showBookingOptions.id));
 
     const activePackage = selectedPackage || getEffectiveHotelPackage(showBookingOptions);
     const effectivePrice = activePackage ? activePackage.price : (showBookingOptions.price || '');
@@ -3360,6 +3500,30 @@ Best regards.`;
       } catch (err) {
         // Suppress print to UI so booking doesn't crash for the customer
       }
+    }
+
+    // 1b. Seed a new Trip, or attach this booking as a service on the
+    // customer's already-active one (browser-only — see useActiveTrip). If a
+    // trip is already active, ask once instead of silently always-attaching
+    // — see pendingTripAttach / <TripAttachPrompt>.
+    try {
+      const seedType = isHotelBooking ? 'Hotel' : 'Shortlet';
+      const seedDetails = {
+        propertyName: showBookingOptions.name,
+        propertyLocation: showBookingOptions.location,
+        checkin: formattedCheckin,
+        checkout: formattedCheckout,
+        ...(isHotelBooking ? { numberOfRooms: numberOfRooms || '1 Room' } : {}),
+        price: effectivePrice || showBookingOptions.price || '',
+      };
+      const seedSummary = `${showBookingOptions.name} — ${formattedCheckin} to ${formattedCheckout}`;
+      if (!activeTrip.trip) {
+        await activeTrip.createTrip(seedType, seedDetails, seedSummary, { name: userName, phone: userPhoneNumber, email: userEmail }, showBookingOptions.location);
+      } else {
+        setPendingTripAttach({ seedType, seedDetails, seedSummary, customer: { name: userName, phone: userPhoneNumber, email: userEmail }, location: showBookingOptions.location });
+      }
+    } catch (tripError) {
+      console.warn('Trip creation/attach issue:', tripError);
     }
 
     // 2. Automated notification email — sent server-side via /api/notify
@@ -3511,11 +3675,11 @@ Best regards.`;
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <button
-            onClick={() => setIsAIConciergeOpen(true)}
+            onClick={() => setIsDiscoveryAssistantOpen(true)}
             className="flex items-center space-x-2 bg-gradient-to-r from-gold via-amber-300 to-gold text-charcoal px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-full border border-gold/60 shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer font-bold tracking-wider text-[10px] sm:text-xs uppercase"
           >
             <Sparkles className="w-3.5 h-3.5 text-charcoal fill-charcoal/20" />
-            <span className="font-extrabold">AI Concierge</span>
+            <span className="font-extrabold">My Trip</span>
           </button>
         </motion.div>
       </nav>
@@ -4279,6 +4443,7 @@ Best regards.`;
                 setSearchQuery('');
               }}
               onSelectVehicle={(vehicle) => setSelectedCar(vehicle)}
+              partnerVehicles={approvedPartnerVehicles}
             />
           ) : (selectedCategory === 'drive' && selectedLocation && selectedCar) ? (
             <CarDetailView
@@ -4287,6 +4452,16 @@ Best regards.`;
               onRequestVehicle={(vehicle) => {
                 setCarRequestVehicle(vehicle);
                 setShowCarRequestForm(true);
+              }}
+              activeTripCode={activeTrip.trip?.tripCode}
+              onAddToTrip={async (vehicle) => {
+                await activeTrip.addServiceToTrip('Car Rental', {
+                  vehicleCategory: vehicle.category,
+                  preferredVehicleName: vehicle.name,
+                  driverPreference: vehicle.driverOptions[0] ?? 'With Driver',
+                }, `${vehicle.category} (preferred: ${vehicle.name}) — added from browsing`);
+                setSelectedCar(null);
+                setIsTripSummaryOpen(true);
               }}
             />
           ) : (
@@ -4418,6 +4593,18 @@ Best regards.`;
 
                         <form onSubmit={handleEmailSubmit} className="space-y-6">
                           <div className="text-left font-sans">
+                            <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-gold mb-2">Full Name</label>
+                            <input
+                              required
+                              type="text"
+                              placeholder="e.g. Adaeze Okafor"
+                              className="w-full bg-charcoal/5 border border-charcoal/10 rounded-xl py-3.5 px-4 focus:outline-none focus:border-gold transition-colors text-sm font-semibold text-charcoal"
+                              value={userName}
+                              onChange={(e) => setUserName(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="text-left font-sans">
                             <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-gold mb-2">My Mobile Phone Number</label>
                             <div className="relative">
                               <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
@@ -4432,8 +4619,24 @@ Best regards.`;
                             </div>
                           </div>
 
+                          <div className="text-left font-sans">
+                            <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-gold mb-2">Email Address</label>
+                            <div className="relative">
+                              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-charcoal/40" />
+                              <input
+                                required
+                                type="email"
+                                placeholder="e.g. you@example.com"
+                                className="w-full bg-charcoal/5 border border-charcoal/10 rounded-xl py-3.5 pl-11 pr-4 focus:outline-none focus:border-gold transition-colors text-sm font-semibold text-charcoal"
+                                value={userEmail}
+                                onChange={(e) => setUserEmail(e.target.value)}
+                              />
+                            </div>
+                            <p className="text-[10px] text-charcoal/40 mt-1.5">We'll email you updates as we confirm each part of your trip.</p>
+                          </div>
+
                           {/* Optional Rooms Selector for Hotels in Email Popup */}
-                          {(selectedCategory === 'stays' || showBookingOptions?.type === 'hotel' || showBookingOptions?.category === 'stays' || (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels].some((h: any) => h.id === showBookingOptions.id))) && (
+                          {(selectedCategory === 'stays' || showBookingOptions?.type === 'hotel' || showBookingOptions?.category === 'stays' || (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels, ...approvedPartnerHotels].some((h: any) => h.id === showBookingOptions.id))) && (
                             <div className="text-left font-sans space-y-2">
                               <label className="block text-[10px] uppercase tracking-[0.2em] font-bold text-gold flex items-center gap-1.5">
                                 <BedDouble className="w-3.5 h-3.5" /> Number of Rooms Needed (Optional)
@@ -4577,6 +4780,19 @@ Best regards.`;
                             Continue Browsing Hotels
                           </button>
                         </div>
+
+                        {activeTrip.trip && (
+                          <CompleteYourTripPanel
+                            trip={activeTrip.trip}
+                            services={activeTrip.services}
+                            addServiceToTrip={activeTrip.addServiceToTrip}
+                            onViewTrip={() => {
+                              setShowEmailPopup(false);
+                              setShowBookingOptions(null);
+                              setIsTripSummaryOpen(true);
+                            }}
+                          />
+                        )}
                       </div>
                     )}
 
@@ -4691,7 +4907,7 @@ Best regards.`;
                           <span className="text-base font-serif font-semibold text-gold">₦{showBookingOptions.price}</span>
                         </div>
                       ) : null}
-                      {(selectedCategory === 'stays' || showBookingOptions?.type === 'hotel' || showBookingOptions?.category === 'stays' || (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels].some((h: any) => h.id === showBookingOptions.id))) && (
+                      {(selectedCategory === 'stays' || showBookingOptions?.type === 'hotel' || showBookingOptions?.category === 'stays' || (showBookingOptions && [...phHotels, ...lagosHotels, ...abujaHotels, ...approvedPartnerHotels].some((h: any) => h.id === showBookingOptions.id))) && (
                         <div className="border-t border-charcoal/10 pt-4 flex justify-between items-center">
                           <span className="text-[10px] uppercase font-bold tracking-widest text-gold block flex items-center gap-1">
                             <BedDouble className="w-3.5 h-3.5" /> Rooms Needed
@@ -4732,7 +4948,7 @@ Best regards.`;
       </main>
 
       {/* Extra bottom padding (pb-32/40) keeps this content clear of the fixed
-          AI Concierge / WhatsApp pill buttons, which are pinned to the
+          AI Concierge / Discovery / WhatsApp / Back-to-Top pill buttons, which are pinned to the
           viewport bottom and would otherwise render on top of it once the
           page is scrolled all the way down. */}
       <footer className="pt-12 px-12 pb-32 sm:pb-36 md:pb-40 border-t border-charcoal/10 flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
@@ -4749,26 +4965,46 @@ Best regards.`;
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
             </a>
           </div>
-          <button
-            onClick={() => setIsAdminOpen(true)}
-            className="text-[10px] text-charcoal/50 hover:text-gold transition-colors cursor-pointer normal-case tracking-widest font-semibold"
-          >
-            Admin
-          </button>
+          <div className="flex items-center space-x-6 text-[10px] tracking-widest text-charcoal/50 normal-case font-semibold">
+            {/* "Partner With Us" entry point intentionally held back from this
+                deploy — not ready to launch publicly yet. The underlying
+                Partner Listings code stays in the tree (harmless/inert with
+                no approved listings yet); only this entry point is hidden. */}
+            <button
+              onClick={() => setIsAdminOpen(true)}
+              className="hover:text-gold transition-colors cursor-pointer"
+            >
+              Admin
+            </button>
+          </div>
         </div>
       </footer>
 
-      {/* Floating AI Concierge Quick Trigger (Bottom-Left) */}
-      {!isAIConciergeOpen && (
+      {/* Floating "My Trip" Quick Trigger (Bottom-Left, stacked above Find My Stay) */}
+      {activeTrip.trip && !isTripSummaryOpen && (
+        <div className="fixed bottom-18 left-3 sm:bottom-22 sm:left-6 md:bottom-28 md:left-8 z-50 max-w-[48vw]">
+          <motion.button
+            onClick={() => setIsTripSummaryOpen(true)}
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="flex items-center gap-1.5 sm:gap-2.5 bg-gold text-charcoal px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-full shadow-[0_8px_30px_rgba(212,175,55,0.35)] hover:shadow-[0_12px_36px_rgba(212,175,55,0.5)] border border-charcoal/10 transition-all duration-300 group cursor-pointer hover:scale-105 active:scale-95 font-bold text-[10px] sm:text-xs uppercase tracking-wider"
+          >
+            <span className="font-extrabold whitespace-nowrap">My Trip · {activeTrip.trip.tripCode}</span>
+          </motion.button>
+        </div>
+      )}
+
+      {/* Floating Discovery Assistant Quick Trigger (Bottom-Left) */}
+      {!isDiscoveryAssistantOpen && (
         <div className="fixed bottom-4 left-3 sm:bottom-6 sm:left-6 z-50 max-w-[48vw]">
           <motion.button
-            onClick={() => setIsAIConciergeOpen(true)}
+            onClick={() => setIsDiscoveryAssistantOpen(true)}
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="flex items-center gap-1.5 sm:gap-2.5 bg-charcoal text-gold px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-full shadow-[0_8px_30px_rgba(212,175,55,0.35)] hover:shadow-[0_12px_36px_rgba(212,175,55,0.5)] border border-gold/60 transition-all duration-300 group cursor-pointer hover:scale-105 active:scale-95 font-bold text-[10px] sm:text-xs uppercase tracking-wider"
           >
             <Sparkles className="w-4 h-4 text-gold fill-gold/30 animate-pulse flex-shrink-0" />
-            <span className="font-extrabold whitespace-nowrap">AI Concierge</span>
+            <span className="font-extrabold whitespace-nowrap">Find My Stay</span>
           </motion.button>
         </div>
       )}
@@ -4822,10 +5058,93 @@ Best regards.`;
         onClose={() => handleNavigateBack(() => setIsAdminOpen(false))}
       />
 
-      {/* AI Concierge Modal */}
+      {/* AI Concierge Modal — post-booking support */}
       <AIConciergeModal
         isOpen={isAIConciergeOpen}
         onClose={() => handleNavigateBack(() => setIsAIConciergeOpen(false))}
+        initialBookingProperty={discoveryHandoffProperty}
+        onBookingConsumed={() => setDiscoveryHandoffProperty(null)}
+        activeTrip={activeTrip.trip}
+        tripServices={activeTrip.services}
+        createTrip={activeTrip.createTrip}
+        addServiceToTrip={activeTrip.addServiceToTrip}
+        clearActiveTrip={activeTrip.clearActiveTrip}
+        onViewTrip={() => setIsTripSummaryOpen(true)}
+      />
+
+      {/* Discovery Assistant Modal — pre-booking discovery */}
+      <DiscoveryAssistantModal
+        isOpen={isDiscoveryAssistantOpen}
+        onClose={() => handleNavigateBack(() => setIsDiscoveryAssistantOpen(false))}
+        onHandoff={handleDiscoveryHandoff}
+        onSwitchToSupport={() => { setIsDiscoveryAssistantOpen(false); setIsAIConciergeOpen(true); }}
+      />
+
+
+      {/* Partner Sign Up / Log In */}
+      <PartnerAuthModal
+        isOpen={isPartnerAuthModalOpen}
+        onClose={() => setIsPartnerAuthModalOpen(false)}
+        onAuthSuccess={() => setIsPartnerDashboardOpen(true)}
+      />
+
+      {/* Partner Dashboard — only rendered once we actually know who's signed in */}
+      {partnerUser && (
+        <PartnerDashboardModal
+          isOpen={isPartnerDashboardOpen}
+          onClose={() => setIsPartnerDashboardOpen(false)}
+          uid={partnerUser.uid}
+          email={partnerUser.email || ''}
+        />
+      )}
+
+      <TripAttachPrompt
+        isOpen={!!pendingTripAttach && !!activeTrip.trip}
+        tripCode={activeTrip.trip?.tripCode || ''}
+        tripLocation={activeTrip.trip?.location || ''}
+        onAddToExisting={async () => {
+          if (pendingTripAttach) {
+            await activeTrip.addServiceToTrip(pendingTripAttach.seedType, pendingTripAttach.seedDetails, pendingTripAttach.seedSummary);
+          }
+          setPendingTripAttach(null);
+        }}
+        onStartNew={async () => {
+          if (pendingTripAttach) {
+            activeTrip.clearActiveTrip();
+            await activeTrip.createTrip(pendingTripAttach.seedType, pendingTripAttach.seedDetails, pendingTripAttach.seedSummary, pendingTripAttach.customer, pendingTripAttach.location);
+          }
+          setPendingTripAttach(null);
+        }}
+      />
+
+      {/* My Trip — full trip summary, add-service, and concierge box */}
+      {activeTrip.trip && (
+        <TripSummaryModal
+          isOpen={isTripSummaryOpen}
+          onClose={() => setIsTripSummaryOpen(false)}
+          trip={activeTrip.trip}
+          services={activeTrip.services}
+          addServiceToTrip={activeTrip.addServiceToTrip}
+          submitTripRequest={activeTrip.submitTripRequest}
+          clearActiveTrip={() => { activeTrip.clearActiveTrip(); setIsTripSummaryOpen(false); }}
+          notifyTeamOfSubmission={notifyTeamOfSubmission}
+          onTripViewed={tripRecommendations.notifyTripViewed}
+        />
+      )}
+
+      {/* Smart Follow-Up Recommendation toast */}
+      <RecommendationToast
+        isOpen={!!tripRecommendations.active && !showRecommendationAddModal}
+        serviceType={tripRecommendations.active?.serviceType || 'Other'}
+        confirmedServiceType={tripRecommendations.active?.confirmedServiceType}
+        onAccept={() => { tripRecommendations.accept(); setShowRecommendationAddModal(true); }}
+        onDismiss={() => tripRecommendations.dismiss()}
+      />
+      <AddServiceModal
+        isOpen={showRecommendationAddModal}
+        onClose={() => setShowRecommendationAddModal(false)}
+        serviceType={tripRecommendations.active?.serviceType || null}
+        onAdd={handleRecommendationAdd}
       />
 
       {/* Private Jet Request Modal */}

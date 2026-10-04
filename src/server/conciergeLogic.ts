@@ -1,5 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
-import { CATALOG_ITEMS, CatalogItem } from "../data/catalog";
+import type { CatalogItem } from "../data/catalog";
 
 // ---------------------------------------------------------------------------
 // Catalog-only guardrails
@@ -12,7 +11,7 @@ import { CATALOG_ITEMS, CatalogItem } from "../data/catalog";
 // includes some well-known chain properties (Eko Hotel, Bon Hotel, Nordic Hotel,
 // Federal Palace, Land Mark Hotel), so those must NOT be blocked here even though
 // they sound like "external" brands. Verify against catalog.ts before adding a term.
-const UNLISTED_KEYWORDS = [
+export const UNLISTED_KEYWORDS = [
   "transcorp hilton", "hilton", "sheraton", "radisson",
   "wheatbaker", "oriental hotel", "four points", "protea", "ibis",
   "intercontinental", "marriott", "southern sun", "sofitel", "golden tulip lagos",
@@ -29,7 +28,7 @@ const UNLISTED_KEYWORDS = [
 
 // Dead-end phrases the concierge must never lead with — every response has to
 // recommend something instead of stopping at "we don't have X".
-const FORBIDDEN_DEADEND_PHRASES = [
+export const FORBIDDEN_DEADEND_PHRASES = [
   "we don't have", "we do not have", "couldn't find", "could not find",
   "no match", "not available", "unable to find", "sorry, we", "unfortunately we",
   "we currently don't", "we currently do not", "no results", "nothing matching"
@@ -49,8 +48,10 @@ const FORBIDDEN_PHRASE_PATTERNS = FORBIDDEN_DEADEND_PHRASES.map(
 );
 
 // A message fails validation if it names anything outside the catalog, or if it
-// leads with a dead end instead of a recommendation.
-function messageIsUnsafe(message: string, catalogItems: CatalogItem[]): boolean {
+// leads with a dead end instead of a recommendation. `extraKnownNames` lets
+// callers with a second inventory pool (e.g. Discovery's Vehicle names, which
+// aren't in CatalogItem) extend the known-listing check without duplicating it.
+export function messageIsUnsafe(message: string, catalogItems: CatalogItem[], extraKnownNames: string[] = []): boolean {
   if (UNLISTED_KEYWORD_PATTERNS.some((p) => p.test(message))) return true;
   if (FORBIDDEN_PHRASE_PATTERNS.some((p) => p.test(message))) return true;
 
@@ -59,6 +60,9 @@ function messageIsUnsafe(message: string, catalogItems: CatalogItem[]): boolean 
     const cleanMatch = match.toLowerCase().trim();
     const isKnownListing = catalogItems.some((item) => {
       const cleanName = item.name.toLowerCase().trim();
+      return cleanName.includes(cleanMatch) || cleanMatch.includes(cleanName);
+    }) || extraKnownNames.some((name) => {
+      const cleanName = name.toLowerCase().trim();
       return cleanName.includes(cleanMatch) || cleanMatch.includes(cleanName);
     });
     if (!isKnownListing) return true;
@@ -78,8 +82,8 @@ function messageIsUnsafe(message: string, catalogItems: CatalogItem[]): boolean 
 // property search or something that needs a person.
 // ---------------------------------------------------------------------------
 
-const ELITE_WHATSAPP = "+234 707 225 3857";
-const ELITE_WHATSAPP_LINK = "https://wa.me/2347072253857";
+export const ELITE_WHATSAPP = "+234 707 225 3857";
+export const ELITE_WHATSAPP_LINK = "https://wa.me/2347072253857";
 
 // Highest priority: never let anything else in the message override this.
 const SAFETY_PATTERNS = [
@@ -118,7 +122,9 @@ const BOOKING_CHANGE_PATTERNS = [
   /cancel.{0,15}(booking|reservation)/i, /cancel(l)?ation/i, /change.{0,20}date/i,
   /change.{0,15}name/i, /extend (my|the) stay/i, /reschedul/i,
   /move my (check-?in|check-?out|booking)/i, /booking confirmation/i,
-  /is my booking confirmed/i, /confirm(ed)? my (booking|reservation)/i
+  /is my booking confirmed/i, /confirm(ed)? my (booking|reservation)/i,
+  /change (my|the) room/i, /different room/i, /\broom change\b/i,
+  /(upgrade|downgrade|swap|switch) (my|the) room/i
 ];
 
 // Vague distress/frustration without a specific matched problem above — still
@@ -212,7 +218,7 @@ function analyzeIntent(query: string): IntentAnalysis {
   };
 }
 
-interface HandoffInfo {
+export interface HandoffInfo {
   required: boolean;
   priority: "urgent" | "normal";
   category: string;
@@ -220,7 +226,7 @@ interface HandoffInfo {
   summary: string;
 }
 
-function buildHandoffSummary(rawQuery: string, category: string, city: string | undefined, services: string[]): string {
+export function buildHandoffSummary(rawQuery: string, category: string, city: string | undefined, services: string[]): string {
   const lines = [
     `CUSTOMER REQUEST:\n${category}`,
     city ? `LOCATION:\n${city}` : null,
@@ -231,36 +237,17 @@ function buildHandoffSummary(rawQuery: string, category: string, city: string | 
   return lines.join("\n\n");
 }
 
-// When the concierge offers something conditional ("I can flag this to our
-// team if you'd like"), that offer has to actually be actionable — a "yes"
-// from the customer must trigger the real handoff, not silently re-run a
-// search. This is how that offer/confirmation loop is tracked across turns.
-interface PendingOffer {
-  type: "area_verification";
-  area: string;
-  city?: string;
-}
-
-const AFFIRMATIVE_PATTERNS = [
-  /^\s*(yes|yeah|yep|yup|sure|ok(ay)?|please|please do|go ahead|do that|do it)\b/i,
-  /^\s*(i('| a)?d like (that|to)|sounds good|that('?s| is) fine|that works)\b/i,
-];
-
-function isAffirmative(text: string): boolean {
-  return AFFIRMATIVE_PATTERNS.some((p) => p.test(text));
-}
-
 // ---------------------------------------------------------------------------
 // Query parsing
 // ---------------------------------------------------------------------------
 
-function parsePrice(priceStr: string): number {
+export function parsePrice(priceStr: string): number {
   if (!priceStr) return 0;
   const cleaned = priceStr.replace(/[^0-9]/g, "");
   return parseInt(cleaned, 10) || 0;
 }
 
-interface ParsedQuery {
+export interface ParsedQuery {
   city?: "Abuja" | "Lagos" | "Port Harcourt";
   area?: string;
   category?: "Hotel" | "Shortlet" | "Car Rental" | "Private Jet";
@@ -279,7 +266,7 @@ const CITY_TERMS: [string, "Abuja" | "Lagos" | "Port Harcourt"][] = [
 // When a customer self-corrects ("Lagos, actually make it Abuja"), the last
 // city/price they said is the one that matters — not whichever we happen to
 // check first.
-function detectCity(text: string): "Abuja" | "Lagos" | "Port Harcourt" | undefined {
+export function detectCity(text: string): "Abuja" | "Lagos" | "Port Harcourt" | undefined {
   let best: { city: "Abuja" | "Lagos" | "Port Harcourt"; index: number } | undefined;
   for (const [term, city] of CITY_TERMS) {
     const idx = text.lastIndexOf(term);
@@ -301,7 +288,7 @@ const AREA_STOPWORDS = new Set([
   "cheap", "budget", "some", "any", "for", "please", "room", "rooms",
 ]);
 
-function detectArea(text: string, city: "Abuja" | "Lagos" | "Port Harcourt" | undefined): string | undefined {
+export function detectArea(text: string, city: "Abuja" | "Lagos" | "Port Harcourt" | undefined): string | undefined {
   if (!city) return undefined;
   const cityLower = city.toLowerCase();
   const patterns = [
@@ -324,7 +311,7 @@ function detectArea(text: string, city: "Abuja" | "Lagos" | "Port Harcourt" | un
   return undefined;
 }
 
-type SearchCategory = "Hotel" | "Shortlet" | "Car Rental" | "Private Jet";
+export type SearchCategory = "Hotel" | "Shortlet" | "Car Rental" | "Private Jet";
 
 // Ordered so that within a single mention, the more specific term (e.g. a named
 // jet model) doesn't get shadowed by a generic one — but across DIFFERENT
@@ -381,7 +368,7 @@ function primaryClause(text: string): string {
   return text.slice(0, connectorMatch.index);
 }
 
-function parseQuery(queryText: string, latestMsg?: string): ParsedQuery {
+export function parseQuery(queryText: string, latestMsg?: string): ParsedQuery {
   const lowerQuery = queryText.toLowerCase();
   const lowerLatest = (latestMsg ?? queryText).toLowerCase();
 
@@ -436,331 +423,6 @@ function parseQuery(queryText: string, latestMsg?: string): ParsedQuery {
 // (category is relaxed last since it's usually the hardest requirement).
 // ---------------------------------------------------------------------------
 
-type SearchTier =
-  | "exact"
-  | "price-relaxed"
-  | "location-relaxed"
-  | "location-and-price-relaxed"
-  | "category-relaxed"
-  | "category-and-price-relaxed"
-  | "popular";
-
-interface SearchResult {
-  tier: SearchTier;
-  items: CatalogItem[];
-  hasMore: boolean;
-  city?: string;
-  area?: string;
-  areaConfirmed: boolean;
-  category?: string;
-  maxPrice?: number;
-  roomCount?: number;
-  unlistedRequested: boolean;
-}
-
-// A small, deliberately conservative set of well-established real-world
-// landmark associations — not a general distance/proximity model. Each entry
-// here is public, verifiable geography (e.g. the University of Port Harcourt
-// is in Choba), not a guess about which street is closer to which. Only add
-// entries here that are genuinely certain.
-const AREA_LANDMARK_ALIASES: Record<string, string[]> = {
-  choba: ["uniport", "abuja campus", "university of port harcourt"],
-  choaba: ["uniport", "abuja campus", "university of port harcourt"],
-};
-
-function areaMatches(item: CatalogItem, area: string | undefined): boolean {
-  if (!area) return false;
-  const loc = item.location.toLowerCase();
-  if (loc.includes(area)) return true;
-  const aliases = AREA_LANDMARK_ALIASES[area];
-  return !!aliases && aliases.some((alias) => loc.includes(alias));
-}
-
-// A customer asking for a specific amenity ("PS5", "pool", "wifi") deserves an
-// honest answer about whether that actually exists anywhere in the relevant
-// pool — not silence that could be read as confirmation. Checked against both
-// highlights and description text, since most listings only have the latter.
-const AMENITY_TERMS: { label: string; requestPatterns: RegExp[]; catalogTerms: string[] }[] = [
-  { label: "PS5 / gaming console", requestPatterns: [/\bps5\b/i, /playstation/i, /gaming console/i], catalogTerms: ["ps5", "playstation", "gaming console"] },
-  { label: "WiFi", requestPatterns: [/\bwifi\b/i, /wi-fi/i, /\binternet\b/i], catalogTerms: ["wifi", "wi-fi", "starlink", "internet"] },
-  { label: "swimming pool", requestPatterns: [/\bpool\b/i], catalogTerms: ["pool"] },
-  { label: "gym", requestPatterns: [/\bgym\b/i, /fitness/i], catalogTerms: ["gym", "fitness"] },
-  { label: "Netflix / streaming", requestPatterns: [/netflix/i, /streaming/i], catalogTerms: ["netflix", "streaming"] },
-  { label: "DSTV / TV", requestPatterns: [/\bdstv\b/i, /\btv\b/i, /television/i], catalogTerms: ["dstv", "tv", "television"] },
-  { label: "generator / constant power", requestPatterns: [/generator/i, /24\s*\/?\s*7 power/i, /constant (power|electricity)/i], catalogTerms: ["generator", "24/7 power", "constant electricity", "power supply"] },
-  { label: "parking", requestPatterns: [/\bparking\b/i], catalogTerms: ["parking"] },
-  { label: "breakfast", requestPatterns: [/breakfast/i], catalogTerms: ["breakfast", "dining"] },
-  { label: "in-house chef", requestPatterns: [/\bchef\b/i], catalogTerms: ["chef"] },
-];
-
-// Returns the labels of any explicitly-requested amenities that don't appear
-// anywhere in the relevant city/category pool — i.e. things we genuinely
-// cannot back up, not just things absent from the 3 cards shown this turn.
-function findUnconfirmedAmenities(rawQuery: string, city: string | undefined, category: string | undefined): string[] {
-  const requested = AMENITY_TERMS.filter((a) => a.requestPatterns.some((p) => p.test(rawQuery)));
-  if (requested.length === 0) return [];
-
-  const pool = CATALOG_ITEMS.filter(
-    (i) => (!city || i.city.toLowerCase() === city.toLowerCase()) && (!category || i.category.toLowerCase() === category.toLowerCase())
-  );
-
-  return requested
-    .filter((a) => {
-      const textPool = pool.map((i) => `${i.description} ${i.highlights.join(" ")}`.toLowerCase());
-      return !textPool.some((text) => a.catalogTerms.some((term) => text.includes(term)));
-    })
-    .map((a) => a.label);
-}
-
-// Signals of an appealing, high-ambience property, mined from name/description/
-// highlights text since the catalog has no separate rating field.
-const AMBIENCE_KEYWORDS = [
-  "luxury", "luxurious", "premium", "exquisite", "elegant", "elegance", "boutique",
-  "exclusive", "majestic", "grandeur", "scenic", "serene", "tranquil", "panoramic",
-  "ocean view", "penthouse", "presidential", "executive", "vip", "prestige",
-  "sophistication", "refined", "bespoke", "world-class", "ultra-modern", "smart home",
-  "ambiance", "ambience", "grand", "opulent", "chic", "stylish", "plush", "lavish",
-  "diplomatic", "5-star", "5 star", "4-star", "4 star", "pool", "spa"
-];
-
-// Capped so a keyword-rich description can never, on its own, outweigh how
-// close a listing's price actually is to a budget the customer stated —
-// ambience should break ties, not override the customer's stated number.
-function ambienceScore(item: CatalogItem): number {
-  const text = `${item.name} ${item.description} ${item.highlights.join(" ")}`.toLowerCase();
-  let score = 0;
-  for (const kw of AMBIENCE_KEYWORDS) {
-    if (text.includes(kw)) score += 4;
-  }
-  return Math.min(score, 12);
-}
-
-function scoreAndSort(pool: CatalogItem[], query: ParsedQuery): CatalogItem[] {
-  const scored = pool.map((item) => {
-    let score = 0;
-    const itemText = `${item.name} ${item.location} ${item.city} ${item.category} ${item.description} ${item.highlights.join(" ")}`.toLowerCase();
-
-    // Capped for the same reason as ambience below — relevance keywords should
-    // break ties between similarly-priced options, not overrule the customer's
-    // actual stated budget.
-    const tokenMatches = query.tokens.filter((token) => itemText.includes(token)).length;
-    score += Math.min(tokenMatches * 3, 12);
-
-    score += ambienceScore(item);
-
-    // A genuine neighborhood match (e.g. the customer said "Choba" and this
-    // listing's real address contains "Choba") should dominate the ranking —
-    // it's a much stronger signal than city-level or keyword relevance.
-    if (areaMatches(item, query.area)) score += 100;
-
-    const price = parsePrice(item.price);
-    if (query.maxPrice && price > 0) {
-      // Prefer items closest to (at or just under/over) the stated budget —
-      // weighted heavily enough that it always wins over ambience/keyword
-      // scoring, so a customer who says "under 50k" gets options near 50k,
-      // not whatever cheap listing happens to have the most luxury buzzwords.
-      const distance = Math.abs(price - query.maxPrice);
-      score += Math.max(0, 60 - distance / 1000);
-    } else if (!query.maxPrice && price > 0) {
-      // No budget stated — lean toward the more premium/expensive end rather
-      // than an arbitrary or cheapest-first ordering.
-      score += Math.min(15, price / 20000);
-    }
-
-    if (item.badge) score += 1;
-
-    return { item, score };
-  });
-
-  scored.sort((a, b) => b.score - a.score);
-  return scored.map((s) => s.item);
-}
-
-function searchCatalog(queryText: string, excludeIds: string[] = [], latestMsg?: string): SearchResult {
-  const query = parseQuery(queryText, latestMsg);
-  const { city, area, category, maxPrice, roomCount, unlistedRequested } = query;
-
-  const cityOk = (item: CatalogItem) => !city || item.city.toLowerCase() === city.toLowerCase();
-  const categoryOk = (item: CatalogItem) => !category || item.category.toLowerCase() === category.toLowerCase();
-  // Items with no fixed price ("price on request") never count as satisfying a
-  // stated budget — we can't claim they fit when we don't actually know the price.
-  const priceOk = (item: CatalogItem) => !maxPrice || (parsePrice(item.price) > 0 && parsePrice(item.price) <= maxPrice);
-
-  // Never re-show something already recommended earlier in this conversation
-  // (across this whole request cycle, including previous "view more" pages)
-  // unless the pool genuinely has nothing fresh left to offer. Also reports
-  // whether more fresh items exist beyond the 3 returned, so the client can
-  // offer a real "View More" action instead of guessing.
-  const rankPool = (pool: CatalogItem[]): { items: CatalogItem[]; hasMore: boolean } => {
-    const fresh = excludeIds.length === 0 ? pool : pool.filter((i) => !excludeIds.includes(i.id));
-    const effectivePool = fresh.length > 0 ? fresh : pool;
-    const sorted = scoreAndSort(effectivePool, query);
-    const items = sorted.slice(0, 3);
-    // Only genuinely-fresh items count toward "more to show" — if we already
-    // fell back to repeats above, there's nothing new left to page to.
-    const hasMore = fresh.length > items.length;
-    return { items, hasMore };
-  };
-
-  // A named neighborhood takes priority over budget: a genuinely nearby match
-  // is more useful than an on-budget hotel in the wrong part of the city, so
-  // this is checked before the normal city/price/category tier ladder — and
-  // it only fires when a real match exists, never a guess.
-  if (area) {
-    const areaPool = CATALOG_ITEMS.filter((i) => cityOk(i) && categoryOk(i) && areaMatches(i, area));
-    if (areaPool.length > 0) {
-      const { items, hasMore } = rankPool(areaPool);
-      const allWithinBudget = items.every((i) => priceOk(i));
-      return {
-        tier: allWithinBudget ? "exact" : "price-relaxed",
-        items,
-        hasMore,
-        city,
-        area,
-        areaConfirmed: true,
-        category,
-        maxPrice,
-        roomCount,
-        unlistedRequested,
-      };
-    }
-  }
-
-  const tiers: { tier: SearchTier; predicate: (item: CatalogItem) => boolean; requiresConstraint: boolean }[] = [
-    { tier: "exact", predicate: (i) => cityOk(i) && categoryOk(i) && priceOk(i), requiresConstraint: true },
-    { tier: "price-relaxed", predicate: (i) => cityOk(i) && categoryOk(i), requiresConstraint: !!maxPrice },
-    { tier: "location-relaxed", predicate: (i) => categoryOk(i) && priceOk(i), requiresConstraint: !!city },
-    { tier: "location-and-price-relaxed", predicate: (i) => categoryOk(i), requiresConstraint: !!city && !!maxPrice },
-    { tier: "category-relaxed", predicate: (i) => cityOk(i) && priceOk(i), requiresConstraint: !!category },
-    { tier: "category-and-price-relaxed", predicate: (i) => cityOk(i), requiresConstraint: !!category && !!maxPrice },
-  ];
-
-  for (const { tier, predicate, requiresConstraint } of tiers) {
-    if (!requiresConstraint) continue; // skip tiers that don't relax anything new
-    const pool = CATALOG_ITEMS.filter(predicate);
-    if (pool.length > 0) {
-      const { items, hasMore } = rankPool(pool);
-      // A neighborhood was requested — only claim it's "confirmed" if a
-      // returned listing's real address actually contains it. Otherwise these
-      // are honest city-wide fallbacks, and the message must say so.
-      const areaConfirmed = !area || items.some((i) => areaMatches(i, area));
-      return { tier, items, hasMore, city, area, areaConfirmed, category, maxPrice, roomCount, unlistedRequested };
-    }
-  }
-
-  // Final guaranteed-non-empty fallback: most popular items overall.
-  const { items: popularPool, hasMore: popularHasMore } = rankPool(CATALOG_ITEMS);
-  const areaConfirmed = !area || popularPool.some((i) => areaMatches(i, area));
-  return { tier: "popular", items: popularPool, hasMore: popularHasMore, city, area, areaConfirmed, category, maxPrice, roomCount, unlistedRequested };
-}
-
-// ---------------------------------------------------------------------------
-// Message generation — deterministic, on-brand, and never a dead end.
-// This is the message actually used unless Gemini is configured and produces
-// a safe rephrasing; either way, it's always safe by construction.
-// ---------------------------------------------------------------------------
-
-function formatNaira(amount: number): string {
-  return `₦${amount.toLocaleString("en-NG")}`;
-}
-
-function buildFallbackMessage(result: SearchResult): string {
-  const { tier, items, city, area, areaConfirmed, category, maxPrice, unlistedRequested } = result;
-  const catLabel = category ? category.toLowerCase() : "stay";
-  const budgetLabel = maxPrice ? formatNaira(maxPrice) : undefined;
-  const actualCategories = [...new Set(items.map((i) => i.category))].join(" & ");
-
-  const inCity = city ? ` in ${city}` : "";
-  const withinBudget = budgetLabel ? ` within your ${budgetLabel} budget` : "";
-
-  if (unlistedRequested) {
-    return `That specific property isn't part of Elite Booking's curated portfolio, but here are our top-rated ${catLabel} options${inCity} that deliver a similarly excellent experience.`;
-  }
-
-  // Never claim a neighborhood match we can't actually back up against real
-  // listing addresses — an honest city-wide fallback beats a confident-sounding
-  // guess. This takes priority over the tier phrasing below.
-  if (area && !areaConfirmed) {
-    return `I don't have listings confirmed specifically in ${area} yet, so here are the closest verified options${inCity}${withinBudget}. I can flag ${area} specifically to our team to double-check availability there if you'd like.`;
-  }
-
-  switch (tier) {
-    case "exact":
-      return area && areaConfirmed
-        ? `Here's the closest verified match to ${area}${inCity}${withinBudget} — ready for direct booking below.`
-        : `Here are excellent ${catLabel} options${inCity}${withinBudget} — all ready for direct booking below.`;
-    case "price-relaxed":
-      return area && areaConfirmed
-        ? `Here's the closest verified option to ${area}${inCity} — it's just outside your ${budgetLabel} budget, but it's the nearest real match we have confirmed rather than an arbitrary pick. Happy to check further out if you'd like more choices.`
-        : `Here are the best ${catLabel} options${inCity} — just outside your ${budgetLabel} budget, but excellent value for what's included. Happy to check a different price range if you'd like.`;
-    case "location-relaxed":
-      return budgetLabel
-        ? `Here are outstanding ${catLabel} options within your ${budgetLabel} budget in other prime locations. If you'd prefer ${city} specifically, I can also check a higher budget there — just let me know.`
-        : `Here are outstanding ${catLabel} options in other prime locations that are extremely popular with our guests. If you'd prefer ${city} specifically, let me know and I'll look into options there.`;
-    case "location-and-price-relaxed":
-      return `Here are our top ${catLabel} recommendations across our portfolio. Share your preferred city or budget and I'll narrow these down further.`;
-    case "category-relaxed":
-      return `Here are Elite Booking's top picks${inCity}${withinBudget} — these are ${actualCategories} options, and they're extremely popular with clients${city ? " booking in this area" : ""}.`;
-    case "category-and-price-relaxed":
-      return `Here are our most popular listings${inCity} across all categories — take a look, or tell me more about what you're after and I'll refine these for you.`;
-    case "popular":
-    default:
-      return `Here are some of Elite Booking's most popular stays and services right now. Share your preferred city, budget, or dates and I'll tailor these recommendations for you.`;
-  }
-}
-
-let aiClient: GoogleGenAI | null = null;
-
-function getAIClient(): GoogleGenAI {
-  if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is missing.");
-    }
-    aiClient = new GoogleGenAI({
-      apiKey,
-      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
-    });
-  }
-  return aiClient;
-}
-
-async function polishMessage(baseMessage: string, result: SearchResult, conversationContext: string): Promise<string> {
-  const candidateNames = result.items.map((i) => i.name);
-
-  const systemPrompt = `# ELITE BOOKING CONCIERGE — MESSAGE POLISH POLICY
-
-You are the Stay Concierge for Elite Bookings. You are given a FACTUALLY CORRECT base message.
-Your ONLY job is to rephrase it to sound warmer, more natural, and more professional — a skilled
-human concierge's voice. You are NOT inventing new information.
-
-BASE MESSAGE (rephrase this, do not contradict or add facts to it):
-"${baseMessage}"
-
-RULES (violating any of these means your output will be discarded):
-1. Do not name any specific property, hotel, brand, or company in your rephrasing — not even ones from our own catalog (${candidateNames.join(", ") || "none"}). Refer to them only generically ("these options", "the listings below").
-2. Never mention any external hotel, resort, platform, or service.
-3. Never say "we don't have", "couldn't find", "no match", "not available", or any similar dead-end phrase. Always sound like you are actively recommending something.
-4. Keep it to 1-2 warm, concise sentences.
-5. Output ONLY the rephrased message text as plain text. No JSON, no quotes, no preamble.`;
-
-  const ai = getAIClient();
-  const response = await ai.models.generateContent({
-    model: "gemini-3.6-flash",
-    contents: [{ role: "user", parts: [{ text: conversationContext || baseMessage }] }],
-    config: {
-      systemInstruction: systemPrompt,
-      temperature: 0.4,
-    },
-  });
-
-  const text = (response.text || "").trim();
-  if (!text || messageIsUnsafe(text, CATALOG_ITEMS)) {
-    return baseMessage;
-  }
-  return text;
-}
-
 // ---------------------------------------------------------------------------
 // Request handler — framework-agnostic so both the local Express dev server
 // (server.ts) and the production Netlify Function (netlify/functions/concierge.ts)
@@ -775,7 +437,7 @@ export interface ConciergeHandlerResult {
 
 export async function handleConciergeRequest(requestBody: any): Promise<ConciergeHandlerResult> {
   try {
-    const { messages, excludeIds, pendingOffer } = requestBody || {};
+    const { messages } = requestBody || {};
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return { statusCode: 400, body: { error: "Messages array is required." } };
     }
@@ -785,61 +447,11 @@ export async function handleConciergeRequest(requestBody: any): Promise<Concierg
       .map((m: any) => (m.content || "").toString())
       .join(" ");
 
-    // The single most recent turn, not the whole accumulated conversation —
-    // needed to tell "yes please" apart from a fresh search request.
-    const latestUserMsg = (messages[messages.length - 1]?.content || "").toString();
-
-    const safeExcludeIds: string[] = Array.isArray(excludeIds)
-      ? excludeIds.filter((id: any) => typeof id === "string")
-      : [];
-
-    // If the last thing the concierge said was a conditional offer ("I can
-    // flag this to our team if you'd like") and the customer just said yes,
-    // actually act on it instead of re-running a search from scratch.
-    if (
-      pendingOffer &&
-      pendingOffer.type === "area_verification" &&
-      typeof pendingOffer.area === "string" &&
-      isAffirmative(latestUserMsg)
-    ) {
-      const area = pendingOffer.area;
-      const city = typeof pendingOffer.city === "string" ? pendingOffer.city : undefined;
-      return {
-        statusCode: 200,
-        body: {
-          message: `Done — I've flagged ${area} to our Elite Booking team to confirm availability for you there. They'll follow up directly.`,
-          recommendations: [],
-          handoff: {
-            required: true,
-            priority: "normal",
-            category: "Area Verification Request",
-            services: [],
-            summary: buildHandoffSummary(lastUserMsg, "Area Verification Request", city, [`Confirm availability in ${area}`]),
-          } as HandoffInfo,
-          nextStep: `Our team will follow up shortly. For anything urgent, message us: ${ELITE_WHATSAPP_LINK}`,
-        },
-      };
-    }
-
     const intent = analyzeIntent(lastUserMsg);
-    const parsedForCity = parseQuery(lastUserMsg, latestUserMsg);
+    const parsedForCity = parseQuery(lastUserMsg);
     const guaranteeCaveat = intent.guaranteeRequest
       ? "I'm not able to guarantee things outside our direct control, like exact timing at a property — but here's what I can do: "
       : "";
-
-    const formatRec = (item: CatalogItem) => ({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      city: item.city,
-      location: item.location,
-      price: !item.price ? "Price on request" : item.price.startsWith("₦") ? item.price : `₦${item.price}`,
-      badge: item.badge || "Verified Stay",
-      image: item.image,
-      highlights: item.highlights,
-      description: item.description,
-      tiers: item.tiers,
-    });
 
     // --- Priority 1: safety concerns always win, no matter what else is in the message.
     if (intent.safetyConcern) {
@@ -975,28 +587,14 @@ export async function handleConciergeRequest(requestBody: any): Promise<Concierg
       };
     }
 
-    // --- Everything else: normal catalog search, optionally alongside concierge
-    // add-on services mentioned in the same message (multi-intent handling).
-    const hasPropertySearchIntent = !!parsedForCity.category || !!parsedForCity.city || intent.services.length === 0;
-    const result = hasPropertySearchIntent ? searchCatalog(lastUserMsg, safeExcludeIds, latestUserMsg) : null;
-    const baseMessage = result ? buildFallbackMessage(result) : "";
-
-    let finalMessage = baseMessage;
-    if (result) {
-      // Catalog search + templated message are 100% deterministic and safe on
-      // their own. Gemini is an optional polish layer — if unavailable or it
-      // fails for any reason, we simply keep the deterministic message.
-      try {
-        finalMessage = await polishMessage(baseMessage, result, lastUserMsg);
-      } catch (aiErr) {
-        console.warn("Gemini polish unavailable, using deterministic message:", aiErr);
-      }
-    }
-
+    // --- Everything else: Concierge no longer browses/recommends listings —
+    // that's the Discovery Assistant's job now. If a concierge add-on service
+    // was also mentioned, still flag it to the team; otherwise just point the
+    // guest toward Discovery for browsing, and stay available for booking support.
+    let finalMessage: string;
     let handoff: HandoffInfo | undefined;
     if (intent.services.length > 0) {
-      const servicesNote = `I'm also passing your request for ${intent.services.join(", ")} to our concierge team, who'll confirm availability and pricing with you directly.`;
-      finalMessage = finalMessage ? `${finalMessage} ${servicesNote}` : servicesNote;
+      finalMessage = `I'm passing your request for ${intent.services.join(", ")} to our concierge team, who'll confirm availability and pricing with you directly.`;
       handoff = {
         required: true,
         priority: "normal",
@@ -1004,45 +602,28 @@ export async function handleConciergeRequest(requestBody: any): Promise<Concierg
         services: intent.services,
         summary: buildHandoffSummary(lastUserMsg, "Concierge Service Request", parsedForCity.city, intent.services),
       };
+    } else {
+      finalMessage = "I want to make sure this actually gets sorted for you — I'm passing it to our team directly. If you're instead looking to browse new options, our Discovery Assistant can help with that too.";
+      handoff = {
+        required: true,
+        priority: "normal",
+        category: "General Booking Support",
+        services: [],
+        summary: buildHandoffSummary(lastUserMsg, "General Booking Support", parsedForCity.city, []),
+      };
     }
 
-    if (guaranteeCaveat && result) {
+    if (guaranteeCaveat) {
       finalMessage = `${guaranteeCaveat}${finalMessage}`;
     }
-
-    // Be upfront when something explicitly asked for isn't confirmed anywhere
-    // in the relevant listings — silence here could read as confirmation.
-    if (result) {
-      const unconfirmedAmenities = findUnconfirmedAmenities(lastUserMsg, parsedForCity.city, parsedForCity.category);
-      if (unconfirmedAmenities.length > 0) {
-        finalMessage = `${finalMessage} I don't see ${unconfirmedAmenities.join(" or ")} confirmed for any of our current ${parsedForCity.city || "Nigeria"} options — happy to double-check with our team if that's essential for you.`;
-      }
-    }
-
-    if (!finalMessage) {
-      finalMessage = "I'd love to help — could you tell me a bit more about what you're looking for (city, dates, or type of stay)?";
-    }
-
-    // If we told the customer we could flag their neighborhood to the team,
-    // remember that offer so a "yes" on the next turn can actually act on it.
-    const newPendingOffer: PendingOffer | undefined =
-      result && result.area && !result.areaConfirmed
-        ? { type: "area_verification", area: result.area, city: result.city }
-        : undefined;
 
     return {
       statusCode: 200,
       body: {
         message: finalMessage,
-        recommendations: result ? result.items.map(formatRec) : [],
-        tier: result?.tier,
-        roomCount: result?.roomCount,
-        hasMore: result?.hasMore || false,
+        recommendations: [],
         handoff,
-        pendingOffer: newPendingOffer,
-        nextStep: result
-          ? "Select 'Check Availability' on any option below to request your reservation."
-          : "Let me know your city, dates, or what you need and I'll take it from there.",
+        nextStep: "Let me know if there's anything about an existing booking I can help with.",
       },
     };
   } catch (error: any) {

@@ -6,9 +6,13 @@ interface CarDetailViewProps {
   vehicle: Vehicle;
   onBack: () => void;
   onRequestVehicle: (vehicle: Vehicle) => void;
+  // When a trip is already active, offer a quick "add to trip" path straight
+  // from this real, already-selected vehicle, alongside the normal request flow.
+  activeTripCode?: string;
+  onAddToTrip?: (vehicle: Vehicle) => void;
 }
 
-export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailViewProps) {
+export function CarDetailView({ vehicle, onBack, onRequestVehicle, activeTripCode, onAddToTrip }: CarDetailViewProps) {
   const gallery = [vehicle.primaryImage, ...vehicle.additionalImages];
   const [activeImage, setActiveImage] = useState(vehicle.primaryImage);
   const interStateLabel = formatInterStatePrice(vehicle);
@@ -147,6 +151,15 @@ export function CarDetailView({ vehicle, onBack, onRequestVehicle }: CarDetailVi
             >
               Request This Car
             </button>
+
+            {activeTripCode && onAddToTrip && (
+              <button
+                onClick={() => onAddToTrip(vehicle)}
+                className="w-full mt-3 flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/15 text-white px-8 py-3.5 rounded-full text-xs uppercase tracking-[0.2em] font-bold transition-all duration-300 cursor-pointer"
+              >
+                Add this car to Trip #{activeTripCode}
+              </button>
+            )}
           </div>
         </div>
       </div>

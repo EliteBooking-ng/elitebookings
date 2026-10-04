@@ -11,6 +11,9 @@ interface CarFleetBrowserProps {
   locationLabel: string;
   onBack: () => void;
   onSelectVehicle: (vehicle: Vehicle) => void;
+  // Approved partner-submitted vehicles, already normalized to the Vehicle
+  // shape by App.tsx — merged in alongside the static fleet below.
+  partnerVehicles?: Vehicle[];
 }
 
 type TypeFilter = 'All' | VehicleType;
@@ -27,7 +30,7 @@ const PRICE_BANDS: { label: string; value: number | null }[] = [
   { label: 'Up to ₦2,000,000', value: 2000000 },
 ];
 
-export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehicle }: CarFleetBrowserProps) {
+export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehicle, partnerVehicles = [] }: CarFleetBrowserProps) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('All');
   const [transmissionFilter, setTransmissionFilter] = useState<TransmissionFilter>('All');
   const [driverFilter, setDriverFilter] = useState<DriverFilter>('All');
@@ -36,7 +39,12 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const vehicles = useMemo(() => {
-    const filtered = getVehiclesByLocation(location)
+    const norm = location.toLowerCase();
+    const matchingPartnerVehicles = norm.includes('other')
+      ? partnerVehicles
+      : partnerVehicles.filter((v) => v.locations.some((loc) => norm.includes(loc.toLowerCase()) || loc.toLowerCase().includes(norm)));
+
+    const filtered = [...getVehiclesByLocation(location), ...matchingPartnerVehicles]
       .filter((v) => typeFilter === 'All' || v.type === typeFilter)
       .filter((v) => transmissionFilter === 'All' || v.transmission === transmissionFilter)
       .filter((v) => driverFilter === 'All' || v.driverOptions.includes(driverFilter as DriverOption))
@@ -49,7 +57,7 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
       if (b.startingPrice == null) return -1;
       return sortBy === 'Lowest Price' ? a.startingPrice - b.startingPrice : b.startingPrice - a.startingPrice;
     });
-  }, [location, typeFilter, transmissionFilter, driverFilter, maxPrice, sortBy]);
+  }, [location, partnerVehicles, typeFilter, transmissionFilter, driverFilter, maxPrice, sortBy]);
 
   const resetFilters = () => {
     setTypeFilter('All');

@@ -1,198 +1,85 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Sparkles, X, Send, Crown, MapPin,
-  CheckCircle2, Tag, ShieldCheck, Loader2, AlertCircle, PhoneCall,
-  Briefcase, Calendar, Users
+  Sparkles, X, Send, Crown,
+  CheckCircle2, Loader2, AlertCircle, PhoneCall, Calendar
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { CATALOG_ITEMS, CatalogItem } from '../data/catalog';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
-
-export interface RecommendationItem {
-  id: string;
-  name: string;
-  category?: string;
-  city?: string;
-  location: string;
-  price: string;
-  badge?: string;
-  image: string;
-  highlights?: string[];
-  description?: string;
-  tiers?: { name: string; price: string }[];
-}
-
-export interface HandoffInfo {
-  required: boolean;
-  priority: 'urgent' | 'normal';
-  category: string;
-  services: string[];
-  summary: string;
-}
-
-export interface PendingOffer {
-  type: 'area_verification';
-  area: string;
-  city?: string;
-}
-
-export interface MessageContent {
-  text: string;
-  recommendations?: RecommendationItem[];
-  nextStep?: string;
-  roomCount?: number;
-  handoff?: HandoffInfo;
-  pendingOffer?: PendingOffer;
-  hasMore?: boolean;
-  sourceQuery?: string;
-}
-
-export interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: MessageContent;
-  timestamp: string;
-}
+import type { Message, MessageContent, RecommendationItem } from '../types/assistant';
+import type { ServiceType, Trip, TripService } from '../types/trip';
+import { CompleteYourTripPanel } from './CompleteYourTripPanel';
+import { TripAttachPrompt } from './TripAttachPrompt';
 
 interface AIConciergeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // Set by App.tsx when a guest picks a Hotel or Shortlet from the Discovery
+  // Assistant's shortlist — Discovery never books, it hands the selection off
+  // here. Consumed once via the effect below, then cleared through
+  // onBookingConsumed so re-opening this modal later doesn't reopen it.
+  initialBookingProperty?: RecommendationItem | null;
+  onBookingConsumed?: () => void;
+  // Trip integration — App.tsx owns the one useActiveTrip instance and
+  // passes its state/functions down here, same as everywhere else that
+  // can seed or attach to a trip.
+  activeTrip: Trip | null;
+  tripServices: TripService[];
+  createTrip: (seedType: ServiceType, seedDetails: Record<string, any>, seedSummary: string, customer: { name: string; phone: string; email: string }, location: string) => Promise<{ id: string; tripCode: string }>;
+  addServiceToTrip: (type: ServiceType, details: Record<string, any>, summary: string) => Promise<string>;
+  clearActiveTrip: () => void;
+  onViewTrip: () => void;
 }
 
 const WELCOME_MESSAGE: Message = {
   id: 'welcome-1',
   role: 'assistant',
   content: {
-    text: "Welcome to Elite AI Concierge. Tell me your city, budget, or the kind of stay you're after, and I'll recommend the best options from our portfolio, instantly.",
-    recommendations: CATALOG_ITEMS.slice(0, 2).map((item) => ({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      city: item.city,
-      location: item.location,
-      price: !item.price ? 'Price on request' : `₦${item.price}`,
-      badge: item.badge || 'Featured',
-      image: item.image,
-      highlights: item.highlights,
-      description: item.description,
-      tiers: item.tiers
-    })),
-    nextStep: "Select 'Check Availability' on any option below to request your reservation."
+    text: "Hello! I'm here for anything about an existing booking — changes, cancellations, payment questions, or an issue during your stay. Looking to browse and compare options instead? Try our Discovery Assistant."
   },
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 };
 
-// Defense-in-depth: even though the server only ever returns real catalog items,
-// re-validate every recommendation against CATALOG_ITEMS before rendering, so a
-// malformed or unexpected API response can never surface an unlisted property.
-function sanitizeRecommendations(recs: any[]): RecommendationItem[] {
-  const matchedItems: CatalogItem[] = [];
-
-  if (Array.isArray(recs)) {
-    for (const rec of recs) {
-      if (!rec) continue;
-      const recId = (rec.id || '').toLowerCase().trim();
-      const recName = (rec.name || '').toLowerCase().trim();
-
-      const exactMatch = CATALOG_ITEMS.find((c) => {
-        if (recId && c.id.toLowerCase() === recId) return true;
-        if (recName && c.name.toLowerCase() === recName) return true;
-        return false;
-      });
-
-      if (exactMatch && !matchedItems.some((m) => m.id === exactMatch.id)) {
-        matchedItems.push(exactMatch);
-      }
-    }
-  }
-
-  // If nothing in the response matched our catalog, never show nothing —
-  // fall back to a few genuine catalog picks rather than an empty result.
-  const finalItems = matchedItems.length > 0 ? matchedItems : CATALOG_ITEMS.slice(0, 3);
-
-  return finalItems.map((item) => ({
-    id: item.id,
-    name: item.name,
-    category: item.category,
-    city: item.city,
-    location: item.location,
-    price: !item.price ? 'Price on request' : item.price.startsWith('₦') ? item.price : `₦${item.price}`,
-    badge: item.badge || 'Verified Stay',
-    image: item.image,
-    highlights: item.highlights,
-    description: item.description,
-    tiers: item.tiers
-  }));
-}
-
 function parseAssistantReply(reply: any): MessageContent {
   if (typeof reply === 'object' && reply !== null) {
-    // `tier` is only ever set when the server actually ran a catalog search.
-    // For escalation/confidential/out-of-scope replies, recommendations is
-    // intentionally empty — don't backfill it with unrelated catalog items.
-    const ranPropertySearch = typeof reply.tier === 'string';
     return {
-      text: reply.message || "Here are our top recommendations from Elite Booking:",
-      recommendations: ranPropertySearch ? sanitizeRecommendations(reply.recommendations) : [],
+      text: reply.message || "I'm here to help with your booking.",
       nextStep: reply.nextStep,
-      roomCount: typeof reply.roomCount === 'number' ? reply.roomCount : undefined,
       handoff: reply.handoff && reply.handoff.required ? {
         required: true,
         priority: reply.handoff.priority === 'urgent' ? 'urgent' : 'normal',
         category: String(reply.handoff.category || 'Request'),
         services: Array.isArray(reply.handoff.services) ? reply.handoff.services.filter((s: any) => typeof s === 'string') : [],
         summary: String(reply.handoff.summary || '')
-      } : undefined,
-      pendingOffer: reply.pendingOffer && reply.pendingOffer.type === 'area_verification' && typeof reply.pendingOffer.area === 'string'
-        ? { type: 'area_verification', area: reply.pendingOffer.area, city: typeof reply.pendingOffer.city === 'string' ? reply.pendingOffer.city : undefined }
-        : undefined,
-      hasMore: ranPropertySearch && reply.hasMore === true
+      } : undefined
     };
   }
-  return {
-    text: "Here are our top recommendations from Elite Booking:",
-    recommendations: sanitizeRecommendations([])
-  };
+  return { text: "I'm here to help with your booking." };
 }
 
-export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onClose }) => {
+export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({
+  isOpen, onClose, initialBookingProperty, onBookingConsumed,
+  activeTrip, tripServices, createTrip, addServiceToTrip, clearActiveTrip, onViewTrip,
+}) => {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [bookingProperty, setBookingProperty] = useState<RecommendationItem | null>(null);
+  const [pendingTripAttach, setPendingTripAttach] = useState<{
+    seedType: ServiceType; seedDetails: Record<string, any>; seedSummary: string;
+    customer: { name: string; phone: string; email: string }; location: string;
+  } | null>(null);
 
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guestCount, setGuestCount] = useState('2 Guests');
   const [numberOfRooms, setNumberOfRooms] = useState('1 Room');
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [loadingMoreId, setLoadingMoreId] = useState<string | null>(null);
-
-  // "Want me to handle your stay?" guided form — an alternative to typing a
-  // free-text search. Submitting it builds a query and runs it through the
-  // exact same search pipeline as normal chat, so every existing guardrail
-  // (area honesty, amenity honesty, no-repeat, budget bias) still applies.
-  const [showPlanForm, setShowPlanForm] = useState(false);
-  const [planCity, setPlanCity] = useState<'Abuja' | 'Lagos' | 'Port Harcourt'>('Lagos');
-  const [planArea, setPlanArea] = useState('');
-  const [planCategory, setPlanCategory] = useState<'Hotel' | 'Shortlet' | 'Car Rental' | 'Private Jet'>('Hotel');
-  const [planBudget, setPlanBudget] = useState('');
-  const [planCheckIn, setPlanCheckIn] = useState('');
-  const [planCheckOut, setPlanCheckOut] = useState('');
-  const [planGuests, setPlanGuests] = useState('2 Guests');
-  const [planRooms, setPlanRooms] = useState('1 Room');
-  const [planFeatures, setPlanFeatures] = useState('');
-
-  // Carried from the guided form into the booking form, so picking a card
-  // afterward doesn't make the customer re-type dates/guests they already gave.
-  const [plannedDefaults, setPlannedDefaults] = useState<{
-    checkIn?: string; checkOut?: string; guestCount?: string; numberOfRooms?: string;
-  } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -202,15 +89,24 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
     }
   }, [messages, isOpen]);
 
+  // Picking up a Hotel/Shortlet handoff from the Discovery Assistant.
+  useEffect(() => {
+    if (isOpen && initialBookingProperty) {
+      setBookingProperty(initialBookingProperty);
+      setGuestName('');
+      setGuestPhone('');
+      setGuestEmail('');
+      setCheckIn('');
+      setCheckOut('');
+      setGuestCount('2 Guests');
+      setNumberOfRooms('1 Room');
+      onBookingConsumed?.();
+    }
+  }, [isOpen, initialBookingProperty, onBookingConsumed]);
+
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || input).trim();
     if (!text || isLoading) return;
-
-    // If the concierge's last turn made a conditional offer ("I can flag this
-    // to our team if you'd like"), carry it forward so a "yes" here can
-    // actually be acted on server-side instead of just re-running a search.
-    const lastMessage = messages[messages.length - 1];
-    const activePendingOffer = lastMessage?.role === 'assistant' ? lastMessage.content.pendingOffer : undefined;
 
     const userMessage: Message = {
       id: 'msg-' + Date.now(),
@@ -229,27 +125,16 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
         .filter((m) => m.role === 'user')
         .map((m) => ({ role: 'user', content: m.content.text }));
 
-      // Tell the server what's already been shown in this conversation so it
-      // avoids repeating the same recommendations on follow-up questions.
-      const excludeIds = updatedMessages
-        .filter((m) => m.role === 'assistant')
-        .flatMap((m) => (m.content.recommendations || []).map((r) => r.id));
-
       const res = await fetch('/api/concierge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: payloadMessages, excludeIds, pendingOffer: activePendingOffer })
+        body: JSON.stringify({ messages: payloadMessages })
       });
 
       if (!res.ok) throw new Error('Server returned error response');
 
       const data = await res.json();
       const parsedContent = parseAssistantReply(data);
-      // Remember what produced this search so "View More" can page through
-      // additional fresh results for the exact same request later.
-      if (parsedContent.hasMore) {
-        parsedContent.sourceQuery = text;
-      }
 
       setMessages((prev) => [
         ...prev,
@@ -262,17 +147,12 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
       ]);
     } catch (err) {
       console.error('Concierge request failed:', err);
-      // Even on a network failure, still recommend something real rather than
-      // showing a bare error — matches the "always recommend, never dead-end" policy.
       setMessages((prev) => [
         ...prev,
         {
           id: 'msg-err-' + Date.now(),
           role: 'assistant',
-          content: {
-            text: "Here are some of our most popular options while I reconnect:",
-            recommendations: sanitizeRecommendations([])
-          },
+          content: { text: "I'm having trouble connecting right now — for anything urgent, please message us directly on WhatsApp." },
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -281,57 +161,11 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
     }
   };
 
-  const handleViewMore = async (messageId: string) => {
-    const target = messages.find((m) => m.id === messageId);
-    if (!target || !target.content.sourceQuery || loadingMoreId) return;
-
-    setLoadingMoreId(messageId);
-    try {
-      const excludeIds = messages
-        .filter((m) => m.role === 'assistant')
-        .flatMap((m) => (m.content.recommendations || []).map((r) => r.id));
-
-      const res = await fetch('/api/concierge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: target.content.sourceQuery }], excludeIds })
-      });
-      if (!res.ok) throw new Error('Server returned error response');
-
-      const data = await res.json();
-      const parsed = parseAssistantReply(data);
-
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.id !== messageId) return m;
-          const existing = m.content.recommendations || [];
-          const additions = (parsed.recommendations || []).filter((r) => !existing.some((e) => e.id === r.id));
-          return {
-            ...m,
-            content: {
-              ...m.content,
-              recommendations: [...existing, ...additions],
-              hasMore: parsed.hasMore
-            }
-          };
-        })
-      );
-    } catch (err) {
-      console.error('View more request failed:', err);
-    } finally {
-      setLoadingMoreId(null);
-    }
-  };
-
   const handleDirectBookingSubmit = async (e: React.FormEvent, method: 'whatsapp' | 'web') => {
     e.preventDefault();
-    if (!bookingProperty || !guestName || !guestPhone) return;
+    if (!bookingProperty || !guestName || !guestPhone || !guestEmail) return;
 
-    const isHotel = bookingProperty.category === 'Hotel';
-    const needsQuantity = bookingProperty.category === 'Hotel' || bookingProperty.category === 'Shortlet' || bookingProperty.category === 'Car Rental';
-    const quantityLabel = bookingProperty.category === 'Car Rental' ? 'Cars Needed' : 'Rooms Needed';
-
-    const messageText = `Hello Elite Concierge! 👑\n\nI would like to book the following property recommended by AI Concierge:\n\n*Property:* ${bookingProperty.name}\n*Location:* ${bookingProperty.location}\n*Price:* ${bookingProperty.price}\n\n*Guest Details:*\n- Name: ${guestName}\n- Phone: ${guestPhone}\n- Check-in: ${checkIn || 'Flexible'}\n- Check-out: ${checkOut || 'Flexible'}\n- Guests: ${guestCount}${needsQuantity ? `\n- ${quantityLabel}: ${numberOfRooms}` : ''}\n\nPlease confirm availability and payment steps.`;
+    const messageText = `Hello Elite Concierge! 👑\n\nI would like to book the following property recommended by the EliteBooking AI Assistant:\n\n*Property:* ${bookingProperty.name}\n*Location:* ${bookingProperty.location}\n*Price:* ${bookingProperty.price}\n\n*Guest Details:*\n- Name: ${guestName}\n- Phone: ${guestPhone}\n- Check-in: ${checkIn || 'Flexible'}\n- Check-out: ${checkOut || 'Flexible'}\n- Guests: ${guestCount}\n- Rooms Needed: ${numberOfRooms}\n\nPlease confirm availability and payment steps.`;
 
     // Fired synchronously, before any `await` below — opening a tab after an
     // await loses the click's "user activation" in mobile Safari/Chrome and
@@ -352,7 +186,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
       checkIn: checkIn || 'Flexible',
       checkOut: checkOut || 'Flexible',
       guestCount,
-      ...(needsQuantity ? { numberOfRooms } : {}),
+      numberOfRooms,
       createdAt: new Date().toISOString(),
       source: 'AI Concierge'
     };
@@ -371,24 +205,41 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subject: `Elite Concierge Booking: ${bookingProperty.name}`,
-          text: `${messageText}\n\n---\nProperty / Asset: ${bookingProperty.name}\nLocation: ${bookingProperty.location}\nPrice: ${bookingProperty.price}\nGuest Name: ${guestName}\nGuest Phone: ${guestPhone}\nCheck-In: ${checkIn || 'Flexible'}\nCheck-Out: ${checkOut || 'Flexible'}\nGuests: ${guestCount}${needsQuantity ? `\n${quantityLabel}: ${numberOfRooms}` : ''}\nSource: AI Concierge`
+          text: `${messageText}\n\n---\nProperty / Asset: ${bookingProperty.name}\nLocation: ${bookingProperty.location}\nPrice: ${bookingProperty.price}\nGuest Name: ${guestName}\nGuest Phone: ${guestPhone}\nCheck-In: ${checkIn || 'Flexible'}\nCheck-Out: ${checkOut || 'Flexible'}\nGuests: ${guestCount}\nRooms Needed: ${numberOfRooms}\nSource: AI Concierge`
         })
       }).catch((err) => console.warn('Notification send notice:', err))
     ];
 
-    await Promise.allSettled([firestoreSave, ...emailPromises]);
+    // Seed a new Trip, or attach this booking as a service on the customer's
+    // already-active one — same logic as the main site's booking flow.
+    const tripPromise = (async () => {
+      try {
+        const seedType: ServiceType = bookingProperty.category === 'Shortlet' ? 'Shortlet' : 'Hotel';
+        const seedDetails = {
+          propertyName: bookingProperty.name,
+          propertyLocation: bookingProperty.location,
+          checkin: checkIn || 'Flexible',
+          checkout: checkOut || 'Flexible',
+          guests: guestCount,
+          numberOfRooms,
+          price: bookingProperty.price,
+        };
+        const seedSummary = `${bookingProperty.name} — ${checkIn || 'Flexible'} to ${checkOut || 'Flexible'}`;
+        if (!activeTrip) {
+          await createTrip(seedType, seedDetails, seedSummary, { name: guestName, phone: guestPhone, email: guestEmail }, bookingProperty.location);
+        } else {
+          setPendingTripAttach({ seedType, seedDetails, seedSummary, customer: { name: guestName, phone: guestPhone, email: guestEmail }, location: bookingProperty.location });
+        }
+      } catch (tripError) {
+        console.warn('Trip creation/attach issue:', tripError);
+      }
+    })();
+
+    await Promise.allSettled([firestoreSave, tripPromise, ...emailPromises]);
 
     setIsSubmittingBooking(false);
     setBookingSuccess(true);
     confetti({ particleCount: 120, spread: 75, origin: { y: 0.6 } });
-
-    // Proactive follow-up: a personal concierge doesn't just take the request
-    // and go quiet — it looks for the next thing the guest will need. Posted
-    // to the underlying chat feed, independent of how long the success screen
-    // stays open (that's now dismissed by the guest, not a timer).
-    const nudgeText = isHotel || bookingProperty.category === 'Shortlet'
-      ? "Wonderful — your request is in! Would you like help arranging airport pickup, a driver, or dinner reservations for your stay?"
-      : "Wonderful — your request is in! Would you like help finding a place to stay as well, or anything else for your trip?";
 
     setTimeout(() => {
       setMessages((prev) => [
@@ -396,7 +247,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
         {
           id: 'msg-nudge-' + Date.now(),
           role: 'assistant',
-          content: { text: nudgeText },
+          content: { text: "Wonderful — your request is in! Is there anything else about your booking I can help with?" },
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -412,70 +263,11 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
     setBookingProperty(null);
     setGuestName('');
     setGuestPhone('');
+    setGuestEmail('');
     setCheckIn('');
     setCheckOut('');
     setNumberOfRooms('1 Room');
-    setPlannedDefaults(null);
   };
-
-  const openBooking = (rec: RecommendationItem) => {
-    setBookingProperty(rec);
-    const defaultQuantity = rec.category === 'Car Rental' ? '1 Car' : '1 Room';
-
-    if (plannedDefaults) {
-      // Came from the guided "handle my stay" form — reuse what was already given.
-      setCheckIn(plannedDefaults.checkIn || '');
-      setCheckOut(plannedDefaults.checkOut || '');
-      setGuestCount(plannedDefaults.guestCount || '2 Guests');
-      setNumberOfRooms(
-        (rec.category === 'Hotel' || rec.category === 'Shortlet' || rec.category === 'Car Rental') && plannedDefaults.numberOfRooms
-          ? plannedDefaults.numberOfRooms
-          : defaultQuantity
-      );
-      return;
-    }
-
-    if (rec.category === 'Hotel' || rec.category === 'Shortlet') {
-      // Smart pre-fill: if the customer already mentioned a room count in the
-      // conversation (e.g. "3 rooms"), carry it straight into the booking form.
-      const lastDetected = [...messages].reverse().find((m) => m.role === 'assistant' && m.content.roomCount)?.content.roomCount;
-      setNumberOfRooms(lastDetected ? `${lastDetected} Room${lastDetected > 1 ? 's' : ''}` : '1 Room');
-    } else {
-      setNumberOfRooms(defaultQuantity);
-    }
-  };
-
-  const handlePlanSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const parts: string[] = [planCategory.toLowerCase()];
-    parts.push(planArea ? `in ${planArea}, ${planCity}` : `in ${planCity}`);
-    if (planBudget.trim()) parts.push(`under ${planBudget.trim()}`);
-    if (planFeatures.trim()) parts.push(`with ${planFeatures.trim()}`);
-    if (planCategory === 'Hotel' || planCategory === 'Shortlet') {
-      const roomNum = planRooms.match(/\d+/)?.[0];
-      if (roomNum) parts.push(`${roomNum} rooms`);
-    } else if (planCategory === 'Car Rental') {
-      const carNum = planRooms.match(/\d+/)?.[0];
-      if (carNum) parts.push(`${carNum} cars`);
-    }
-
-    setPlannedDefaults({
-      checkIn: planCheckIn,
-      checkOut: planCheckOut,
-      guestCount: planGuests,
-      numberOfRooms: planRooms
-    });
-    setShowPlanForm(false);
-    handleSend(parts.join(' '));
-  };
-
-  const samplePrompts = [
-    'Hotels in Abuja under ₦150k',
-    'Luxury shortlet in Lekki Lagos',
-    'Executive stays in Port Harcourt',
-    'Car rental with chauffeur'
-  ];
 
   if (!isOpen) return null;
 
@@ -498,13 +290,13 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
               <div>
                 <div className="flex items-center space-x-2">
                   <h3 className="text-base sm:text-lg font-serif font-medium text-cream tracking-wide">
-                    Elite AI Concierge
+                    Elite Concierge Support
                   </h3>
                   <span className="text-[9px] uppercase tracking-widest font-bold bg-gold/20 text-gold px-2 py-0.5 rounded-full border border-gold/30">
-                    Smart Recommendations
+                    Post-Booking
                   </span>
                 </div>
-                <p className="text-[11px] text-cream/50">Instant visual property matching &amp; direct booking</p>
+                <p className="text-[11px] text-cream/50">Booking changes, issues &amp; direct support</p>
               </div>
             </div>
             <button
@@ -515,20 +307,6 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
               <X className="w-5 h-5" />
             </button>
           </div>
-
-          {/* "Want me to handle your stay?" guided-form trigger */}
-          <button
-            onClick={() => setShowPlanForm(true)}
-            className="flex-shrink-0 w-full flex items-center justify-between gap-3 bg-gold/10 hover:bg-gold/15 border-b border-gold/20 px-4 sm:px-6 py-2.5 transition-colors cursor-pointer group"
-          >
-            <span className="flex items-center gap-2 text-[12.5px] text-charcoal font-medium">
-              <Briefcase className="w-3.5 h-3.5 text-gold flex-shrink-0" />
-              Want me to handle your stay?
-            </span>
-            <span className="text-[10.5px] font-bold uppercase tracking-wider text-gold group-hover:translate-x-0.5 transition-transform">
-              Let's do it →
-            </span>
-          </button>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-5">
@@ -578,108 +356,18 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                     {msg.content.nextStep}
                   </div>
                 )}
-
-                {msg.role === 'assistant' && msg.content.recommendations && msg.content.recommendations.length > 0 && (
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                    {msg.content.recommendations.map((rec) => (
-                      <div
-                        key={rec.id}
-                        className="bg-white border border-charcoal/10 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group"
-                      >
-                        <div className="relative h-32 overflow-hidden bg-charcoal/5">
-                          <img
-                            src={rec.image}
-                            alt={rec.name}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                          {rec.badge && (
-                            <span className="absolute top-2 left-2 bg-charcoal/85 text-gold text-[9px] uppercase tracking-wider font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3" /> {rec.badge}
-                            </span>
-                          )}
-                        </div>
-                        <div className="p-3">
-                          <h4 className="font-serif text-sm text-charcoal font-semibold leading-tight">{rec.name}</h4>
-                          <div className="flex items-center gap-1 mt-1 text-[11px] text-charcoal/50">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                            <span className="truncate">{rec.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1 mt-1.5 text-gold font-bold text-sm">
-                            <Tag className="w-3.5 h-3.5" />
-                            {rec.price}
-                            {rec.price !== 'Price on request' && (
-                              <span className="text-charcoal/40 font-normal text-[10px]">
-                                {rec.category === 'Car Rental' ? ' /day' : rec.category === 'Private Jet' ? ' /charter' : ' /night'}
-                              </span>
-                            )}
-                          </div>
-                          {rec.highlights && rec.highlights.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {rec.highlights.slice(0, 4).map((h) => (
-                                <span
-                                  key={h}
-                                  className="text-[9.5px] font-medium bg-charcoal/5 text-charcoal/60 px-2 py-0.5 rounded-full border border-charcoal/10"
-                                >
-                                  {h}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          <button
-                            onClick={() => openBooking(rec)}
-                            className="mt-2.5 w-full bg-gradient-to-r from-gold via-amber-300 to-gold text-charcoal text-[11px] font-bold uppercase tracking-wider py-2 rounded-full hover:shadow-md transition-all cursor-pointer"
-                          >
-                            Check Availability
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {msg.role === 'assistant' && msg.content.hasMore && (
-                  <button
-                    onClick={() => handleViewMore(msg.id)}
-                    disabled={loadingMoreId === msg.id}
-                    className="mt-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-charcoal/60 hover:text-gold border border-charcoal/15 hover:border-gold/50 px-4 py-2 rounded-full transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    {loadingMoreId === msg.id ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Finding more options...
-                      </>
-                    ) : (
-                      <>View More Options</>
-                    )}
-                  </button>
-                )}
               </div>
             ))}
 
             {isLoading && (
               <div className="flex items-center gap-2 text-charcoal/40 text-xs pl-1">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Finding the best matches for you...
+                One moment...
               </div>
             )}
 
             <div ref={messagesEndRef} />
           </div>
-
-          {/* Sample prompts */}
-          {messages.length <= 1 && (
-            <div className="px-4 sm:px-6 pb-2 flex flex-wrap gap-2">
-              {samplePrompts.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => handleSend(p)}
-                  className="text-[11px] bg-charcoal/5 hover:bg-gold/15 text-charcoal/70 hover:text-charcoal px-3 py-1.5 rounded-full border border-charcoal/10 transition-colors cursor-pointer"
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Input */}
           <div className="border-t border-charcoal/10 p-3 sm:p-4 flex-shrink-0">
@@ -689,7 +377,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask Concierge (e.g., recommend hotels in Abuja under 120k)..."
+                placeholder="Ask about an existing booking..."
                 className="flex-1 bg-transparent outline-none text-sm text-charcoal placeholder:text-charcoal/35"
               />
               <button
@@ -702,168 +390,11 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
               </button>
             </div>
             <p className="text-center text-[10px] text-charcoal/30 mt-2">
-              Rates &amp; reservation options verified manually by human concierge upon request.
+              Booking changes, cancellations &amp; payment issues verified manually by a human concierge.
             </p>
           </div>
 
-          {/* "Handle My Stay" Guided Form Modal */}
-          <AnimatePresence>
-            {showPlanForm && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm flex items-center justify-center p-4 z-10"
-              >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  className="bg-cream rounded-3xl w-full max-w-sm p-6 shadow-2xl relative max-h-[90%] overflow-y-auto"
-                >
-                  <button
-                    onClick={() => setShowPlanForm(false)}
-                    className="absolute top-4 right-4 text-charcoal/40 hover:text-charcoal cursor-pointer"
-                    aria-label="Close"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                  <div className="flex items-center gap-2 pr-6">
-                    <Briefcase className="w-4 h-4 text-gold flex-shrink-0" />
-                    <h3 className="font-serif text-lg text-charcoal font-semibold">Let's plan your stay</h3>
-                  </div>
-                  <p className="text-xs text-charcoal/50 mt-1 mb-4">Tell me what you need and I'll find your best-fit options.</p>
-
-                  <form onSubmit={handlePlanSubmit} className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        value={planCategory}
-                        onChange={(e) => {
-                          const next = e.target.value as typeof planCategory;
-                          setPlanCategory(next);
-                          setPlanRooms(next === 'Car Rental' ? '1 Car' : '1 Room');
-                        }}
-                        className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                      >
-                        <option value="Hotel">Hotel</option>
-                        <option value="Shortlet">Shortlet</option>
-                        <option value="Car Rental">Car Rental</option>
-                        <option value="Private Jet">Private Jet</option>
-                      </select>
-                      <select
-                        value={planCity}
-                        onChange={(e) => setPlanCity(e.target.value as typeof planCity)}
-                        className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                      >
-                        <option value="Lagos">Lagos</option>
-                        <option value="Abuja">Abuja</option>
-                        <option value="Port Harcourt">Port Harcourt</option>
-                      </select>
-                    </div>
-
-                    <input
-                      type="text"
-                      placeholder="Specific area (e.g. Lekki, GRA, Wuse) — optional"
-                      value={planArea}
-                      onChange={(e) => setPlanArea(e.target.value)}
-                      className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
-                    />
-
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal/40 text-sm">₦</span>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Your budget — optional"
-                        value={planBudget}
-                        onChange={(e) => setPlanBudget(e.target.value)}
-                        className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-4 py-2.5 text-sm outline-none focus:border-gold/50"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-charcoal/30 pointer-events-none" />
-                        <input
-                          type="date"
-                          value={planCheckIn}
-                          onChange={(e) => setPlanCheckIn(e.target.value)}
-                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                        />
-                      </div>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-charcoal/30 pointer-events-none" />
-                        <input
-                          type="date"
-                          value={planCheckOut}
-                          onChange={(e) => setPlanCheckOut(e.target.value)}
-                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="relative">
-                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-charcoal/30 pointer-events-none" />
-                        <select
-                          value={planGuests}
-                          onChange={(e) => setPlanGuests(e.target.value)}
-                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                        >
-                          <option>1 Guest</option>
-                          <option>2 Guests</option>
-                          <option>3 Guests</option>
-                          <option>4+ Guests</option>
-                        </select>
-                      </div>
-                      {(planCategory === 'Hotel' || planCategory === 'Shortlet') && (
-                        <select
-                          value={planRooms}
-                          onChange={(e) => setPlanRooms(e.target.value)}
-                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                        >
-                          <option>1 Room</option>
-                          <option>2 Rooms</option>
-                          <option>3 Rooms</option>
-                          <option>4 Rooms</option>
-                          <option>5+ Rooms</option>
-                        </select>
-                      )}
-                      {planCategory === 'Car Rental' && (
-                        <select
-                          value={planRooms}
-                          onChange={(e) => setPlanRooms(e.target.value)}
-                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                        >
-                          <option>1 Car</option>
-                          <option>2 Cars</option>
-                          <option>3 Cars</option>
-                          <option>4+ Cars</option>
-                        </select>
-                      )}
-                    </div>
-
-                    <input
-                      type="text"
-                      placeholder="Must-haves (e.g. pool, wifi, near airport) — optional"
-                      value={planFeatures}
-                      onChange={(e) => setPlanFeatures(e.target.value)}
-                      className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
-                    />
-
-                    <button
-                      type="submit"
-                      className="w-full bg-gradient-to-r from-gold via-amber-300 to-gold text-charcoal font-bold uppercase tracking-wider text-xs py-3 rounded-full hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" /> Find My Options
-                    </button>
-                  </form>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Direct Booking Modal */}
+          {/* Direct Booking Modal — Hotel/Shortlet handoff from Discovery */}
           <AnimatePresence>
             {bookingProperty && (
               <motion.div
@@ -890,7 +421,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                       <h3 className="font-serif text-lg text-charcoal font-semibold pr-6">{bookingProperty.name}</h3>
                       <p className="text-xs text-charcoal/50 mt-1 mb-4">{bookingProperty.location}</p>
 
-                      <form onSubmit={(e) => handleDirectBookingSubmit(e, 'whatsapp')} className="space-y-3">
+                      <form onSubmit={(e) => handleDirectBookingSubmit(e, 'web')} className="space-y-3">
                         <input
                           type="text"
                           required
@@ -907,19 +438,33 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           onChange={(e) => setGuestPhone(e.target.value)}
                           className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
                         />
+                        <input
+                          type="email"
+                          required
+                          placeholder="Email Address"
+                          value={guestEmail}
+                          onChange={(e) => setGuestEmail(e.target.value)}
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50"
+                        />
                         <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={checkIn}
-                            onChange={(e) => setCheckIn(e.target.value)}
-                            className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                          />
-                          <input
-                            type="date"
-                            value={checkOut}
-                            onChange={(e) => setCheckOut(e.target.value)}
-                            className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                          />
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-charcoal/30 pointer-events-none" />
+                            <input
+                              type="date"
+                              value={checkIn}
+                              onChange={(e) => setCheckIn(e.target.value)}
+                              className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
+                            />
+                          </div>
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-charcoal/30 pointer-events-none" />
+                            <input
+                              type="date"
+                              value={checkOut}
+                              onChange={(e) => setCheckOut(e.target.value)}
+                              className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl pl-8 pr-2 py-2.5 text-xs outline-none focus:border-gold/50 dark:[color-scheme:dark]"
+                            />
+                          </div>
                         </div>
                         <select
                           value={guestCount}
@@ -931,31 +476,17 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           <option>3 Guests</option>
                           <option>4+ Guests</option>
                         </select>
-                        {(bookingProperty.category === 'Hotel' || bookingProperty.category === 'Shortlet') && (
-                          <select
-                            value={numberOfRooms}
-                            onChange={(e) => setNumberOfRooms(e.target.value)}
-                            className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                          >
-                            <option>1 Room</option>
-                            <option>2 Rooms</option>
-                            <option>3 Rooms</option>
-                            <option>4 Rooms</option>
-                            <option>5+ Rooms</option>
-                          </select>
-                        )}
-                        {bookingProperty.category === 'Car Rental' && (
-                          <select
-                            value={numberOfRooms}
-                            onChange={(e) => setNumberOfRooms(e.target.value)}
-                            className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
-                          >
-                            <option>1 Car</option>
-                            <option>2 Cars</option>
-                            <option>3 Cars</option>
-                            <option>4+ Cars</option>
-                          </select>
-                        )}
+                        <select
+                          value={numberOfRooms}
+                          onChange={(e) => setNumberOfRooms(e.target.value)}
+                          className="w-full bg-white text-charcoal border border-charcoal/15 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-gold/50 dark:[color-scheme:dark]"
+                        >
+                          <option>1 Room</option>
+                          <option>2 Rooms</option>
+                          <option>3 Rooms</option>
+                          <option>4 Rooms</option>
+                          <option>5+ Rooms</option>
+                        </select>
 
                         <button
                           type="submit"
@@ -997,6 +528,15 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
                           Back to Home
                         </button>
                       </div>
+
+                      {activeTrip && (
+                        <CompleteYourTripPanel
+                          trip={activeTrip}
+                          services={tripServices}
+                          addServiceToTrip={addServiceToTrip}
+                          onViewTrip={() => { resetBookingState(); onClose(); onViewTrip(); }}
+                        />
+                      )}
                     </div>
                   )}
                 </motion.div>
@@ -1005,6 +545,25 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({ isOpen, onCl
           </AnimatePresence>
         </motion.div>
       </div>
+
+      <TripAttachPrompt
+        isOpen={!!pendingTripAttach && !!activeTrip}
+        tripCode={activeTrip?.tripCode || ''}
+        tripLocation={activeTrip?.location || ''}
+        onAddToExisting={async () => {
+          if (pendingTripAttach) {
+            await addServiceToTrip(pendingTripAttach.seedType, pendingTripAttach.seedDetails, pendingTripAttach.seedSummary);
+          }
+          setPendingTripAttach(null);
+        }}
+        onStartNew={async () => {
+          if (pendingTripAttach) {
+            clearActiveTrip();
+            await createTrip(pendingTripAttach.seedType, pendingTripAttach.seedDetails, pendingTripAttach.seedSummary, pendingTripAttach.customer, pendingTripAttach.location);
+          }
+          setPendingTripAttach(null);
+        }}
+      />
     </AnimatePresence>
   );
 };

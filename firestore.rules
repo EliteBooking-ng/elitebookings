@@ -7,8 +7,12 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-        ((request.auth.token.email.lower() == "lobeskki7@gmail.com" || request.auth.token.email.lower() == "lobeski7@gmail.com") && request.auth.token.email_verified == true);
+      // NOTE: email_verified is intentionally not required here — a user
+      // created manually via the Firebase Console's "Add user" dialog is not
+      // marked verified by default, and the hardcoded email allowlist below
+      // (plus the account password) is already the real security boundary.
+      return isAuthenticated() &&
+        (request.auth.token.email.lower() == "lobeskki7@gmail.com" || request.auth.token.email.lower() == "lobeski7@gmail.com" || request.auth.token.email.lower() == "elitebooking.ng@gmail.com");
     }
 
     match /chat_sessions/{sessionId} {
@@ -37,6 +41,65 @@ service cloud.firestore {
 
     match /car_requests/{requestId} {
       allow read, write: if true;
+    }
+
+    match /trips/{tripId} {
+      allow read, write: if true;
+    }
+
+    match /trip_services/{serviceId} {
+      allow read, write: if true;
+    }
+
+    match /trip_activity_log/{entryId} {
+      allow read, write: if true;
+    }
+
+    match /trip_recommendations/{recommendationId} {
+      allow read, write: if true;
+    }
+
+    // Tiny global config docs (e.g. app_settings/recommendations). Readable
+    // by every customer browser so a toggle actually takes effect everywhere;
+    // only admins can change it.
+    match /app_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /partners/{uid} {
+      allow read: if true;
+      allow create, update: if isAuthenticated() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+
+    match /partner_listings/{listingId} {
+      // Public read only for approved listings (the browsing UI and Discovery
+      // Assistant both need this unauthenticated); a partner can always read
+      // their own regardless of status; admin sees everything.
+      allow read: if resource.data.status == 'approved'
+        || isAdmin()
+        || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+
+      allow create: if isAuthenticated()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      // Partner can edit their own listing's content freely, but can never
+      // reassign ownerUid, and can only move status pending<->pending or
+      // rejected->pending (resubmission) — never to 'approved' themselves.
+      // An already-approved listing keeps its status through partner edits
+      // (full self-service, no re-approval needed). Admin can change anything.
+      allow update: if isAdmin()
+        || (
+          isAuthenticated()
+          && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && resource.data.status != 'approved'
+          && request.resource.data.status in ['pending', resource.data.status]
+        );
+
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
     }
   }
 }

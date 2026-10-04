@@ -30,20 +30,34 @@ import {
   Mail,
   AlertCircle,
   Car,
-  Users
+  Users,
+  ShieldAlert,
+  Home,
+  Check,
+  Ban
 } from 'lucide-react';
-import { db } from '../firebase';
-import { 
-  collection, 
-  onSnapshot, 
-  query, 
-  orderBy, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
+import { db, auth } from '../firebase';
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  updateDoc,
+  deleteDoc,
   addDoc,
-  serverTimestamp 
+  setDoc,
+  serverTimestamp
 } from 'firebase/firestore';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User as FirebaseUser } from 'firebase/auth';
+import type { PartnerListing, ListingStatus } from '../types/partnerListing';
+import type { Trip, TripService, ServiceStatus, PaymentStatus, TripActivityLogEntry } from '../types/trip';
+import { SERVICE_STATUSES, PAYMENT_STATUSES } from '../types/trip';
+import { computeTripStatus } from '../utils/tripStatus';
+
+// Hardcoded admin allowlist — matches firestore.rules' isAdmin() helper.
+// Keep these two lists in sync when adding/removing an admin.
+const ADMIN_EMAILS = ['lobeskki7@gmail.com', 'lobeski7@gmail.com', 'elitebooking.ng@gmail.com'];
 
 export interface Reservation {
   id: string;
@@ -113,9 +127,12 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [pinInput, setPinInput] = useState<string>('');
-  const [pinError, setPinError] = useState<string>('');
-  
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
+  const [authLoading, setAuthLoading] = useState<boolean>(false);
+
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -128,7 +145,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'enquiries' | 'car-requests'>('enquiries');
+  const [activeTab, setActiveTab] = useState<'enquiries' | 'car-requests' | 'partner-listings' | 'trips'>('enquiries');
+
+  // Partner Listings state
+  const [partnerListings, setPartnerListings] = useState<PartnerListing[]>([]);
+  const [partnerListingsLoading, setPartnerListingsLoading] = useState<boolean>(true);
+  const [partnerSearchTerm, setPartnerSearchTerm] = useState<string>('');
+  const [partnerStatusFilter, setPartnerStatusFilter] = useState<string>('all');
+  const [selectedPartnerListing, setSelectedPartnerListing] = useState<PartnerListing | null>(null);
+  const [editingRejectionReason, setEditingRejectionReason] = useState<string>('');
+  const [savingPartnerListing, setSavingPartnerListing] = useState<boolean>(false);
+
+  // Trip Management state
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [tripServicesAll, setTripServicesAll] = useState<TripService[]>([]);
+  const [tripsLoading, setTripsLoading] = useState<boolean>(true);
+  const [tripSearchTerm, setTripSearchTerm] = useState<string>('');
+  const [tripStatusFilter, setTripStatusFilter] = useState<string>('all');
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [editingAssignedStaff, setEditingAssignedStaff] = useState<string>('');
+  const [editingTripNotes, setEditingTripNotes] = useState<string>('');
+  const [savingTrip, setSavingTrip] = useState<boolean>(false);
+  const [tripActivityLog, setTripActivityLog] = useState<TripActivityLogEntry[]>([]);
+  const [recommendationsEnabled, setRecommendationsEnabled] = useState<boolean>(true);
 
   // Car Requests state
   const [carRequests, setCarRequests] = useState<CarRequest[]>([]);
@@ -228,16 +267,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   const [newNotes, setNewNotes] = useState('');
   const [isSubmittingNew, setIsSubmittingNew] = useState(false);
 
-  // Default Admin PIN: 8888
-  const ADMIN_PIN = '8888';
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+      const email = (user?.email || '').toLowerCase();
+      setIsAuthenticated(!!user && ADMIN_EMAILS.includes(email));
+      setAuthChecking(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === ADMIN_PIN || pinInput === '1234') {
-      setIsAuthenticated(true);
-      setPinError('');
-    } else {
-      setPinError('Invalid Admin Passcode. Try 8888.');
+    setAuthError('');
+    setAuthLoading(true);
+    try {
+      const cred = await signInWithEmailAndPassword(auth, loginEmail.trim(), loginPassword);
+      if (!ADMIN_EMAILS.includes((cred.user.email || '').toLowerCase())) {
+        setAuthError('This account is not authorized as an admin.');
+        await signOut(auth);
+      }
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        setAuthError('Incorrect email or password.');
+      } else if (code === 'auth/invalid-email') {
+        setAuthError('Please enter a valid email address.');
+      } else {
+        setAuthError('Sign-in failed. Please try again.');
+      }
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -283,6 +342,69 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
     });
 
     return () => unsubscribe();
+  }, [isAuthenticated, isOpen]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isOpen) return;
+
+    setPartnerListingsLoading(true);
+    const q = query(collection(db, 'partner_listings'), orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: PartnerListing[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as PartnerListing));
+
+      setPartnerListings(docs);
+      setPartnerListingsLoading(false);
+    }, (error) => {
+      console.error('Error listening to partner_listings collection:', error);
+      setPartnerListingsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, isOpen]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isOpen) return;
+
+    setTripsLoading(true);
+    const tripsQuery = query(collection(db, 'trips'), orderBy('createdAt', 'desc'));
+    const unsubTrips = onSnapshot(tripsQuery, (snapshot) => {
+      setTrips(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Trip)));
+      setTripsLoading(false);
+    }, (error) => {
+      console.error('Error listening to trips collection:', error);
+      setTripsLoading(false);
+    });
+
+    const servicesQuery = query(collection(db, 'trip_services'), orderBy('createdAt', 'asc'));
+    const unsubServices = onSnapshot(servicesQuery, (snapshot) => {
+      setTripServicesAll(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TripService)));
+    }, (error) => {
+      console.error('Error listening to trip_services collection:', error);
+    });
+
+    const activityQuery = query(collection(db, 'trip_activity_log'), orderBy('createdAt', 'desc'));
+    const unsubActivity = onSnapshot(activityQuery, (snapshot) => {
+      setTripActivityLog(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TripActivityLogEntry)));
+    }, (error) => {
+      console.error('Error listening to trip_activity_log collection:', error);
+    });
+
+    const unsubRecommendationSettings = onSnapshot(doc(db, 'app_settings', 'recommendations'), (snap) => {
+      setRecommendationsEnabled(snap.exists() ? snap.data().enabled !== false : true);
+    }, (error) => {
+      console.error('Error listening to recommendation settings:', error);
+    });
+
+    return () => {
+      unsubTrips();
+      unsubServices();
+      unsubActivity();
+      unsubRecommendationSettings();
+    };
   }, [isAuthenticated, isOpen]);
 
   // Update status in Firestore
@@ -374,6 +496,170 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
       }
     } catch (err) {
       console.error('Error deleting car request:', err);
+    }
+  };
+
+  // Approve a partner listing — the only path that can ever set status to 'approved'.
+  const handleApprovePartnerListing = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'partner_listings', id), { status: 'approved' as ListingStatus, rejectionReason: '' });
+      if (selectedPartnerListing?.id === id) {
+        setSelectedPartnerListing(prev => prev ? { ...prev, status: 'approved', rejectionReason: '' } : null);
+      }
+    } catch (err) {
+      console.error('Error approving partner listing:', err);
+    }
+  };
+
+  // Reject requires a reason so the partner's dashboard can show them why.
+  const handleRejectPartnerListing = async (id: string, reason: string) => {
+    if (!reason.trim()) return;
+    setSavingPartnerListing(true);
+    try {
+      await updateDoc(doc(db, 'partner_listings', id), { status: 'rejected' as ListingStatus, rejectionReason: reason.trim() });
+      if (selectedPartnerListing?.id === id) {
+        setSelectedPartnerListing(prev => prev ? { ...prev, status: 'rejected', rejectionReason: reason.trim() } : null);
+      }
+    } catch (err) {
+      console.error('Error rejecting partner listing:', err);
+    } finally {
+      setSavingPartnerListing(false);
+    }
+  };
+
+  const handleDeletePartnerListing = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this partner listing?')) return;
+    try {
+      await deleteDoc(doc(db, 'partner_listings', id));
+      if (selectedPartnerListing?.id === id) {
+        setSelectedPartnerListing(null);
+      }
+    } catch (err) {
+      console.error('Error deleting partner listing:', err);
+    }
+  };
+
+  // Sends an automated status-change email to the customer. Web3Forms is
+  // preferred when a key is configured since it has no per-recipient
+  // activation step (unlike FormSubmit, which requires each new recipient
+  // to click a one-time "Activate Form" link before mail to that address
+  // actually arrives — a real risk here since every trip has a different
+  // customer email, unlike the admin's own fixed notification address used
+  // elsewhere in this app).
+  const notifyCustomerOfStatusChange = (trip: Trip, service: TripService, newStatus: ServiceStatus) => {
+    if (!trip.customerEmail) return;
+    const accessKey = localStorage.getItem('elite_web3forms_key') || (import.meta as any).env.VITE_WEB3FORMS_ACCESS_KEY;
+    const message = `Hi ${trip.customerName}, an update on your Elite Booking trip ${trip.tripCode}: your ${service.type} (${service.summary}) is now "${newStatus}".`;
+
+    if (accessKey && accessKey.trim() !== '') {
+      fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          access_key: accessKey,
+          subject: `Update on your trip ${trip.tripCode}`,
+          from_name: 'Elite Bookings',
+          to_email: trip.customerEmail,
+          message,
+        }),
+      }).catch((err) => console.warn('Customer status-change Web3Forms notice:', err));
+    } else {
+      fetch(`https://formsubmit.co/ajax/${encodeURIComponent(trip.customerEmail)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          _subject: `Update on your trip ${trip.tripCode}`,
+          _template: 'box',
+          message,
+        }),
+      }).catch((err) => console.warn('Customer status-change FormSubmit notice:', err));
+    }
+  };
+
+  const logTripActivity = (tripId: string, action: string, detail: string, serviceId?: string) => {
+    addDoc(collection(db, 'trip_activity_log'), {
+      tripId, action, detail, actor: 'admin', serviceId: serviceId || null, createdAt: serverTimestamp(),
+    }).catch((err) => console.warn('Trip activity log write failed:', err));
+  };
+
+  // Global switch for the Smart Follow-Up Recommendation System — stored in
+  // Firestore (not localStorage) so it actually reaches every customer's
+  // browser, not just this admin's own device.
+  const handleToggleRecommendations = () => {
+    const next = !recommendationsEnabled;
+    setDoc(doc(db, 'app_settings', 'recommendations'), { enabled: next }, { merge: true }).catch((err) =>
+      console.error('Error toggling recommendations setting:', err)
+    );
+  };
+
+  const handleTripServiceStatusChange = async (service: TripService, newStatus: ServiceStatus) => {
+    const trip = trips.find((t) => t.id === service.tripId);
+    if (!trip) return;
+    try {
+      await updateDoc(doc(db, 'trip_services', service.id), { status: newStatus, updatedAt: serverTimestamp() });
+      logTripActivity(trip.id, 'service_status_changed', `${service.type} status changed to "${newStatus}"`, service.id);
+
+      const updatedServices = tripServicesAll.map((s) => (s.id === service.id ? { ...s, status: newStatus } : s)).filter((s) => s.tripId === trip.id);
+      const newTripStatus = computeTripStatus(updatedServices);
+      if (newTripStatus !== trip.status) {
+        await updateDoc(doc(db, 'trips', trip.id), { status: newTripStatus, updatedAt: serverTimestamp() });
+        logTripActivity(trip.id, 'trip_status_changed', `Trip status changed to "${newTripStatus}"`);
+      }
+
+      notifyCustomerOfStatusChange(trip, service, newStatus);
+    } catch (err) {
+      console.error('Error updating trip service status:', err);
+    }
+  };
+
+  const handleTripServicePaymentStatusChange = async (service: TripService, newPaymentStatus: PaymentStatus) => {
+    const trip = trips.find((t) => t.id === service.tripId);
+    try {
+      await updateDoc(doc(db, 'trip_services', service.id), { paymentStatus: newPaymentStatus, updatedAt: serverTimestamp() });
+      if (trip) logTripActivity(trip.id, 'payment_status_changed', `${service.type} payment status changed to "${newPaymentStatus}"`, service.id);
+    } catch (err) {
+      console.error('Error updating trip service payment status:', err);
+    }
+  };
+
+  const handleSaveTripServiceField = async (serviceId: string, field: 'providerAssigned' | 'price' | 'commission' | 'adminNotes' | 'confirmationNotes', value: string) => {
+    try {
+      const payload: Record<string, any> = {};
+      payload[field] = (field === 'price' || field === 'commission') ? (value.trim() ? Number(value.replace(/[^0-9.]/g, '')) : null) : value;
+      await updateDoc(doc(db, 'trip_services', serviceId), payload);
+      const service = tripServicesAll.find((s) => s.id === serviceId);
+      if (service && (field === 'providerAssigned' || field === 'confirmationNotes')) {
+        logTripActivity(service.tripId, `${field}_updated`, `${service.type} ${field === 'providerAssigned' ? 'provider assigned' : 'confirmation details updated'}`, serviceId);
+      }
+    } catch (err) {
+      console.error('Error saving trip service field:', err);
+    }
+  };
+
+  const handleSaveTripAdminFields = async () => {
+    if (!selectedTrip) return;
+    setSavingTrip(true);
+    try {
+      await updateDoc(doc(db, 'trips', selectedTrip.id), {
+        assignedStaff: editingAssignedStaff,
+        internalNotes: editingTripNotes,
+      });
+    } catch (err) {
+      console.error('Error saving trip admin fields:', err);
+    } finally {
+      setSavingTrip(false);
+    }
+  };
+
+  const handleDeleteTrip = async (id: string) => {
+    if (!window.confirm('Delete this trip and all its services? This cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db, 'trips', id));
+      const servicesToDelete = tripServicesAll.filter((s) => s.tripId === id);
+      await Promise.allSettled(servicesToDelete.map((s) => deleteDoc(doc(db, 'trip_services', s.id))));
+      if (selectedTrip?.id === id) setSelectedTrip(null);
+    } catch (err) {
+      console.error('Error deleting trip:', err);
     }
   };
 
@@ -481,6 +767,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   const carConfirmedCount = carRequests.filter(r => r.status === 'Confirmed').length;
   const carCompletedCount = carRequests.filter(r => r.status === 'Completed').length;
 
+  // Filter partner listings
+  const filteredPartnerListings = partnerListings.filter(listing => {
+    const term = partnerSearchTerm.toLowerCase();
+    const matchesSearch =
+      (listing.name || '').toLowerCase().includes(term) ||
+      (listing.ownerEmail || '').toLowerCase().includes(term) ||
+      (listing.city || '').toLowerCase().includes(term) ||
+      (listing.category || '').toLowerCase().includes(term);
+
+    const matchesStatus = partnerStatusFilter === 'all' || listing.status === partnerStatusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const partnerTotalCount = partnerListings.length;
+  const partnerPendingCount = partnerListings.filter(l => l.status === 'pending').length;
+  const partnerApprovedCount = partnerListings.filter(l => l.status === 'approved').length;
+  const partnerRejectedCount = partnerListings.filter(l => l.status === 'rejected').length;
+
+  // Filter trips — 'Building' trips are drafts the customer hasn't submitted
+  // yet, excluded from the default view/counts.
+  const submittedTrips = trips.filter(t => t.status !== 'Building');
+  const filteredTrips = submittedTrips.filter(trip => {
+    const term = tripSearchTerm.toLowerCase();
+    const matchesSearch =
+      trip.tripCode.toLowerCase().includes(term) ||
+      (trip.customerName || '').toLowerCase().includes(term) ||
+      (trip.customerPhone || '').toLowerCase().includes(term) ||
+      (trip.customerEmail || '').toLowerCase().includes(term) ||
+      (trip.location || '').toLowerCase().includes(term);
+
+    const matchesStatus = tripStatusFilter === 'all' || trip.status === tripStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const tripTotalCount = submittedTrips.length;
+  const tripNewCount = submittedTrips.filter(t => t.status === 'New' || t.status === 'Processing').length;
+  const tripConfirmedCount = submittedTrips.filter(t => t.status === 'Confirmed' || t.status === 'Partially Confirmed').length;
+  const tripCompletedCount = submittedTrips.filter(t => t.status === 'Completed').length;
+
   // Calculate Metrics
   const totalCount = reservations.length;
   const pendingCount = reservations.filter(r => (r.status || 'Pending') === 'Pending').length;
@@ -522,7 +848,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
             <div className="flex items-center space-x-3">
               {isAuthenticated && (
                 <button
-                  onClick={() => setIsAuthenticated(false)}
+                  onClick={() => signOut(auth)}
                   className="flex items-center space-x-1.5 px-3 py-1.5 text-xs text-cream/70 hover:text-gold hover:bg-gold/10 rounded-xl transition-all border border-cream/10"
                   title="Lock Portal"
                 >
@@ -540,40 +866,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
           </div>
 
           {/* Body Content */}
-          {!isAuthenticated ? (
-            /* PIN Gate */
+          {authChecking ? (
+            <div className="p-16 flex flex-col items-center justify-center text-center">
+              <RefreshCw className="w-8 h-8 text-gold animate-spin mb-3" />
+              <p className="text-xs text-charcoal/60 font-mono">Checking admin session...</p>
+            </div>
+          ) : !isAuthenticated ? (
+            /* Admin Login */
             <div className="p-8 sm:p-16 flex flex-col items-center justify-center text-center max-w-md mx-auto my-auto">
               <div className="w-16 h-16 rounded-3xl bg-gold/10 text-gold flex items-center justify-center mb-6 border border-gold/20 shadow-inner">
                 <Lock className="w-8 h-8" />
               </div>
-              <h3 className="text-2xl font-serif text-charcoal mb-2 font-medium">Administrator Verification</h3>
+              <h3 className="text-2xl font-serif text-charcoal mb-2 font-medium">Administrator Sign-In</h3>
               <p className="text-xs text-charcoal/60 mb-6 leading-relaxed">
-                Enter your administrative passcode to securely view and manage client reservation logs.
-                <br />
-                <span className="text-gold font-mono font-bold">Default Passcode: 8888</span>
+                Sign in with your admin account to securely view and manage client reservations and partner listings.
               </p>
 
-              <form onSubmit={handleLogin} className="w-full space-y-4">
-                <div>
-                  <input 
-                    type="password"
-                    maxLength={6}
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value)}
-                    placeholder="Enter PIN (e.g. 8888)"
-                    className="w-full text-center tracking-[0.5em] text-2xl font-mono py-3.5 px-4 bg-white border border-charcoal/20 rounded-2xl focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20 transition-all text-charcoal"
-                    autoFocus
-                  />
-                  {pinError && (
-                    <p className="text-xs text-red-500 mt-2 font-medium">{pinError}</p>
-                  )}
-                </div>
+              <form onSubmit={handleLogin} className="w-full space-y-3">
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="Admin email"
+                  className="w-full py-3.5 px-4 bg-white border border-charcoal/20 rounded-2xl focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20 transition-all text-charcoal text-sm"
+                />
+                <input
+                  type="password"
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Password"
+                  className="w-full py-3.5 px-4 bg-white border border-charcoal/20 rounded-2xl focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20 transition-all text-charcoal text-sm"
+                />
+                {authError && (
+                  <p className="text-xs text-red-500 font-medium text-left">{authError}</p>
+                )}
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-gold hover:bg-gold/90 text-charcoal font-semibold text-xs uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-gold/20 transition-all cursor-pointer"
+                  disabled={authLoading}
+                  className="w-full py-3.5 bg-gold hover:bg-gold/90 text-charcoal font-semibold text-xs uppercase tracking-[0.2em] rounded-2xl shadow-lg shadow-gold/20 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  Unlock Admin Dashboard
+                  {authLoading ? 'Signing In...' : 'Sign In'}
                 </button>
               </form>
             </div>
@@ -644,6 +980,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                 >
                   <Car className="w-3.5 h-3.5" /> Car Requests
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'car-requests' ? 'bg-cream/20 text-cream' : 'bg-charcoal/10 text-charcoal/60'}`}>{carTotalCount}</span>
+                </button>
+                {/* Partner Listings tab intentionally held back from this deploy —
+                    not ready to launch publicly yet. Underlying state/listeners/
+                    handlers stay in the file (harmless, unreachable without this
+                    button); only the entry point is hidden. */}
+                <button
+                  onClick={() => setActiveTab('trips')}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'trips' ? 'bg-charcoal text-cream shadow-sm' : 'text-charcoal/60 hover:text-charcoal'
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5" /> Trip Management
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'trips' ? 'bg-cream/20 text-cream' : 'bg-charcoal/10 text-charcoal/60'}`}>{tripTotalCount}</span>
                 </button>
               </div>
 
@@ -1132,6 +1481,393 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
               </div>
               </>
               )}
+
+              {activeTab === 'partner-listings' && (
+              <>
+              {/* Partner Listings Metric Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-charcoal/50 block">Total Listings</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-charcoal">{partnerTotalCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-charcoal/5 text-charcoal flex items-center justify-center">
+                    <Home className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gold/30 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-gold block">Pending Review</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-gold">{partnerPendingCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-gold/10 text-gold flex items-center justify-center">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-green-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-green-700 block">Approved</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-green-700">{partnerApprovedCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-red-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-red-700 block">Rejected</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-red-700">{partnerRejectedCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-red-50 text-red-700 flex items-center justify-center">
+                    <XCircle className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Partner Listings Search & Filter */}
+              <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full md:w-80">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40" />
+                  <input
+                    type="text"
+                    value={partnerSearchTerm}
+                    onChange={(e) => setPartnerSearchTerm(e.target.value)}
+                    placeholder="Search owner, listing name, city..."
+                    className="w-full pl-10 pr-4 py-2 bg-cream/50 border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold transition-all text-charcoal"
+                  />
+                  {partnerSearchTerm && (
+                    <button
+                      onClick={() => setPartnerSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/40 hover:text-charcoal"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-1 bg-cream/60 p-1 rounded-xl border border-charcoal/10 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-charcoal/40 px-2">Status:</span>
+                  {['all', 'pending', 'approved', 'rejected'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setPartnerStatusFilter(st)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium capitalize transition-all cursor-pointer ${
+                        partnerStatusFilter === st
+                          ? 'bg-charcoal text-cream shadow-sm'
+                          : 'text-charcoal/60 hover:text-charcoal'
+                      }`}
+                    >
+                      {st === 'all' ? 'All' : st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Partner Listings Table */}
+              <div className="bg-white rounded-2xl border border-charcoal/10 shadow-sm overflow-hidden">
+                {partnerListingsLoading ? (
+                  <div className="py-20 text-center flex flex-col items-center justify-center">
+                    <RefreshCw className="w-8 h-8 text-gold animate-spin mb-3" />
+                    <p className="text-xs text-charcoal/60 font-mono">Syncing partner listings from Firestore cloud...</p>
+                  </div>
+                ) : filteredPartnerListings.length === 0 ? (
+                  <div className="py-20 text-center flex flex-col items-center justify-center px-4">
+                    <Home className="w-12 h-12 text-charcoal/20 mb-3" />
+                    <h4 className="text-lg font-serif text-charcoal font-medium">No partner listings found</h4>
+                    <p className="text-xs text-charcoal/50 max-w-sm mt-1">
+                      {partnerSearchTerm || partnerStatusFilter !== 'all'
+                        ? 'Try clearing your search term or active status filter.'
+                        : 'No partner-submitted listings yet. New submissions from hotel, shortlet, or car owners will appear here automatically.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-charcoal text-cream uppercase tracking-wider text-[10px] font-mono border-b border-gold/20">
+                          <th className="p-4 font-semibold">Owner</th>
+                          <th className="p-4 font-semibold">Listing</th>
+                          <th className="p-4 font-semibold">City</th>
+                          <th className="p-4 font-semibold">Price</th>
+                          <th className="p-4 font-semibold">Status</th>
+                          <th className="p-4 font-semibold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-charcoal/10 font-sans">
+                        {filteredPartnerListings.map((listing) => {
+                          const status = listing.status;
+                          let statusBadgeClass = 'bg-yellow-50 text-yellow-800 border-yellow-200';
+                          if (status === 'approved') statusBadgeClass = 'bg-green-50 text-green-800 border-green-200';
+                          if (status === 'rejected') statusBadgeClass = 'bg-red-50 text-red-800 border-red-200';
+
+                          return (
+                            <tr
+                              key={listing.id}
+                              className="hover:bg-cream/40 transition-colors group cursor-pointer"
+                              onClick={() => {
+                                setSelectedPartnerListing(listing);
+                                setEditingRejectionReason(listing.rejectionReason || '');
+                              }}
+                            >
+                              <td className="p-4 font-mono font-medium text-charcoal max-w-[180px] truncate">
+                                {listing.ownerEmail}
+                              </td>
+
+                              <td className="p-4 font-medium text-charcoal max-w-xs">
+                                <div className="font-serif text-sm text-charcoal truncate">{listing.name}</div>
+                                <span className="inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-charcoal/5 text-charcoal/60 mt-1">
+                                  {listing.category}
+                                </span>
+                              </td>
+
+                              <td className="p-4 text-charcoal/70">
+                                <div className="flex items-center space-x-1 text-charcoal/60">
+                                  <MapPin className="w-3 h-3 text-gold flex-shrink-0" />
+                                  <span>{listing.city}</span>
+                                </div>
+                              </td>
+
+                              <td className="p-4 font-mono text-charcoal font-semibold">
+                                {listing.price ? `₦${listing.price}` : 'N/A'}
+                              </td>
+
+                              <td className="p-4">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border capitalize ${statusBadgeClass}`}>
+                                  {status}
+                                </span>
+                              </td>
+
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                                  {status !== 'approved' && (
+                                    <button
+                                      onClick={() => handleApprovePartnerListing(listing.id)}
+                                      className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                      title="Approve Listing"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeletePartnerListing(listing.id)}
+                                    className="p-1.5 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete Listing"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              </>
+              )}
+
+              {activeTab === 'trips' && (
+              <>
+              {/* Smart Follow-Up Recommendations toggle */}
+              <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] uppercase tracking-wider font-bold text-charcoal/70 block">Smart Follow-Up Recommendations</span>
+                  <span className="text-[11px] text-charcoal/50">Suggests a logical next service to customers (e.g. airport pickup after a hotel). Never auto-books anything.</span>
+                </div>
+                <button
+                  onClick={handleToggleRecommendations}
+                  className={`relative flex-shrink-0 w-12 h-7 rounded-full transition-colors cursor-pointer ${recommendationsEnabled ? 'bg-gold' : 'bg-charcoal/20'}`}
+                  aria-label="Toggle Smart Follow-Up Recommendations"
+                >
+                  <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${recommendationsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              {/* Trip Management Metric Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-charcoal/50 block">Total Trips</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-charcoal">{tripTotalCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-charcoal/5 text-charcoal flex items-center justify-center">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gold/30 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-gold block">New / Processing</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-gold">{tripNewCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-gold/10 text-gold flex items-center justify-center">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-green-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-green-700 block">Confirmed</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-green-700">{tripConfirmedCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-blue-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-blue-700 block">Completed</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-blue-700">{tripCompletedCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Trip Search & Filter */}
+              <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full md:w-80">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40" />
+                  <input
+                    type="text"
+                    value={tripSearchTerm}
+                    onChange={(e) => setTripSearchTerm(e.target.value)}
+                    placeholder="Search trip code, customer, location..."
+                    className="w-full pl-10 pr-4 py-2 bg-cream/50 border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold transition-all text-charcoal"
+                  />
+                  {tripSearchTerm && (
+                    <button
+                      onClick={() => setTripSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/40 hover:text-charcoal"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1 bg-cream/60 p-1 rounded-xl border border-charcoal/10 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-charcoal/40 px-2">Status:</span>
+                  {['all', 'New', 'Processing', 'Partially Confirmed', 'Confirmed', 'Completed', 'Cancelled'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setTripStatusFilter(st)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                        tripStatusFilter === st
+                          ? 'bg-charcoal text-cream shadow-sm'
+                          : 'text-charcoal/60 hover:text-charcoal'
+                      }`}
+                    >
+                      {st === 'all' ? 'All' : st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trips Table */}
+              <div className="bg-white rounded-2xl border border-charcoal/10 shadow-sm overflow-hidden">
+                {tripsLoading ? (
+                  <div className="py-20 text-center flex flex-col items-center justify-center">
+                    <RefreshCw className="w-8 h-8 text-gold animate-spin mb-3" />
+                    <p className="text-xs text-charcoal/60 font-mono">Syncing trips from Firestore cloud...</p>
+                  </div>
+                ) : filteredTrips.length === 0 ? (
+                  <div className="py-20 text-center flex flex-col items-center justify-center px-4">
+                    <MapPin className="w-12 h-12 text-charcoal/20 mb-3" />
+                    <h4 className="text-lg font-serif text-charcoal font-medium">No trips found</h4>
+                    <p className="text-xs text-charcoal/50 max-w-sm mt-1">
+                      {tripSearchTerm || tripStatusFilter !== 'all'
+                        ? 'Try clearing your search term or active status filter.'
+                        : 'No submitted trips yet. New trip requests will appear here automatically.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-charcoal text-cream uppercase tracking-wider text-[10px] font-mono border-b border-gold/20">
+                          <th className="p-4 font-semibold">Trip</th>
+                          <th className="p-4 font-semibold">Customer</th>
+                          <th className="p-4 font-semibold">Location</th>
+                          <th className="p-4 font-semibold">Services</th>
+                          <th className="p-4 font-semibold">Status</th>
+                          <th className="p-4 font-semibold">Staff</th>
+                          <th className="p-4 font-semibold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-charcoal/10 font-sans">
+                        {filteredTrips.map((trip) => {
+                          const tripServiceCount = tripServicesAll.filter((s) => s.tripId === trip.id).length;
+                          let statusBadgeClass = 'bg-yellow-50 text-yellow-800 border-yellow-200';
+                          if (trip.status === 'Confirmed' || trip.status === 'Completed') statusBadgeClass = 'bg-green-50 text-green-800 border-green-200';
+                          if (trip.status === 'Partially Confirmed') statusBadgeClass = 'bg-blue-50 text-blue-800 border-blue-200';
+                          if (trip.status === 'Cancelled') statusBadgeClass = 'bg-red-50 text-red-800 border-red-200';
+
+                          return (
+                            <tr
+                              key={trip.id}
+                              className="hover:bg-cream/40 transition-colors group cursor-pointer"
+                              onClick={() => {
+                                setSelectedTrip(trip);
+                                setEditingAssignedStaff(trip.assignedStaff || '');
+                                setEditingTripNotes(trip.internalNotes || '');
+                              }}
+                            >
+                              <td className="p-4 font-mono font-medium text-charcoal">{trip.tripCode}</td>
+                              <td className="p-4 text-charcoal">
+                                <div className="font-serif text-sm">{trip.customerName}</div>
+                                <a href={`tel:${trip.customerPhone}`} onClick={(e) => e.stopPropagation()} className="text-[10px] text-charcoal/50 hover:text-gold block">{trip.customerPhone}</a>
+                                <span className="text-[10px] text-charcoal/50 truncate block max-w-[160px]">{trip.customerEmail}</span>
+                              </td>
+                              <td className="p-4 text-charcoal/70">
+                                <div className="flex items-center space-x-1 text-charcoal/60">
+                                  <MapPin className="w-3 h-3 text-gold flex-shrink-0" />
+                                  <span className="truncate">{trip.location}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-charcoal font-semibold">{tripServiceCount}</td>
+                              <td className="p-4">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${statusBadgeClass}`}>
+                                  {trip.status}
+                                </span>
+                              </td>
+                              <td className="p-4 text-charcoal/70">{trip.assignedStaff || '—'}</td>
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                                  <a
+                                    href={`https://wa.me/${trip.customerPhone.replace(/[^0-9]/g, '')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                    title="WhatsApp Customer"
+                                  >
+                                    <Send className="w-4 h-4" />
+                                  </a>
+                                  <button
+                                    onClick={() => handleDeleteTrip(trip.id)}
+                                    className="p-1.5 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete Trip"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              </>
+              )}
             </div>
           )}
 
@@ -1374,6 +2110,297 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                       <Mail className="w-4 h-4" />
                       <span>Email</span>
                     </a>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Partner Listing Details Drawer / Modal */}
+          {selectedPartnerListing && (
+            <div className="fixed inset-0 z-[110] bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border border-gold/30 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl text-charcoal"
+              >
+                <div className="bg-charcoal text-cream p-5 flex justify-between items-center border-b border-gold/20">
+                  <h3 className="font-serif text-lg font-medium text-gold">{selectedPartnerListing.name}</h3>
+                  <button onClick={() => setSelectedPartnerListing(null)} className="text-cream/60 hover:text-cream">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
+                  <div className="bg-cream/40 p-4 rounded-2xl border border-charcoal/10 space-y-2">
+                    <span className="inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-charcoal/10 text-charcoal/70">
+                      {selectedPartnerListing.category}
+                    </span>
+                    <p className="text-charcoal/60 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-gold flex-shrink-0" />
+                      {selectedPartnerListing.location}, {selectedPartnerListing.city}
+                    </p>
+                    <p className="text-sm font-mono font-bold text-gold">Rate: ₦{selectedPartnerListing.price}</p>
+                    <p className="text-charcoal/70">{selectedPartnerListing.description}</p>
+                  </div>
+
+                  {selectedPartnerListing.images && selectedPartnerListing.images.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {selectedPartnerListing.images.slice(0, 6).map((url, i) => (
+                        <img key={i} src={url} alt="" referrerPolicy="no-referrer" className="w-full h-16 object-cover rounded-lg border border-charcoal/10" />
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedPartnerListing.category === 'Car Rental' && (
+                    <div className="bg-white p-3.5 rounded-xl border border-charcoal/10 space-y-1.5">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Vehicle Details</span>
+                      <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Type</span><span>{selectedPartnerListing.vehicleType || 'N/A'}</span></div>
+                      <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Seats</span><span>{selectedPartnerListing.seats ?? 'N/A'}</span></div>
+                      <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Transmission</span><span>{selectedPartnerListing.transmission || 'N/A'}</span></div>
+                      <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Driver Options</span><span>{(selectedPartnerListing.driverOptions || []).join(', ') || 'N/A'}</span></div>
+                    </div>
+                  )}
+
+                  {selectedPartnerListing.category === 'Hotel' && selectedPartnerListing.tiers && selectedPartnerListing.tiers.length > 0 && (
+                    <div className="bg-white p-3.5 rounded-xl border border-charcoal/10 space-y-1.5">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Room Tiers</span>
+                      {selectedPartnerListing.tiers.map((t, i) => (
+                        <div key={i} className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">{t.name}</span><span>₦{t.price}</span></div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedPartnerListing.category === 'Shortlet' && (
+                    <div className="bg-white p-3.5 rounded-xl border border-charcoal/10 space-y-1.5">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Shortlet Details</span>
+                      {selectedPartnerListing.cautionFee && (
+                        <div className="flex justify-between font-mono text-[11px] text-charcoal"><span className="text-charcoal/50">Caution Fee</span><span>₦{selectedPartnerListing.cautionFee}</span></div>
+                      )}
+                      {selectedPartnerListing.features && selectedPartnerListing.features.length > 0 && (
+                        <div className="flex justify-between font-mono text-[11px] text-charcoal gap-4"><span className="text-charcoal/50 flex-shrink-0">Features</span><span className="text-right">{selectedPartnerListing.features.join(', ')}</span></div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-charcoal/10">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Owner</span>
+                      <a href={`mailto:${selectedPartnerListing.ownerEmail}`} className="font-mono text-xs font-semibold text-charcoal hover:text-gold truncate block">
+                        {selectedPartnerListing.ownerEmail}
+                      </a>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-charcoal/10">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Status</span>
+                      <span className="font-bold uppercase tracking-wider text-xs text-gold capitalize">
+                        {selectedPartnerListing.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Admin-only: rejection reason */}
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1.5">
+                      <ShieldAlert className="w-3 h-3" /> Admin Review
+                    </span>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-charcoal/60 block mb-1">Rejection Reason (shown to partner)</label>
+                      <textarea
+                        rows={3}
+                        placeholder="e.g. Photos are unclear, price seems inconsistent with the area, please resubmit with more detail..."
+                        value={editingRejectionReason}
+                        onChange={(e) => setEditingRejectionReason(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleApprovePartnerListing(selectedPartnerListing.id)}
+                        disabled={selectedPartnerListing.status === 'approved'}
+                        className="py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectPartnerListing(selectedPartnerListing.id, editingRejectionReason)}
+                        disabled={savingPartnerListing || !editingRejectionReason.trim()}
+                        className="py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      >
+                        <Ban className="w-3.5 h-3.5" /> Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Trip Details Drawer / Modal */}
+          {selectedTrip && (
+            <div className="fixed inset-0 z-[110] bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border border-gold/30 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl text-charcoal"
+              >
+                <div className="bg-charcoal text-cream p-5 flex justify-between items-center border-b border-gold/20">
+                  <h3 className="font-serif text-lg font-medium text-gold">Trip {selectedTrip.tripCode}</h3>
+                  <button onClick={() => setSelectedTrip(null)} className="text-cream/60 hover:text-cream">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-cream/40 p-3 rounded-xl border border-charcoal/10">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Customer</span>
+                      <span className="font-semibold text-charcoal block">{selectedTrip.customerName}</span>
+                      <a href={`tel:${selectedTrip.customerPhone}`} className="block font-mono text-charcoal/70 hover:text-gold">{selectedTrip.customerPhone}</a>
+                      <a href={`mailto:${selectedTrip.customerEmail}`} className="block font-mono text-charcoal/70 hover:text-gold truncate">{selectedTrip.customerEmail}</a>
+                    </div>
+                    <div className="bg-cream/40 p-3 rounded-xl border border-charcoal/10">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Location / Status</span>
+                      <span className="flex items-center gap-1 text-charcoal font-semibold"><MapPin className="w-3 h-3 text-gold" /> {selectedTrip.location}</span>
+                      <span className="font-bold uppercase tracking-wider text-[10px] text-gold block mt-1">{selectedTrip.status}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1.5">
+                      <Lock className="w-3 h-3" /> Admin Only
+                    </span>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-charcoal/60 block mb-1">Assigned Staff</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Amaka"
+                        value={editingAssignedStaff}
+                        onChange={(e) => setEditingAssignedStaff(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-charcoal/60 block mb-1">Internal Notes</label>
+                      <textarea
+                        rows={2}
+                        value={editingTripNotes}
+                        onChange={(e) => setEditingTripNotes(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSaveTripAdminFields}
+                      disabled={savingTrip}
+                      className="w-full py-2 bg-charcoal hover:bg-charcoal/90 text-cream font-semibold rounded-xl text-xs transition-all cursor-pointer"
+                    >
+                      {savingTrip ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-2">Services on this Trip</span>
+                    <div className="space-y-3">
+                      {tripServicesAll.filter((s) => s.tripId === selectedTrip.id).map((service) => (
+                        <div key={service.id} className="bg-white border border-charcoal/10 rounded-2xl p-4 space-y-2.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-charcoal/5 text-charcoal/60 mb-1">{service.type}</span>
+                              <p className="text-charcoal font-medium">{service.summary}</p>
+                            </div>
+                            <div className="flex flex-col gap-1 flex-shrink-0">
+                              <select
+                                value={service.status}
+                                onChange={(e) => handleTripServiceStatusChange(service, e.target.value as ServiceStatus)}
+                                className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border cursor-pointer focus:outline-none bg-cream/60 border-charcoal/15"
+                              >
+                                {SERVICE_STATUSES.map((s) => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                              <select
+                                value={service.paymentStatus || 'Unpaid'}
+                                onChange={(e) => handleTripServicePaymentStatusChange(service, e.target.value as PaymentStatus)}
+                                className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border cursor-pointer focus:outline-none bg-cream/60 border-charcoal/15"
+                              >
+                                {PAYMENT_STATUSES.map((s) => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <input
+                              type="text"
+                              defaultValue={service.providerAssigned || ''}
+                              placeholder="Provider assigned"
+                              onBlur={(e) => handleSaveTripServiceField(service.id, 'providerAssigned', e.target.value)}
+                              className="p-2 bg-cream/40 border border-charcoal/15 rounded-lg text-[11px] focus:outline-none focus:border-gold"
+                            />
+                            <input
+                              type="text"
+                              defaultValue={service.price != null ? String(service.price) : ''}
+                              placeholder="Price (₦)"
+                              onBlur={(e) => handleSaveTripServiceField(service.id, 'price', e.target.value)}
+                              className="p-2 bg-cream/40 border border-charcoal/15 rounded-lg text-[11px] focus:outline-none focus:border-gold"
+                            />
+                            <input
+                              type="text"
+                              defaultValue={service.commission != null ? String(service.commission) : ''}
+                              placeholder="Commission (₦)"
+                              onBlur={(e) => handleSaveTripServiceField(service.id, 'commission', e.target.value)}
+                              className="p-2 bg-cream/40 border border-charcoal/15 rounded-lg text-[11px] focus:outline-none focus:border-gold"
+                            />
+                          </div>
+                          <textarea
+                            rows={1}
+                            defaultValue={service.adminNotes || ''}
+                            placeholder="Admin notes for this service (internal only)..."
+                            onBlur={(e) => handleSaveTripServiceField(service.id, 'adminNotes', e.target.value)}
+                            className="w-full p-2 bg-cream/40 border border-charcoal/15 rounded-lg text-[11px] focus:outline-none focus:border-gold"
+                          />
+                          <textarea
+                            rows={1}
+                            defaultValue={service.confirmationNotes || ''}
+                            placeholder="Confirmation details / instructions (visible to customer)..."
+                            onBlur={(e) => handleSaveTripServiceField(service.id, 'confirmationNotes', e.target.value)}
+                            className="w-full p-2 bg-gold/10 border border-gold/25 rounded-lg text-[11px] focus:outline-none focus:border-gold"
+                          />
+
+                          {Object.keys(service.details || {}).length > 0 && (
+                            <div className="pt-2 border-t border-charcoal/10 grid grid-cols-2 gap-x-3 gap-y-1">
+                              {Object.entries(service.details).map(([key, value]) => (
+                                value ? (
+                                  <div key={key} className="flex justify-between gap-2 text-[10px] text-charcoal/60">
+                                    <span className="capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                    <span className="text-charcoal/80 font-medium text-right truncate">{String(value)}</span>
+                                  </div>
+                                ) : null
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-2">Activity History</span>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto bg-cream/30 rounded-xl p-3 border border-charcoal/10">
+                      {tripActivityLog.filter((a) => a.tripId === selectedTrip.id).length === 0 ? (
+                        <p className="text-charcoal/40 text-[11px] py-2 text-center">No activity recorded yet.</p>
+                      ) : (
+                        tripActivityLog.filter((a) => a.tripId === selectedTrip.id).map((entry) => (
+                          <div key={entry.id} className="flex items-start justify-between gap-2 text-[11px] border-b border-charcoal/5 last:border-0 pb-1.5 last:pb-0">
+                            <span className="text-charcoal/70">{entry.detail}</span>
+                            <span className="text-charcoal/35 flex-shrink-0 font-mono">
+                              {entry.createdAt?.toDate ? entry.createdAt.toDate().toLocaleString() : ''}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </motion.div>
