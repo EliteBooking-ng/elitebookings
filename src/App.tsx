@@ -3657,14 +3657,14 @@ Best regards.`;
           }
         `}</style>
         <div className="animate-marquee whitespace-nowrap flex text-[10px] md:text-[11px] font-sans font-medium tracking-[0.25em] uppercase text-charcoal/70 py-1">
-          <span className="inline-block px-4">if you need any assistance, we can make the best decision for you, click the whatsapp icon below to contact us</span>
+          <span className="inline-block px-4">Find Your Next Stay in Seconds with &ldquo;Find My Stay&rdquo; &bull; Can&rsquo;t Find What You Need? Submit a Service Request Below.</span>
           <span className="inline-block px-4 opacity-40">•</span>
-          <span className="inline-block px-4">if you need any assistance, we can make the best decision for you, click the whatsapp icon below to contact us</span>
+          <span className="inline-block px-4">Find Your Next Stay in Seconds with &ldquo;Find My Stay&rdquo; &bull; Can&rsquo;t Find What You Need? Submit a Service Request Below.</span>
           <span className="inline-block px-4 opacity-40">•</span>
           {/* Duplicate to enable seamless scrolling infinite loop */}
-          <span className="inline-block px-4">if you need any assistance, we can make the best decision for you, click the whatsapp icon below to contact us</span>
+          <span className="inline-block px-4">Find Your Next Stay in Seconds with &ldquo;Find My Stay&rdquo; &bull; Can&rsquo;t Find What You Need? Submit a Service Request Below.</span>
           <span className="inline-block px-4 opacity-40">•</span>
-          <span className="inline-block px-4">if you need any assistance, we can make the best decision for you, click the whatsapp icon below to contact us</span>
+          <span className="inline-block px-4">Find Your Next Stay in Seconds with &ldquo;Find My Stay&rdquo; &bull; Can&rsquo;t Find What You Need? Submit a Service Request Below.</span>
           <span className="inline-block px-4 opacity-40">•</span>
         </div>
       </div>
