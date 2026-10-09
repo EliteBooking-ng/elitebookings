@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Filter, X, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, Filter, X, SlidersHorizontal, Heart } from 'lucide-react';
 import {
   getVehiclesByLocation, formatStartingPrice, formatDiscountBadge, VEHICLE_TYPES,
   type Vehicle, type VehicleType, type Transmission, type DriverOption
@@ -17,6 +17,10 @@ interface CarFleetBrowserProps {
   // Opens the existing CarRequestModal (App.tsx already threads the current
   // location into it) — the universal fallback for "can't find my car."
   onRequestCar?: () => void;
+  // Local-only "Saved" heart toggle — App.tsx owns the one useSavedListings
+  // instance, these are just passed through.
+  isVehicleSaved?: (id: string) => boolean;
+  onToggleSaveVehicle?: (vehicle: Vehicle) => void;
 }
 
 type TypeFilter = 'All' | VehicleType;
@@ -33,7 +37,7 @@ const PRICE_BANDS: { label: string; value: number | null }[] = [
   { label: 'Up to ₦2,000,000', value: 2000000 },
 ];
 
-export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehicle, partnerVehicles = [], onRequestCar }: CarFleetBrowserProps) {
+export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehicle, partnerVehicles = [], onRequestCar, isVehicleSaved, onToggleSaveVehicle }: CarFleetBrowserProps) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('All');
   const [transmissionFilter, setTransmissionFilter] = useState<TransmissionFilter>('All');
   const [driverFilter, setDriverFilter] = useState<DriverFilter>('All');
@@ -230,9 +234,19 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
                     {vehicle.status}
                   </span>
                   {formatDiscountBadge(vehicle.startingPriceDiscountPercent) && (
-                    <span className="absolute top-4 right-4 bg-blue-600 text-white text-[9px] uppercase tracking-[0.2em] font-bold px-3 py-1.5 rounded-full shadow-lg">
+                    <span className={`absolute right-4 bg-blue-600 text-white text-[9px] uppercase tracking-[0.2em] font-bold px-3 py-1.5 rounded-full shadow-lg ${onToggleSaveVehicle ? 'top-16' : 'top-4'}`}>
                       {formatDiscountBadge(vehicle.startingPriceDiscountPercent)}
                     </span>
+                  )}
+                  {onToggleSaveVehicle && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onToggleSaveVehicle(vehicle); }}
+                      aria-label={isVehicleSaved?.(vehicle.id) ? 'Remove from saved' : 'Save this vehicle'}
+                      className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform"
+                    >
+                      <Heart className={`w-4 h-4 ${isVehicleSaved?.(vehicle.id) ? 'text-red-500 fill-red-500' : 'text-charcoal/60'}`} />
+                    </button>
                   )}
                 </div>
                 <div className="p-6">

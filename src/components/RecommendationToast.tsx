@@ -24,7 +24,7 @@ export const RecommendationToast: React.FC<RecommendationToastProps> = ({ isOpen
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[90] w-[92vw] sm:w-80 bg-cream border border-gold/30 rounded-2xl shadow-2xl p-4 font-sans"
+          className="fixed bottom-20 sm:bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0 z-[90] w-[92vw] sm:w-80 bg-cream border border-gold/30 rounded-2xl shadow-2xl p-4 font-sans"
         >
           <button onClick={onDismiss} className="absolute top-3 right-3 text-charcoal/40 hover:text-charcoal cursor-pointer" aria-label="Dismiss">
             <X className="w-4 h-4" />

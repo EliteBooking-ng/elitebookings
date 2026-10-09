@@ -36,7 +36,8 @@ import {
   Plane,
   Sun,
   Moon,
-  Users
+  Users,
+  Heart
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { db } from './firebase';
@@ -57,8 +58,14 @@ import { CompleteYourTripPanel } from './components/CompleteYourTripPanel';
 import { TripSummaryModal } from './components/TripSummaryModal';
 import { TripAttachPrompt } from './components/TripAttachPrompt';
 import { RequestServiceModal } from './components/RequestServiceModal';
+import { AppHeader } from './components/AppHeader';
+import { HomeScreen } from './components/HomeScreen';
+import { BottomTabBar } from './components/BottomTabBar';
+import { SavedScreen } from './components/SavedScreen';
+import { AccountScreen } from './components/AccountScreen';
+import { useSavedListings } from './hooks/useSavedListings';
 import { UNCOVERED_STATES } from './data/nigerianStates';
-import { getVehicleById, type Vehicle } from './data/cars';
+import { getVehicleById, formatStartingPrice, type Vehicle } from './data/cars';
 import type { RecommendationItem } from './types/assistant';
 import type { PartnerListing } from './types/partnerListing';
 import type { Trip, TripService, ServiceType } from './types/trip';
@@ -100,6 +107,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 type Category = 'stays' | 'homes' | 'drive' | 'jets' | 'moving' | null;
+type ActiveTab = 'home' | 'explore' | 'saved' | 'account';
 
 interface EnquiryData {
   location: string;
@@ -134,6 +142,7 @@ export default function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
+  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
@@ -665,7 +674,6 @@ export default function App() {
       ? `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
       : 'Select';
 
-  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const isPoppingState = useRef(false);
 
@@ -707,6 +715,7 @@ export default function App() {
       window.history.replaceState({
         ebRoot: true,
         depth: 0,
+        tab: 'home',
         category: null,
         location: null,
         bookingOptions: null,
@@ -721,6 +730,7 @@ export default function App() {
       isPoppingState.current = true;
       const state = event.state;
       if (state) {
+        setActiveTab(state.tab ?? 'home');
         setSelectedCategory(state.category ?? null);
         setSelectedLocation(state.location ?? null);
         setShowBookingOptions(state.bookingOptions ?? null);
@@ -730,6 +740,7 @@ export default function App() {
         setIsDiscoveryAssistantOpen(state.discoveryOpen ?? false);
       } else {
         // Fallback to home root
+        setActiveTab('home');
         setSelectedCategory(null);
         setSelectedLocation(null);
         setShowBookingOptions(null);
@@ -753,10 +764,11 @@ export default function App() {
   useEffect(() => {
     if (isPoppingState.current) return;
 
-    const isRoot = !selectedCategory && !selectedLocation && !showBookingOptions && !showEmailPopup && !isAdminOpen && !isAIConciergeOpen && !isDiscoveryAssistantOpen;
+    const isRoot = activeTab === 'home' && !selectedCategory && !selectedLocation && !showBookingOptions && !showEmailPopup && !isAdminOpen && !isAIConciergeOpen && !isDiscoveryAssistantOpen;
 
     const currentState = {
       ebRoot: isRoot,
+      tab: activeTab,
       category: selectedCategory,
       location: selectedLocation,
       bookingOptions: showBookingOptions,
@@ -769,6 +781,7 @@ export default function App() {
     const histState = window.history.state || {};
 
     const isSameState =
+      histState.tab === currentState.tab &&
       histState.category === currentState.category &&
       histState.location === currentState.location &&
       (histState.bookingOptions?.id ?? null) === (currentState.bookingOptions?.id ?? null) &&
@@ -781,21 +794,8 @@ export default function App() {
       const currentDepth = typeof histState.depth === 'number' ? histState.depth : 0;
       window.history.pushState({ ...currentState, depth: currentDepth + 1 }, '');
     }
-  }, [selectedCategory, selectedLocation, showBookingOptions, showEmailPopup, isAdminOpen, isAIConciergeOpen, isDiscoveryAssistantOpen]);
+  }, [activeTab, selectedCategory, selectedLocation, showBookingOptions, showEmailPopup, isAdminOpen, isAIConciergeOpen, isDiscoveryAssistantOpen]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 300) {
-        setShowBackToTop(true);
-      } else {
-        setShowBackToTop(false);
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
 
   useEffect(() => {
     if (showBookingOptions) {
@@ -834,6 +834,7 @@ export default function App() {
   });
 
   const activeTrip = useActiveTrip(guestId);
+  const savedListings = useSavedListings();
   const tripRecommendations = useTripRecommendations(activeTrip.trip, activeTrip.services, guestId);
   const [showRecommendationAddModal, setShowRecommendationAddModal] = useState(false);
   const handleRecommendationAdd = async (type: ServiceType, details: Record<string, any>, summary: string) => {
@@ -3434,6 +3435,7 @@ export default function App() {
     if (window.history.state && typeof window.history.state.depth === 'number' && window.history.state.depth > 0) {
       window.history.go(-window.history.state.depth);
     } else {
+      setActiveTab('home');
       setSelectedCategory(null);
       setSelectedLocation(null);
       setSelectedHotel(null);
@@ -3450,6 +3452,15 @@ export default function App() {
       setStep(1);
       setFormData({ location: '', dates: '', guests: '', preferences: '' });
     }
+  };
+
+  // Deep-link helper — every Home-tab entry point (search card, quick links,
+  // Popular Stays cards) funnels through this to land on the existing
+  // Explore flow with the right category/location already selected.
+  const goExplore = (category: Category, location?: string | null) => {
+    setSelectedCategory(category);
+    setSelectedLocation(location ?? null);
+    setActiveTab('explore');
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -3640,6 +3651,16 @@ Best regards.`;
   };
 
 
+  // A small, fixed preview set for the Home screen's "Popular Stays" —
+  // drawn from the same real listing data Explore already uses, one pick
+  // per covered city so the preview isn't all from a single location.
+  const popularStays = [
+    lagosHotels[0] && { ...lagosHotels[0], cityLocation: 'Lagos, Lagos State' },
+    phHotels[0] && { ...phHotels[0], cityLocation: 'Port Harcourt, Rivers State' },
+    abujaHotels[0] && { ...abujaHotels[0], cityLocation: 'Abuja, Federal Capital Territory' },
+    lagosHotels[1] && { ...lagosHotels[1], cityLocation: 'Lagos, Lagos State' },
+  ].filter(Boolean) as any[];
+
   return (
     <div className="min-h-screen flex flex-col selection:bg-gold/30">
       {/* Seamless Moving Announcement / Assistance Banner */}
@@ -3670,44 +3691,23 @@ Best regards.`;
       </div>
 
       {/* Navigation */}
-      <nav className="px-4 py-5 sm:px-8 sm:py-7 flex justify-between items-center z-50 max-w-7xl mx-auto w-full">
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={reset}
-          className="text-lg sm:text-2xl font-serif tracking-[0.15em] sm:tracking-[0.2em] uppercase font-light text-charcoal cursor-pointer flex-shrink-0"
-        >
-          Elite Bookings
-        </motion.div>
+      <AppHeader
+        onLogoClick={reset}
+        activeTrip={activeTrip.trip}
+        onOpenTrip={() => setIsTripSummaryOpen(true)}
+        onStartTrip={() => setIsDiscoveryAssistantOpen(true)}
+        onOpenSearch={() => goExplore(null)}
+      />
 
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center space-x-3 sm:space-x-6 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-semibold text-charcoal/80"
-        >
-          <button
-            onClick={reset}
-            className="hover:text-gold transition-colors cursor-pointer hidden sm:inline-block"
-          >
-            Home
-          </button>
-          <button
-            onClick={toggleTheme}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-charcoal/15 flex items-center justify-center text-charcoal hover:border-gold hover:text-gold transition-colors cursor-pointer flex-shrink-0"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => setIsDiscoveryAssistantOpen(true)}
-            className="flex items-center space-x-2 bg-gradient-to-r from-gold via-amber-300 to-gold text-charcoal px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-full border border-gold/60 shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer font-bold tracking-wider text-[10px] sm:text-xs uppercase"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-charcoal fill-charcoal/20" />
-            <span className="font-extrabold">My Trip</span>
-          </button>
-        </motion.div>
-      </nav>
+      {activeTab === 'home' && (
+        <HomeScreen
+          onExplore={goExplore}
+          onOpenRequestService={openRequestService}
+          popularStays={popularStays}
+        />
+      )}
 
+      {activeTab === 'explore' && (
       <main className="flex-grow flex flex-col items-center px-6 md:px-12">
         <AnimatePresence mode="wait">
           {!selectedCategory ? (
@@ -4283,6 +4283,21 @@ Best regards.`;
                       >
                         <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
                           <HotelImageSlider images={hotel.images} name={hotel.name} />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              savedListings.toggleSaved({
+                                id: hotel.id, type: 'hotel', name: hotel.name, location: hotel.location,
+                                image: hotel.images[0], price: hotel.price,
+                                city: selectedLocation?.includes('Lagos') ? 'Lagos' : selectedLocation?.includes('Abuja') ? 'Abuja' : 'Port Harcourt',
+                              });
+                            }}
+                            aria-label={savedListings.isSaved('hotel', hotel.id) ? 'Remove from saved' : 'Save this hotel'}
+                            className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform"
+                          >
+                            <Heart className={`w-4 h-4 ${savedListings.isSaved('hotel', hotel.id) ? 'text-red-500 fill-red-500' : 'text-charcoal/50'}`} />
+                          </button>
                         </div>
                         <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
                           <div className="flex justify-between items-start mb-6">
@@ -4493,6 +4508,21 @@ Best regards.`;
                     >
                       <div className="lg:w-1/2 relative overflow-hidden aspect-video lg:aspect-auto h-[350px] lg:h-auto font-sans">
                         <HotelImageSlider images={shortlet.images} name={shortlet.name} />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            savedListings.toggleSaved({
+                              id: shortlet.id, type: 'shortlet', name: shortlet.name, location: shortlet.location,
+                              image: shortlet.images[0], price: shortlet.price,
+                              city: selectedLocation?.includes('Lagos') ? 'Lagos' : selectedLocation?.includes('Abuja') ? 'Abuja' : 'Port Harcourt',
+                            });
+                          }}
+                          aria-label={savedListings.isSaved('shortlet', shortlet.id) ? 'Remove from saved' : 'Save this shortlet'}
+                          className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform"
+                        >
+                          <Heart className={`w-4 h-4 ${savedListings.isSaved('shortlet', shortlet.id) ? 'text-red-500 fill-red-500' : 'text-charcoal/50'}`} />
+                        </button>
                       </div>
                       <div className="lg:w-1/2 p-10 md:p-16 flex flex-col justify-center">
                         <div className="flex justify-between items-start mb-6 font-sans">
@@ -4580,6 +4610,12 @@ Best regards.`;
               onSelectVehicle={(vehicle) => setSelectedCar(vehicle)}
               partnerVehicles={approvedPartnerVehicles}
               onRequestCar={() => { setCarRequestVehicle(null); setShowCarRequestForm(true); }}
+              isVehicleSaved={(id) => savedListings.isSaved('car', id)}
+              onToggleSaveVehicle={(vehicle) => savedListings.toggleSaved({
+                id: vehicle.id, type: 'car', name: vehicle.name, location: vehicle.locations.join(', '),
+                image: vehicle.primaryImage, price: formatStartingPrice(vehicle),
+                city: selectedLocation?.includes('Lagos') ? 'Lagos' : selectedLocation?.includes('Abuja') ? 'Abuja' : 'Port Harcourt',
+              })}
             />
           ) : (selectedCategory === 'drive' && selectedLocation && selectedCar) ? (
             <CarDetailView
@@ -5082,12 +5118,35 @@ Best regards.`;
         </AnimatePresence>
 
       </main>
+      )}
 
-      {/* Extra bottom padding (pb-32/40) keeps this content clear of the fixed
-          AI Concierge / Discovery / WhatsApp / Back-to-Top pill buttons, which are pinned to the
-          viewport bottom and would otherwise render on top of it once the
-          page is scrolled all the way down. */}
-      <footer className="pt-12 px-12 pb-32 sm:pb-36 md:pb-40 border-t border-charcoal/10 flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
+      {activeTab === 'saved' && (
+        <SavedScreen
+          items={savedListings.items}
+          onRemove={(item) => savedListings.toggleSaved(item)}
+          onGoExplore={goExplore}
+        />
+      )}
+
+      {activeTab === 'account' && (
+        <AccountScreen
+          trip={activeTrip.trip}
+          services={activeTrip.services}
+          onViewTrip={() => setIsTripSummaryOpen(true)}
+          onGoExplore={() => goExplore(null)}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          onOpenAdmin={() => setIsAdminOpen(true)}
+          savedCount={savedListings.items.length}
+          onOpenSaved={() => setActiveTab('saved')}
+        />
+      )}
+
+      {/* Extra bottom padding keeps this content clear of the fixed bottom
+          tab bar and the WhatsApp button, which stay pinned to the viewport
+          bottom and would otherwise render on top of it once the page is
+          scrolled all the way down. */}
+      <footer className="pt-12 px-12 pb-24 sm:pb-28 md:pb-16 border-t border-charcoal/10 flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
         <div className="text-[11px] uppercase tracking-[0.3em] text-charcoal/60 font-medium">
           &copy; 2026 Elite Bookings Luxury Travel. All rights reserved.
         </div>
@@ -5116,37 +5175,11 @@ Best regards.`;
         </div>
       </footer>
 
-      {/* Floating "My Trip" Quick Trigger (Bottom-Left, stacked above Find My Stay) */}
-      {activeTrip.trip && !isTripSummaryOpen && (
-        <div className="fixed bottom-18 left-3 sm:bottom-22 sm:left-6 md:bottom-28 md:left-8 z-50 max-w-[48vw]">
-          <motion.button
-            onClick={() => setIsTripSummaryOpen(true)}
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="flex items-center gap-1.5 sm:gap-2.5 bg-gold text-charcoal px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-full shadow-[0_8px_30px_rgba(212,175,55,0.35)] hover:shadow-[0_12px_36px_rgba(212,175,55,0.5)] border border-charcoal/10 transition-all duration-300 group cursor-pointer hover:scale-105 active:scale-95 font-bold text-[10px] sm:text-xs uppercase tracking-wider"
-          >
-            <span className="font-extrabold whitespace-nowrap">My Trip · {activeTrip.trip.tripCode}</span>
-          </motion.button>
-        </div>
-      )}
-
-      {/* Floating Discovery Assistant Quick Trigger (Bottom-Left) */}
-      {!isDiscoveryAssistantOpen && (
-        <div className="fixed bottom-4 left-3 sm:bottom-6 sm:left-6 z-50 max-w-[48vw]">
-          <motion.button
-            onClick={() => setIsDiscoveryAssistantOpen(true)}
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="flex items-center gap-1.5 sm:gap-2.5 bg-charcoal text-gold px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-full shadow-[0_8px_30px_rgba(212,175,55,0.35)] hover:shadow-[0_12px_36px_rgba(212,175,55,0.5)] border border-gold/60 transition-all duration-300 group cursor-pointer hover:scale-105 active:scale-95 font-bold text-[10px] sm:text-xs uppercase tracking-wider"
-          >
-            <Sparkles className="w-4 h-4 text-gold fill-gold/30 animate-pulse flex-shrink-0" />
-            <span className="font-extrabold whitespace-nowrap">Find My Stay</span>
-          </motion.button>
-        </div>
-      )}
-
-      {/* Floating WhatsApp Assistance Button (Bottom-Right) */}
-      <div className="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8 z-50 flex flex-col items-end max-w-[48vw]">
+      {/* Floating WhatsApp Assistance Button (Bottom-Right) — the My Trip pill
+          and Discovery/"Find My Stay" trigger that used to live here as
+          separate floating buttons now live in AppHeader and HomeScreen
+          instead, so the bottom tab bar has a clear, uncluttered footprint. */}
+      <div className="fixed bottom-20 right-3 sm:bottom-24 sm:right-6 md:bottom-8 md:right-8 z-50 flex flex-col items-end max-w-[48vw]">
           <motion.a
             id="whatsapp-assistance-button"
             href="https://wa.me/2347072253857?text=Hello%2C%20I%20need%20some%20assistance%20with%20a%20booking."
@@ -5171,22 +5204,12 @@ Best regards.`;
           </motion.a>
       </div>
 
-      {/* Elegant Floating Back to Top Button */}
-      <AnimatePresence>
-        {showBackToTop && (
-          <motion.button
-            id="back-to-top-button"
-            initial={{ opacity: 0, scale: 0.8, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 15 }}
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-18 right-3 sm:bottom-22 sm:right-6 md:bottom-28 md:right-8 z-50 bg-charcoal text-gold hover:bg-gold hover:text-charcoal p-3 sm:p-3.5 rounded-full shadow-[0_8px_32px_rgba(212,175,55,0.25)] border border-gold/40 transition-all duration-300 group cursor-pointer"
-            aria-label="Back to Top"
-          >
-            <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-y-1 transition-all duration-300" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Persistent primary navigation — present on every tab/screen size */}
+      <BottomTabBar
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        savedCount={savedListings.items.length}
+      />
 
       {/* Admin Dashboard Modal */}
       <AdminDashboard
