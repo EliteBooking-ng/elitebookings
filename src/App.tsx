@@ -136,8 +136,6 @@ export default function App() {
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
-  const [showMoreCarLocations, setShowMoreCarLocations] = useState(false);
-  const [showMoreStayLocations, setShowMoreStayLocations] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
   const [selectedShortlet, setSelectedShortlet] = useState<any | null>(null);
   const [selectedCar, setSelectedCar] = useState<Vehicle | null>(null);
@@ -4043,7 +4041,7 @@ Best regards.`;
 
                 <div className="max-w-3xl mx-auto">
                   <p className="text-center text-white/40 text-[11px] uppercase tracking-[0.3em] font-bold mb-6">Where do you need a car?</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {[
                       { label: 'Lagos', value: 'Lagos, Lagos State' },
                       { label: 'Abuja', value: 'Abuja, Federal Capital Territory' },
@@ -4060,41 +4058,31 @@ Best regards.`;
                         <span className="text-white/30 text-[9px] uppercase tracking-[0.2em] group-hover:text-blue-300 transition-colors">View Fleet</span>
                       </motion.button>
                     ))}
-                    <motion.button
-                      whileHover={{ y: -4 }}
-                      onClick={() => setShowMoreCarLocations((v) => !v)}
-                      className="flex flex-col items-center justify-center gap-3 bg-white/5 border border-white/10 hover:border-blue-500/50 hover:bg-white/[0.08] rounded-2xl px-4 py-8 text-center transition-all cursor-pointer group"
-                    >
-                      <MapPin className="w-5 h-5 text-blue-400" />
-                      <span className="text-white text-sm font-serif">Other Locations</span>
-                      <span className="text-white/30 text-[9px] uppercase tracking-[0.2em] group-hover:text-blue-300 transition-colors">We'll Find It</span>
-                    </motion.button>
                   </div>
 
-                  {showMoreCarLocations && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-5 bg-white/5 border border-white/10 rounded-2xl p-5"
+                  <div className="mt-6 bg-white/5 border border-white/10 rounded-2xl p-5">
+                    <label className="block text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold mb-2.5">Looking for another state?</label>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setSelectedLocation(e.target.value);
+                          setCarRequestVehicle(null);
+                          setShowCarRequestForm(true);
+                        }
+                        e.target.value = '';
+                      }}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors [color-scheme:dark]"
                     >
-                      <label className="block text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold mb-2.5">Select your state</label>
-                      <select
-                        defaultValue=""
-                        onChange={(e) => {
-                          if (e.target.value) setSelectedLocation(e.target.value);
-                        }}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors [color-scheme:dark]"
-                      >
-                        <option value="" disabled>Choose a state</option>
-                        {UNCOVERED_STATES.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                      <p className="text-white/30 text-[11px] mt-3">
-                        We don't currently have a fleet based there — share the details and our team will source a vehicle through our partner network.
-                      </p>
-                    </motion.div>
-                  )}
+                      <option value="" disabled>Choose a state</option>
+                      {UNCOVERED_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <p className="text-white/30 text-[11px] mt-3">
+                      Tell us what you need and our team will source a vehicle through our partner network.
+                    </p>
+                  </div>
                 </div>
               </div>
             </motion.section>
@@ -4198,24 +4186,24 @@ Best regards.`;
               </div>
 
               <div className="mt-16 max-w-md mx-auto text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowMoreStayLocations((v) => !v)}
-                  className="text-charcoal/50 text-[11px] uppercase tracking-[0.25em] font-bold hover:text-gold transition-colors cursor-pointer"
+                <p className="text-charcoal/50 text-[11px] uppercase tracking-[0.25em] font-bold mb-3">Looking for another state?</p>
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white border border-charcoal/10 rounded-2xl p-5 shadow-sm"
                 >
-                  Looking for another state?
-                </button>
-                {showMoreStayLocations && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-4 bg-white border border-charcoal/10 rounded-2xl p-5 shadow-sm"
-                  >
                     <label className="block text-[10px] uppercase tracking-[0.2em] text-charcoal/50 font-bold mb-2.5">Select your state</label>
                     <select
                       defaultValue=""
                       onChange={(e) => {
-                        if (e.target.value) setSelectedLocation(e.target.value);
+                        if (e.target.value) {
+                          openRequestService({
+                            defaultCategory: selectedCategory === 'stays' ? 'Hotel' : 'Shortlet',
+                            prefillLocation: e.target.value,
+                            source: selectedCategory === 'stays' ? 'Hotels Uncovered State Picker' : 'Shortlets Uncovered State Picker',
+                          });
+                        }
+                        e.target.value = '';
                       }}
                       className="w-full bg-cream/40 border border-charcoal/15 rounded-xl px-4 py-3 text-sm text-charcoal outline-none focus:border-gold transition-colors"
                     >
@@ -4224,11 +4212,10 @@ Best regards.`;
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
-                    <p className="text-charcoal/40 text-[11px] mt-3">
-                      We don't currently have listings there — share the details and our team will source one through our partner network.
-                    </p>
-                  </motion.div>
-                )}
+                  <p className="text-charcoal/40 text-[11px] mt-3">
+                    Tell us what type of {selectedCategory === 'stays' ? 'stay' : 'shortlet'} you need and our team will source it through our partner network.
+                  </p>
+                </motion.div>
               </div>
             </motion.section>
           ) : (selectedCategory === 'stays' && selectedLocation && !selectedHotel) ? (
