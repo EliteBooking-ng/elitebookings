@@ -3654,11 +3654,21 @@ Best regards.`;
   // A small, fixed preview set for the Home screen's "Popular Stays" —
   // drawn from the same real listing data Explore already uses, one pick
   // per covered city so the preview isn't all from a single location.
+  // Popular Stays only draws from premium (₦100k+/night starting price)
+  // listings, highest-priced first, so the homepage preview always reflects
+  // the top end of each city's inventory rather than whatever happens to be
+  // first in the array.
+  const toPriceNumber = (price: string) => parseInt(price.replace(/,/g, ''), 10) || 0;
+  const byPriceDesc = (a: { price: string }, b: { price: string }) => toPriceNumber(b.price) - toPriceNumber(a.price);
+  const premiumLagosHotels = lagosHotels.filter((h) => toPriceNumber(h.price) >= 100000).sort(byPriceDesc);
+  const premiumAbujaHotels = abujaHotels.filter((h) => toPriceNumber(h.price) >= 100000).sort(byPriceDesc);
+  const premiumPhHotels = phHotels.filter((h) => toPriceNumber(h.price) >= 100000).sort(byPriceDesc);
+
   const popularStays = [
-    lagosHotels[0] && { ...lagosHotels[0], cityLocation: 'Lagos, Lagos State' },
-    phHotels[0] && { ...phHotels[0], cityLocation: 'Port Harcourt, Rivers State' },
-    abujaHotels[0] && { ...abujaHotels[0], cityLocation: 'Abuja, Federal Capital Territory' },
-    lagosHotels[1] && { ...lagosHotels[1], cityLocation: 'Lagos, Lagos State' },
+    premiumLagosHotels[0] && { ...premiumLagosHotels[0], cityLocation: 'Lagos, Lagos State' },
+    premiumAbujaHotels[0] && { ...premiumAbujaHotels[0], cityLocation: 'Abuja, Federal Capital Territory' },
+    premiumPhHotels[0] && { ...premiumPhHotels[0], cityLocation: 'Port Harcourt, Rivers State' },
+    premiumLagosHotels[1] && { ...premiumLagosHotels[1], cityLocation: 'Lagos, Lagos State' },
   ].filter(Boolean) as any[];
 
   return (

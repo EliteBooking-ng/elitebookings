@@ -15,12 +15,10 @@ interface HomeScreenProps {
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onExplore, onOpenRequestService, popularStays }) => {
-  const heroImage = popularStays[0]?.images?.[0];
-
   return (
     <main className="flex-grow flex flex-col items-center px-6 md:px-12">
       <div className="w-full max-w-6xl mt-6 sm:mt-10 mb-16">
-        <HomeHero heroImage={heroImage || ''} />
+        <HomeHero />
 
         <div className="max-w-3xl mx-auto -mt-2 sm:-mt-6 mb-14 relative z-10">
           <UnifiedSearchCard

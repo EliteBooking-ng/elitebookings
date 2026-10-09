@@ -1,11 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import heroPoolImage from '../assets/images/hero_hotel_pool.jpg';
 
-interface HomeHeroProps {
-  heroImage: string;
-}
-
-export const HomeHero: React.FC<HomeHeroProps> = ({ heroImage }) => {
+export const HomeHero: React.FC = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mb-10 sm:mb-14">
       <div>
@@ -30,7 +27,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ heroImage }) => {
         animate={{ opacity: 1, scale: 1 }}
         className="relative aspect-[4/3] rounded-[2rem] overflow-hidden shadow-2xl"
       >
-        <img src={heroImage} alt="A luxury stay" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+        <img src={heroPoolImage} alt="A luxury hotel pool" className="w-full h-full object-cover" />
       </motion.div>
     </div>
   );
