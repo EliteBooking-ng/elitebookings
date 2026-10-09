@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Compass, Bookmark, User } from 'lucide-react';
+import { Home, Compass, Bookmark } from 'lucide-react';
 
 type ActiveTab = 'home' | 'explore' | 'saved' | 'account';
 
@@ -9,11 +9,13 @@ interface BottomTabBarProps {
   savedCount: number;
 }
 
+// Account tab removed — Admin, Saved, Trip status, dark mode, and WhatsApp
+// support are all still reachable elsewhere (footer, header, this bar's own
+// Saved tab), so nothing lost by dropping the dedicated Account screen.
 const TABS: { id: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'explore', label: 'Explore', icon: Compass },
   { id: 'saved', label: 'Saved', icon: Bookmark },
-  { id: 'account', label: 'Account', icon: User },
 ];
 
 // Persistent primary navigation, applied at every screen size per the

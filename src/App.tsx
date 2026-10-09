@@ -3697,6 +3697,8 @@ Best regards.`;
         onOpenTrip={() => setIsTripSummaryOpen(true)}
         onStartTrip={() => setIsDiscoveryAssistantOpen(true)}
         onOpenSearch={() => goExplore(null)}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
 
       {activeTab === 'home' && (

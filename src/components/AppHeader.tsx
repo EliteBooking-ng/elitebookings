@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Crown, Search, Sparkles } from 'lucide-react';
+import { Crown, Search, Sparkles, Sun, Moon } from 'lucide-react';
 import type { Trip } from '../types/trip';
 
 interface AppHeaderProps {
@@ -9,6 +9,8 @@ interface AppHeaderProps {
   onOpenTrip: () => void;
   onStartTrip: () => void;
   onOpenSearch: () => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
 // Replaces the old plain-text "Elite Bookings" nav. Also fixes a real
@@ -16,7 +18,7 @@ interface AppHeaderProps {
 // Assistant chat, not the real trip summary — this pill's label and action
 // always agree now, since it only ever does one of the two depending on
 // whether a trip actually exists.
-export const AppHeader: React.FC<AppHeaderProps> = ({ onLogoClick, activeTrip, onOpenTrip, onStartTrip, onOpenSearch }) => {
+export const AppHeader: React.FC<AppHeaderProps> = ({ onLogoClick, activeTrip, onOpenTrip, onStartTrip, onOpenSearch, theme, toggleTheme }) => {
   return (
     <nav className="px-4 py-4 sm:px-8 sm:py-6 flex justify-between items-center z-50 max-w-7xl mx-auto w-full">
       <motion.div
@@ -47,6 +49,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onLogoClick, activeTrip, o
           className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-charcoal/15 flex items-center justify-center text-charcoal hover:border-gold hover:text-gold transition-colors cursor-pointer flex-shrink-0"
         >
           <Search className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-charcoal/15 flex items-center justify-center text-charcoal hover:border-gold hover:text-gold transition-colors cursor-pointer flex-shrink-0"
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
         {activeTrip ? (
