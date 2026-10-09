@@ -36,15 +36,27 @@ export interface PendingOffer {
   city?: string;
 }
 
+// Distinct from HandoffInfo: handoff is a WhatsApp-escalation pointer for
+// things needing a human immediately (safety/payment/complaints) and never
+// creates a record itself. This is a genuine one-click action — accepting it
+// opens RequestServiceModal pre-filled and writes a real service_requests
+// document, for "we don't carry exactly this, want us to go find it?".
+export interface ServiceRequestOffer {
+  category: string; // a ServiceType value
+  prefillText: string;
+}
+
 export interface MessageContent {
   text: string;
   recommendations?: RecommendationItem[];
   nextStep?: string;
   roomCount?: number;
   handoff?: HandoffInfo;
+  serviceRequestOffer?: ServiceRequestOffer;
   pendingOffer?: PendingOffer;
   hasMore?: boolean;
   sourceQuery?: string;
+  notQuiteRight?: boolean;
 }
 
 export interface Message {

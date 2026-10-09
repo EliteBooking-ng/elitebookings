@@ -53,6 +53,8 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User as F
 import type { PartnerListing, ListingStatus } from '../types/partnerListing';
 import type { Trip, TripService, ServiceStatus, PaymentStatus, TripActivityLogEntry } from '../types/trip';
 import { SERVICE_STATUSES, PAYMENT_STATUSES } from '../types/trip';
+import type { ServiceRequest } from '../types/serviceRequest';
+import { SERVICE_REQUEST_STATUSES } from '../types/serviceRequest';
 import { computeTripStatus } from '../utils/tripStatus';
 
 // Hardcoded admin allowlist — matches firestore.rules' isAdmin() helper.
@@ -100,6 +102,9 @@ export interface CarRequest {
   id: string;
   requestId: string;
   vehicles: CarRequestVehicleItem[];
+  // Set when the customer described a vehicle we don't have in the fleet
+  // yet (the "Request a Car" fallback) — `vehicles` is empty in that case.
+  customVehicleDescription?: string | null;
   location: string;
   driverPreference: string;
   passengerCount?: string;
@@ -145,7 +150,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'enquiries' | 'car-requests' | 'partner-listings' | 'trips'>('enquiries');
+  const [activeTab, setActiveTab] = useState<'enquiries' | 'car-requests' | 'partner-listings' | 'trips' | 'service-requests'>('enquiries');
 
   // Partner Listings state
   const [partnerListings, setPartnerListings] = useState<PartnerListing[]>([]);
@@ -168,6 +173,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   const [savingTrip, setSavingTrip] = useState<boolean>(false);
   const [tripActivityLog, setTripActivityLog] = useState<TripActivityLogEntry[]>([]);
   const [recommendationsEnabled, setRecommendationsEnabled] = useState<boolean>(true);
+
+  // Service Requests state (the "Request a Service" universal fallback)
+  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+  const [serviceRequestsLoading, setServiceRequestsLoading] = useState<boolean>(true);
+  const [serviceRequestSearchTerm, setServiceRequestSearchTerm] = useState<string>('');
+  const [serviceRequestStatusFilter, setServiceRequestStatusFilter] = useState<string>('all');
+  const [selectedServiceRequest, setSelectedServiceRequest] = useState<ServiceRequest | null>(null);
+  const [editingServiceRequestNotes, setEditingServiceRequestNotes] = useState<string>('');
+  const [savingServiceRequest, setSavingServiceRequest] = useState<boolean>(false);
 
   // Car Requests state
   const [carRequests, setCarRequests] = useState<CarRequest[]>([]);
@@ -399,11 +413,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
       console.error('Error listening to recommendation settings:', error);
     });
 
+    setServiceRequestsLoading(true);
+    const serviceRequestsQuery = query(collection(db, 'service_requests'), orderBy('createdAt', 'desc'));
+    const unsubServiceRequests = onSnapshot(serviceRequestsQuery, (snapshot) => {
+      setServiceRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ServiceRequest)));
+      setServiceRequestsLoading(false);
+    }, (error) => {
+      console.error('Error listening to service_requests collection:', error);
+      setServiceRequestsLoading(false);
+    });
+
     return () => {
       unsubTrips();
       unsubServices();
       unsubActivity();
       unsubRecommendationSettings();
+      unsubServiceRequests();
     };
   }, [isAuthenticated, isOpen]);
 
@@ -496,6 +521,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
       }
     } catch (err) {
       console.error('Error deleting car request:', err);
+    }
+  };
+
+  const handleServiceRequestStatusChange = async (id: string, newStatus: ServiceRequest['status']) => {
+    try {
+      await updateDoc(doc(db, 'service_requests', id), { status: newStatus });
+      if (selectedServiceRequest?.id === id) {
+        setSelectedServiceRequest(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (err) {
+      console.error('Error updating service request status:', err);
+    }
+  };
+
+  const handleSaveServiceRequestNotes = async () => {
+    if (!selectedServiceRequest) return;
+    setSavingServiceRequest(true);
+    try {
+      await updateDoc(doc(db, 'service_requests', selectedServiceRequest.id), { adminNotes: editingServiceRequestNotes });
+      setSelectedServiceRequest(prev => prev ? { ...prev, adminNotes: editingServiceRequestNotes } : null);
+    } catch (err) {
+      console.error('Error saving service request notes:', err);
+    } finally {
+      setSavingServiceRequest(false);
+    }
+  };
+
+  const handleDeleteServiceRequest = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this service request record?')) return;
+    try {
+      await deleteDoc(doc(db, 'service_requests', id));
+      if (selectedServiceRequest?.id === id) {
+        setSelectedServiceRequest(null);
+      }
+    } catch (err) {
+      console.error('Error deleting service request:', err);
     }
   };
 
@@ -767,6 +828,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
   const carConfirmedCount = carRequests.filter(r => r.status === 'Confirmed').length;
   const carCompletedCount = carRequests.filter(r => r.status === 'Completed').length;
 
+  const filteredServiceRequests = serviceRequests.filter(req => {
+    const term = serviceRequestSearchTerm.toLowerCase();
+    const matchesSearch =
+      (req.customerName || '').toLowerCase().includes(term) ||
+      (req.customerPhone || '').toLowerCase().includes(term) ||
+      (req.description || '').toLowerCase().includes(term) ||
+      (req.location || '').toLowerCase().includes(term) ||
+      (req.category || '').toLowerCase().includes(term);
+
+    const matchesStatus = serviceRequestStatusFilter === 'all' || req.status === serviceRequestStatusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const serviceRequestTotalCount = serviceRequests.length;
+  const serviceRequestNewCount = serviceRequests.filter(r => r.status === 'New').length;
+  const serviceRequestSearchingCount = serviceRequests.filter(r => r.status === 'Searching').length;
+  const serviceRequestFoundCount = serviceRequests.filter(r => r.status === 'Found Match').length;
+
   // Filter partner listings
   const filteredPartnerListings = partnerListings.filter(listing => {
     const term = partnerSearchTerm.toLowerCase();
@@ -993,6 +1073,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                 >
                   <MapPin className="w-3.5 h-3.5" /> Trip Management
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'trips' ? 'bg-cream/20 text-cream' : 'bg-charcoal/10 text-charcoal/60'}`}>{tripTotalCount}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('service-requests')}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'service-requests' ? 'bg-charcoal text-cream shadow-sm' : 'text-charcoal/60 hover:text-charcoal'
+                  }`}
+                >
+                  <Search className="w-3.5 h-3.5" /> Service Requests
+                  {serviceRequestNewCount > 0 && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'service-requests' ? 'bg-gold/30 text-gold' : 'bg-gold/20 text-gold'}`}>{serviceRequestNewCount} new</span>
+                  )}
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'service-requests' ? 'bg-cream/20 text-cream' : 'bg-charcoal/10 text-charcoal/60'}`}>{serviceRequestTotalCount}</span>
                 </button>
               </div>
 
@@ -1868,6 +1960,182 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
               </div>
               </>
               )}
+
+              {activeTab === 'service-requests' && (
+              <>
+              {/* Service Requests Metric Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-charcoal/50 block">Total Requests</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-charcoal">{serviceRequestTotalCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-charcoal/5 text-charcoal flex items-center justify-center">
+                    <Search className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gold/30 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-gold block">New</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-gold">{serviceRequestNewCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-gold/10 text-gold flex items-center justify-center">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-blue-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-blue-700 block">Searching</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-blue-700">{serviceRequestSearchingCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                    <RefreshCw className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-green-200 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-green-700 block">Found Match</span>
+                    <span className="text-2xl sm:text-3xl font-serif font-medium text-green-700">{serviceRequestFoundCount}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Requests Search & Filter */}
+              <div className="bg-white p-4 rounded-2xl border border-charcoal/10 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full md:w-80">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40" />
+                  <input
+                    type="text"
+                    value={serviceRequestSearchTerm}
+                    onChange={(e) => setServiceRequestSearchTerm(e.target.value)}
+                    placeholder="Search customer, phone, category, description..."
+                    className="w-full pl-10 pr-4 py-2 bg-cream/50 border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold transition-all text-charcoal"
+                  />
+                  {serviceRequestSearchTerm && (
+                    <button
+                      onClick={() => setServiceRequestSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/40 hover:text-charcoal"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1 bg-cream/60 p-1 rounded-xl border border-charcoal/10 text-xs w-full md:w-auto overflow-x-auto">
+                  <span className="text-[10px] uppercase font-bold text-charcoal/40 px-2 flex-shrink-0">Status:</span>
+                  {['all', ...SERVICE_REQUEST_STATUSES].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setServiceRequestStatusFilter(st)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer flex-shrink-0 ${
+                        serviceRequestStatusFilter === st
+                          ? 'bg-charcoal text-cream shadow-sm'
+                          : 'text-charcoal/60 hover:text-charcoal'
+                      }`}
+                    >
+                      {st === 'all' ? 'All' : st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Service Requests Table */}
+              <div className="bg-white rounded-2xl border border-charcoal/10 shadow-sm overflow-hidden">
+                {serviceRequestsLoading ? (
+                  <div className="py-20 text-center flex flex-col items-center justify-center">
+                    <RefreshCw className="w-8 h-8 text-gold animate-spin mb-3" />
+                    <p className="text-xs text-charcoal/60 font-mono">Syncing service requests from Firestore cloud...</p>
+                  </div>
+                ) : filteredServiceRequests.length === 0 ? (
+                  <div className="py-20 text-center flex flex-col items-center justify-center px-4">
+                    <Search className="w-12 h-12 text-charcoal/20 mb-3" />
+                    <h4 className="text-lg font-serif text-charcoal font-medium">No service requests found</h4>
+                    <p className="text-xs text-charcoal/50 max-w-sm mt-1">
+                      {serviceRequestSearchTerm || serviceRequestStatusFilter !== 'all'
+                        ? 'Try clearing your search term or active status filter.'
+                        : 'No "can\'t find what I need" requests submitted yet. New requests will appear here automatically.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-charcoal text-cream uppercase tracking-wider text-[10px] font-mono border-b border-gold/20">
+                          <th className="p-4 font-semibold">Customer</th>
+                          <th className="p-4 font-semibold">Category</th>
+                          <th className="p-4 font-semibold">Looking For</th>
+                          <th className="p-4 font-semibold">Source</th>
+                          <th className="p-4 font-semibold">Status</th>
+                          <th className="p-4 font-semibold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-charcoal/10 font-sans">
+                        {filteredServiceRequests.map((req) => {
+                          let statusBadgeClass = 'bg-yellow-50 text-yellow-800 border-yellow-200';
+                          if (req.status === 'Searching') statusBadgeClass = 'bg-blue-50 text-blue-800 border-blue-200';
+                          if (req.status === 'Found Match') statusBadgeClass = 'bg-green-50 text-green-800 border-green-200';
+                          if (req.status === 'Closed') statusBadgeClass = 'bg-charcoal/5 text-charcoal/50 border-charcoal/10';
+
+                          return (
+                            <tr
+                              key={req.id}
+                              className="hover:bg-cream/40 transition-colors group cursor-pointer"
+                              onClick={() => {
+                                setSelectedServiceRequest(req);
+                                setEditingServiceRequestNotes(req.adminNotes || '');
+                              }}
+                            >
+                              <td className="p-4 font-mono font-medium text-charcoal">
+                                <div className="flex items-center space-x-2">
+                                  <User className="w-3.5 h-3.5 text-charcoal/30" />
+                                  <div>
+                                    <div>{req.customerName}</div>
+                                    <div className="text-charcoal/40 text-[10px]">{req.customerPhone}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 text-charcoal/70">{req.category}</td>
+                              <td className="p-4 text-charcoal/70 max-w-[240px] truncate">{req.description}</td>
+                              <td className="p-4 text-charcoal/50 text-[11px]">{req.source}</td>
+                              <td className="p-4">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${statusBadgeClass}`}>
+                                  {req.status}
+                                </span>
+                              </td>
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                  <a
+                                    href={`tel:${req.customerPhone}`}
+                                    className="p-1.5 text-charcoal/40 hover:text-gold hover:bg-gold/10 rounded-lg transition-colors cursor-pointer"
+                                    title="Call"
+                                  >
+                                    <Phone className="w-4 h-4" />
+                                  </a>
+                                  <button
+                                    onClick={() => handleDeleteServiceRequest(req.id)}
+                                    className="p-1.5 text-charcoal/40 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              </>
+              )}
             </div>
           )}
 
@@ -1985,7 +2253,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                 <div className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
                   <div className="bg-cream/40 p-4 rounded-2xl border border-charcoal/10 space-y-2">
                     <span className="text-[10px] uppercase font-bold text-gold block mb-1">Vehicle Request</span>
-                    {(selectedCarRequest.vehicles || []).map((v) => (
+                    {(selectedCarRequest.vehicles || []).length > 0 ? (selectedCarRequest.vehicles || []).map((v) => (
                       <div key={v.vehicleId} className="flex justify-between items-center font-mono text-[11px] text-charcoal">
                         <span className="font-serif text-sm text-charcoal">
                           {v.name}
@@ -1993,7 +2261,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                         </span>
                         <span>Qty: {v.quantity}</span>
                       </div>
-                    ))}
+                    )) : selectedCarRequest.customVehicleDescription ? (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                        <span className="text-[9px] uppercase font-bold text-amber-800 block mb-0.5">Not in current fleet — needs sourcing</span>
+                        <span className="font-serif text-sm text-charcoal">{selectedCarRequest.customVehicleDescription}</span>
+                      </div>
+                    ) : null}
                     {selectedCarRequest.estimatedTotal != null ? (
                       <p className="text-sm font-mono font-bold text-gold pt-1.5 border-t border-charcoal/10">
                         Estimated Starting Price: ₦{selectedCarRequest.estimatedTotal.toLocaleString()}
@@ -2110,6 +2383,115 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ isOpen, onClose 
                       <Mail className="w-4 h-4" />
                       <span>Email</span>
                     </a>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Service Request Details Drawer / Modal */}
+          {selectedServiceRequest && (
+            <div className="fixed inset-0 z-[110] bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border border-gold/30 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl text-charcoal"
+              >
+                <div className="bg-charcoal text-cream p-5 flex justify-between items-center border-b border-gold/20">
+                  <h3 className="font-serif text-lg font-medium text-gold">Service Request — {selectedServiceRequest.requestId}</h3>
+                  <button onClick={() => setSelectedServiceRequest(null)} className="text-cream/60 hover:text-cream">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
+                  <div className="bg-cream/40 p-4 rounded-2xl border border-charcoal/10 space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-gold block mb-1">{selectedServiceRequest.category}</span>
+                    <p className="text-sm text-charcoal font-serif">{selectedServiceRequest.description}</p>
+                    {selectedServiceRequest.location && (
+                      <p className="text-[11px] text-charcoal/60 font-mono">Location: {selectedServiceRequest.location}</p>
+                    )}
+                    {selectedServiceRequest.preferredDate && (
+                      <p className="text-[11px] text-charcoal/60 font-mono">Preferred Date: {selectedServiceRequest.preferredDate}</p>
+                    )}
+                    <p className="text-[10px] text-charcoal/40 font-mono pt-1 border-t border-charcoal/10">Source: {selectedServiceRequest.source}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-charcoal/10">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Customer</span>
+                      <span className="font-semibold text-charcoal block">{selectedServiceRequest.customerName}</span>
+                      <a href={`tel:${selectedServiceRequest.customerPhone}`} className="block font-mono text-charcoal/70 hover:text-gold">{selectedServiceRequest.customerPhone}</a>
+                      {selectedServiceRequest.customerEmail && (
+                        <a href={`mailto:${selectedServiceRequest.customerEmail}`} className="block font-mono text-charcoal/70 hover:text-gold truncate">{selectedServiceRequest.customerEmail}</a>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-charcoal/10">
+                      <span className="text-[10px] uppercase font-bold text-charcoal/40 block mb-1">Status</span>
+                      <select
+                        value={selectedServiceRequest.status}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleServiceRequestStatusChange(selectedServiceRequest.id, e.target.value as ServiceRequest['status'])}
+                        className="w-full font-bold uppercase tracking-wider text-[10px] text-gold bg-transparent outline-none cursor-pointer"
+                      >
+                        {SERVICE_REQUEST_STATUSES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Admin-only fields — never exposed to the customer */}
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1.5">
+                      <Lock className="w-3 h-3" /> Admin Only — Not Visible to Customer
+                    </span>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-charcoal/60 block mb-1">Notes</label>
+                      <textarea
+                        rows={3}
+                        value={editingServiceRequestNotes}
+                        onChange={(e) => setEditingServiceRequestNotes(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-charcoal/15 rounded-xl text-xs focus:outline-none focus:border-gold"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSaveServiceRequestNotes}
+                      disabled={savingServiceRequest}
+                      className="w-full py-2 bg-charcoal hover:bg-charcoal/90 text-cream font-semibold rounded-xl text-xs transition-all cursor-pointer"
+                    >
+                      {savingServiceRequest ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href={`tel:${selectedServiceRequest.customerPhone}`}
+                      className="py-3 bg-white border border-charcoal/15 hover:bg-charcoal/5 text-charcoal font-semibold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                    >
+                      <PhoneCall className="w-4 h-4" />
+                      <span>Call</span>
+                    </a>
+                    {selectedServiceRequest.customerEmail ? (
+                      <a
+                        href={`mailto:${selectedServiceRequest.customerEmail}?subject=${encodeURIComponent(`Your Elite Booking service request ${selectedServiceRequest.requestId}`)}`}
+                        className="py-3 bg-charcoal hover:bg-charcoal/90 text-cream font-semibold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                      >
+                        <Mail className="w-4 h-4" />
+                        <span>Email</span>
+                      </a>
+                    ) : (
+                      <a
+                        href={`https://wa.me/${selectedServiceRequest.customerPhone.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="py-3 bg-charcoal hover:bg-charcoal/90 text-cream font-semibold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
                   </div>
                 </div>
               </motion.div>

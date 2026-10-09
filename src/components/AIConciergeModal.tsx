@@ -7,10 +7,11 @@ import {
 import confetti from 'canvas-confetti';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import type { Message, MessageContent, RecommendationItem } from '../types/assistant';
+import type { Message, MessageContent, RecommendationItem, ServiceRequestOffer } from '../types/assistant';
 import type { ServiceType, Trip, TripService } from '../types/trip';
 import { CompleteYourTripPanel } from './CompleteYourTripPanel';
 import { TripAttachPrompt } from './TripAttachPrompt';
+import { RequestServiceModal } from './RequestServiceModal';
 
 interface AIConciergeModalProps {
   isOpen: boolean;
@@ -52,7 +53,10 @@ function parseAssistantReply(reply: any): MessageContent {
         category: String(reply.handoff.category || 'Request'),
         services: Array.isArray(reply.handoff.services) ? reply.handoff.services.filter((s: any) => typeof s === 'string') : [],
         summary: String(reply.handoff.summary || '')
-      } : undefined
+      } : undefined,
+      serviceRequestOffer: reply.serviceRequestOffer && typeof reply.serviceRequestOffer.category === 'string'
+        ? { category: reply.serviceRequestOffer.category, prefillText: String(reply.serviceRequestOffer.prefillText || '') }
+        : undefined
     };
   }
   return { text: "I'm here to help with your booking." };
@@ -80,6 +84,7 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({
   const [numberOfRooms, setNumberOfRooms] = useState('1 Room');
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [requestServiceOffer, setRequestServiceOffer] = useState<ServiceRequestOffer | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -351,6 +356,21 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({
                   </div>
                 )}
 
+                {msg.role === 'assistant' && msg.content.serviceRequestOffer && (
+                  <div className="mt-3 w-full max-w-[85%] rounded-2xl border border-gold/30 bg-gold/5 p-4">
+                    <p className="text-charcoal/70 text-xs mb-3">
+                      I can help with that — I'll submit a request and our team will source it through our partner network.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => msg.content.serviceRequestOffer && setRequestServiceOffer(msg.content.serviceRequestOffer)}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-4 py-2.5 rounded-full bg-gold text-charcoal hover:bg-gold/90 transition-colors cursor-pointer"
+                    >
+                      Start Request
+                    </button>
+                  </div>
+                )}
+
                 {msg.role === 'assistant' && msg.content.nextStep && (
                   <div className="mt-2 pl-1 border-l-2 border-gold/50 text-[11px] italic text-charcoal/50 max-w-[85%]">
                     {msg.content.nextStep}
@@ -563,6 +583,14 @@ export const AIConciergeModal: React.FC<AIConciergeModalProps> = ({
           }
           setPendingTripAttach(null);
         }}
+      />
+
+      <RequestServiceModal
+        isOpen={!!requestServiceOffer}
+        onClose={() => setRequestServiceOffer(null)}
+        defaultCategory={requestServiceOffer?.category as ServiceType | undefined}
+        prefillText={requestServiceOffer?.prefillText}
+        source="AI Concierge"
       />
     </AnimatePresence>
   );

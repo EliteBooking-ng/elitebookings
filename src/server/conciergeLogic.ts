@@ -226,6 +226,20 @@ export interface HandoffInfo {
   summary: string;
 }
 
+export interface ServiceRequestOffer {
+  category: string;
+  prefillText: string;
+}
+
+// Only a few CONCIERGE_SERVICE_PATTERNS labels map onto a real ServiceType —
+// everything else (grocery shopping, laundry, barber, flowers, etc.) is
+// genuinely a Concierge-category request, not a mis-filed Hotel/Car/Driver one.
+const CONCIERGE_LABEL_TO_SERVICE_TYPE: Record<string, string> = {
+  "Airport Transfer": "Airport Pickup",
+  "Private Driver": "Driver",
+  "Restaurant Reservation": "Restaurant",
+};
+
 export function buildHandoffSummary(rawQuery: string, category: string, city: string | undefined, services: string[]): string {
   const lines = [
     `CUSTOMER REQUEST:\n${category}`,
@@ -593,6 +607,7 @@ export async function handleConciergeRequest(requestBody: any): Promise<Concierg
     // guest toward Discovery for browsing, and stay available for booking support.
     let finalMessage: string;
     let handoff: HandoffInfo | undefined;
+    let serviceRequestOffer: ServiceRequestOffer | undefined;
     if (intent.services.length > 0) {
       finalMessage = `I'm passing your request for ${intent.services.join(", ")} to our concierge team, who'll confirm availability and pricing with you directly.`;
       handoff = {
@@ -601,6 +616,12 @@ export async function handleConciergeRequest(requestBody: any): Promise<Concierg
         category: "Concierge Service Request",
         services: intent.services,
         summary: buildHandoffSummary(lastUserMsg, "Concierge Service Request", parsedForCity.city, intent.services),
+      };
+      // In addition to the handoff (which is just a WhatsApp deep-link),
+      // offer an actual one-click request that creates a real record.
+      serviceRequestOffer = {
+        category: CONCIERGE_LABEL_TO_SERVICE_TYPE[intent.services[0]] || "Concierge",
+        prefillText: lastUserMsg.trim(),
       };
     } else {
       finalMessage = "I want to make sure this actually gets sorted for you — I'm passing it to our team directly. If you're instead looking to browse new options, our Discovery Assistant can help with that too.";
@@ -623,6 +644,7 @@ export async function handleConciergeRequest(requestBody: any): Promise<Concierg
         message: finalMessage,
         recommendations: [],
         handoff,
+        serviceRequestOffer,
         nextStep: "Let me know if there's anything about an existing booking I can help with.",
       },
     };

@@ -10,6 +10,7 @@ import {
   getVehiclesByLocation, getVehicleById, getTierPrice, isTierPriceCalculable,
   type Vehicle, type PriceTier
 } from '../data/cars';
+import { generateRequestId } from '../utils/generateRequestId';
 
 interface CarRequestModalProps {
   isOpen: boolean;
@@ -35,11 +36,6 @@ const SPECIAL_REQUESTS = [
 ];
 const STATUS_STAGES = ['Request Received', 'Checking Availability', 'Quote', 'Confirmation', 'Payment', 'Booking Confirmed'];
 
-function generateRequestId(): string {
-  const digits = Math.floor(1000 + Math.random() * 9000);
-  return `EB-CAR-${digits}`;
-}
-
 export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarRequestModalProps) {
   const [step, setStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,6 +43,11 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
 
   // Step 1 — Vehicle Request
   const [items, setItems] = useState<LineItem[]>([]);
+  // Fallback when no vehicle is pre-selected and the location's fleet has
+  // nothing to add from (e.g. opened from "Request a Car" with zero fleet
+  // matches) — without this there was no way to specify a vehicle at all,
+  // permanently disabling Next.
+  const [customVehicleDescription, setCustomVehicleDescription] = useState('');
   const [addVehicleId, setAddVehicleId] = useState('');
   const [driverPreference, setDriverPreference] = useState<'With Driver' | 'Self Drive' | ''>('');
   const [passengerCount, setPassengerCount] = useState('');
@@ -84,6 +85,7 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
     setTimeout(() => {
       setStep(1);
       setItems([]);
+      setCustomVehicleDescription('');
       setAddVehicleId('');
       setDriverPreference('');
       setPassengerCount('');
@@ -137,7 +139,7 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
   }) : [];
   const estimateTotal = estimateLines.reduce((sum, l) => sum + l.amount, 0);
 
-  const step1Valid = items.length > 0 && driverPreference !== '' && (driverPreference !== 'With Driver' || passengerCount.trim().length > 0);
+  const step1Valid = (items.length > 0 || customVehicleDescription.trim().length > 0) && driverPreference !== '' && (driverPreference !== 'With Driver' || passengerCount.trim().length > 0);
   const step2Valid = pickupLocation.trim().length > 0 && destination.trim().length > 0 && tripDate.length > 0 && pickupTime.length > 0;
   const step4Valid = fullName.trim().length > 0 && phone.trim().length > 0 && email.trim().length > 0;
 
@@ -150,11 +152,13 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
     return `${dateLabel} — ${timeLabel}`;
   };
 
-  const vehiclesSummaryText = items.map((i) => `${i.name} × ${i.quantity}`).join(', ');
+  const vehiclesSummaryText = items.length > 0
+    ? items.map((i) => `${i.name} × ${i.quantity}`).join(', ')
+    : customVehicleDescription.trim();
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    const newId = generateRequestId();
+    const newId = generateRequestId('CAR');
 
     // Snapshot each line item's resolved pricingType/unitPrice for the selected trip
     // type at submission time — a historical record of what was actually quoted,
@@ -176,18 +180,21 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
     // notification email knows who to contact without opening the Admin
     // Dashboard. Kept separate from `vehiclesSummaryText`, which also feeds
     // the customer's own outgoing WhatsApp message and must stay agency-free.
-    const vehiclesAdminText = items.map((i) => {
-      const agency = getVehicleById(i.vehicleId)?.agency;
-      return `${i.name} × ${i.quantity}${agency ? ` [Owner: ${agency}]` : ''}`;
-    }).join(', ');
+    const vehiclesAdminText = items.length > 0
+      ? items.map((i) => {
+          const agency = getVehicleById(i.vehicleId)?.agency;
+          return `${i.name} × ${i.quantity}${agency ? ` [Owner: ${agency}]` : ''}`;
+        }).join(', ')
+      : `${customVehicleDescription.trim()} [Not in current fleet — needs sourcing]`;
     const agencies = Array.from(new Set(
       items.map((i) => getVehicleById(i.vehicleId)?.agency).filter((a): a is string => !!a)
     ));
-    const agencyLine = agencies.length > 0 ? agencies.join(', ') : 'Elite Booking Fleet';
+    const agencyLine = items.length > 0 ? (agencies.length > 0 ? agencies.join(', ') : 'Elite Booking Fleet') : 'To be sourced';
 
     const requestDetails = {
       requestId: newId,
       vehicles: vehicleSnapshots,
+      customVehicleDescription: items.length === 0 ? customVehicleDescription.trim() : null,
       location,
       tripType,
       driverPreference,
@@ -323,6 +330,25 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
                         </div>
                       ))}
                     </div>
+                    {items.length === 0 && (
+                      <div className="mt-3">
+                        <label className="block text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold mb-2.5">
+                          {availableToAdd.length > 0 ? "Or describe what you need" : "Describe the vehicle you need"}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={customVehicleDescription}
+                          onChange={(e) => setCustomVehicleDescription(e.target.value)}
+                          placeholder="e.g. 7-seater SUV, or a specific make/model"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-blue-500 transition-colors resize-none"
+                        />
+                        {availableToAdd.length === 0 && (
+                          <p className="text-white/30 text-[11px] mt-2">
+                            We don't currently have a matching vehicle in our fleet here — share the details and our team will source it through our partner network.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {availableToAdd.length > 0 && (
@@ -559,12 +585,17 @@ export function CarRequestModal({ isOpen, onClose, vehicle, location }: CarReque
                   <p className="text-white/40 text-xs mb-6">Please review before submitting.</p>
 
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3.5 mb-6">
-                    {items.map((item) => (
+                    {items.length > 0 ? items.map((item) => (
                       <div key={item.vehicleId} className="flex justify-between items-start gap-4 text-sm">
                         <span className="text-white/40 text-[10px] uppercase tracking-[0.15em] font-bold pt-0.5 flex-shrink-0">Vehicle</span>
                         <span className="text-white text-right font-medium">{item.name} — Qty: {item.quantity}</span>
                       </div>
-                    ))}
+                    )) : (
+                      <div className="flex justify-between items-start gap-4 text-sm">
+                        <span className="text-white/40 text-[10px] uppercase tracking-[0.15em] font-bold pt-0.5 flex-shrink-0">Vehicle</span>
+                        <span className="text-white text-right font-medium">{customVehicleDescription.trim()} (to be sourced)</span>
+                      </div>
+                    )}
                     {[
                       ['Location', location],
                       ['Trip Type', tripType],

@@ -14,6 +14,9 @@ interface CarFleetBrowserProps {
   // Approved partner-submitted vehicles, already normalized to the Vehicle
   // shape by App.tsx — merged in alongside the static fleet below.
   partnerVehicles?: Vehicle[];
+  // Opens the existing CarRequestModal (App.tsx already threads the current
+  // location into it) — the universal fallback for "can't find my car."
+  onRequestCar?: () => void;
 }
 
 type TypeFilter = 'All' | VehicleType;
@@ -30,7 +33,7 @@ const PRICE_BANDS: { label: string; value: number | null }[] = [
   { label: 'Up to ₦2,000,000', value: 2000000 },
 ];
 
-export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehicle, partnerVehicles = [] }: CarFleetBrowserProps) {
+export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehicle, partnerVehicles = [], onRequestCar }: CarFleetBrowserProps) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('All');
   const [transmissionFilter, setTransmissionFilter] = useState<TransmissionFilter>('All');
   const [driverFilter, setDriverFilter] = useState<DriverFilter>('All');
@@ -66,6 +69,8 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
     setMaxPrice(null);
     setSortBy('Recommended');
   };
+
+  const hasActiveFilters = typeFilter !== 'All' || transmissionFilter !== 'All' || driverFilter !== 'All' || maxPrice != null;
 
   const pill = (active: boolean) =>
     `px-3.5 py-2 rounded-full text-[11px] font-semibold transition-all cursor-pointer border whitespace-nowrap ${
@@ -175,17 +180,34 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
         {vehicles.length === 0 ? (
           <div className="text-center py-16">
             <SlidersHorizontal className="w-8 h-8 text-blue-400/60 mx-auto mb-4" />
-            <h3 className="text-xl font-serif text-white mb-2 font-light">No Vehicles Match These Filters</h3>
+            <h3 className="text-xl font-serif text-white mb-2 font-light">
+              {hasActiveFilters ? 'No Vehicles Match These Filters' : `No Vehicles Listed${locationLabel ? ` in ${locationLabel}` : ''} Yet`}
+            </h3>
             <p className="text-white/40 text-sm max-w-sm mx-auto mb-6">
-              Try widening your filters, or reach out and we'll help source the right vehicle for you.
+              {hasActiveFilters
+                ? 'Try widening your filters, or share a few details and our team will source the right vehicle for you.'
+                : `We don't currently have vehicles listed${locationLabel ? ` in ${locationLabel}` : ' this area'}. Share a few details and our team will source one through our partner network.`}
             </p>
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-6 py-3 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all cursor-pointer"
-            >
-              Reset Filters
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-6 py-3 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              )}
+              {onRequestCar && (
+                <button
+                  type="button"
+                  onClick={onRequestCar}
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-full text-[11px] uppercase tracking-[0.2em] font-bold transition-all cursor-pointer"
+                >
+                  Request This Car
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -233,6 +255,19 @@ export function CarFleetBrowser({ location, locationLabel, onBack, onSelectVehic
                 </div>
               </motion.div>
             ))}
+          </div>
+        )}
+
+        {vehicles.length > 0 && onRequestCar && (
+          <div className="text-center mt-12">
+            <p className="text-white/40 text-sm mb-3">Looking for a specific vehicle?</p>
+            <button
+              type="button"
+              onClick={onRequestCar}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-blue-500/40 text-white text-[10px] uppercase tracking-[0.25em] font-bold hover:bg-blue-500/10 hover:border-blue-500 transition-all cursor-pointer"
+            >
+              Request a Car
+            </button>
           </div>
         )}
       </div>

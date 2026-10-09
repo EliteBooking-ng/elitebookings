@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { NIGERIAN_STATES } from '../data/nigerianStates';
+import { generateRequestId } from '../utils/generateRequestId';
 
 interface MovingRequestModalProps {
   isOpen: boolean;
@@ -17,19 +19,7 @@ type YesNo = '' | 'Yes' | 'No';
 
 const MOVE_TYPES = ['House / Apartment', 'Office', 'Shop / Business', 'Household Items', 'Furniture', 'Other'];
 
-const NIGERIAN_STATES = [
-  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno', 'Cross River', 'Delta',
-  'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT (Abuja)', 'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano',
-  'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun',
-  'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
-];
-
 const STATUS_STAGES = ['New', 'Reviewing', 'Vehicle Sourcing', 'Quote Sent', 'Confirmed', 'Completed'];
-
-function generateRequestId(): string {
-  const digits = Math.floor(1000 + Math.random() * 9000);
-  return `EB-MOVE-${digits}`;
-}
 
 export function MovingRequestModal({ isOpen, onClose }: MovingRequestModalProps) {
   const [step, setStep] = useState<Step>(1);
@@ -118,7 +108,7 @@ export function MovingRequestModal({ isOpen, onClose }: MovingRequestModalProps)
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    const newId = generateRequestId();
+    const newId = generateRequestId('MOVE');
 
     const requestDetails = {
       requestId: newId,

@@ -4,6 +4,7 @@ import { Compass, X, Send, Loader2, LifeBuoy } from 'lucide-react';
 import { CATALOG_ITEMS, CatalogItem } from '../data/catalog';
 import { VEHICLES, Vehicle, formatStartingPrice, PRICING_TYPE_LABEL } from '../data/cars';
 import { RecommendationGrid } from './RecommendationCard';
+import { RequestServiceModal } from './RequestServiceModal';
 import type { Message, MessageContent, RecommendationItem, PendingOffer } from '../types/assistant';
 
 interface DiscoveryAssistantModalProps {
@@ -118,7 +119,8 @@ function parseAssistantReply(reply: any): MessageContent {
       pendingOffer: reply.pendingOffer && reply.pendingOffer.type === 'area_verification' && typeof reply.pendingOffer.area === 'string'
         ? { type: 'area_verification', area: reply.pendingOffer.area, city: typeof reply.pendingOffer.city === 'string' ? reply.pendingOffer.city : undefined }
         : undefined,
-      hasMore: ranSearch && reply.hasMore === true
+      hasMore: ranSearch && reply.hasMore === true,
+      notQuiteRight: ranSearch && reply.notQuiteRight === true
     };
   }
   return {
@@ -139,6 +141,7 @@ export const DiscoveryAssistantModal: React.FC<DiscoveryAssistantModalProps> = (
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMoreId, setLoadingMoreId] = useState<string | null>(null);
+  const [requestServiceText, setRequestServiceText] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -186,7 +189,7 @@ export const DiscoveryAssistantModal: React.FC<DiscoveryAssistantModalProps> = (
 
       const data = await res.json();
       const parsedContent = parseAssistantReply(data);
-      if (parsedContent.hasMore) {
+      if (parsedContent.hasMore || parsedContent.notQuiteRight) {
         parsedContent.sourceQuery = text;
       }
 
@@ -347,6 +350,18 @@ export const DiscoveryAssistantModal: React.FC<DiscoveryAssistantModalProps> = (
                     )}
                   </button>
                 )}
+
+                {msg.role === 'assistant' && msg.content.notQuiteRight && (
+                  <div className="mt-3 flex items-center gap-2 max-w-[85%]">
+                    <p className="text-[11px] text-charcoal/40 italic">Not quite what you're after?</p>
+                    <button
+                      onClick={() => setRequestServiceText(msg.content.sourceQuery || '')}
+                      className="text-[11px] font-bold uppercase tracking-wider text-gold hover:text-gold/70 underline decoration-gold/40 cursor-pointer"
+                    >
+                      Request This Instead
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
 
@@ -401,6 +416,13 @@ export const DiscoveryAssistantModal: React.FC<DiscoveryAssistantModalProps> = (
           </div>
         </motion.div>
       </div>
+
+      <RequestServiceModal
+        isOpen={!!requestServiceText}
+        onClose={() => setRequestServiceText(null)}
+        prefillText={requestServiceText || undefined}
+        source="Discovery Assistant"
+      />
     </AnimatePresence>
   );
 };

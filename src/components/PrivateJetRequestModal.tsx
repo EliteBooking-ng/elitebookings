@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { generateRequestId } from '../utils/generateRequestId';
 
 interface PrivateJetRequestModalProps {
   isOpen: boolean;
@@ -35,10 +36,6 @@ const STATUS_STAGES = [
   'Booking Confirmed',
 ];
 
-function generateRequestId(): string {
-  const digits = Math.floor(1000 + Math.random() * 9000);
-  return `EB-JET-${digits}`;
-}
 
 export function PrivateJetRequestModal({ isOpen, onClose, defaultRequirement = null }: PrivateJetRequestModalProps) {
   const [step, setStep] = useState<Step>(1);
@@ -118,7 +115,7 @@ export function PrivateJetRequestModal({ isOpen, onClose, defaultRequirement = n
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    const newId = generateRequestId();
+    const newId = generateRequestId('JET');
 
     const requestDetails = {
       requestId: newId,

@@ -56,6 +56,8 @@ import { PartnerDashboardModal } from './components/PartnerDashboardModal';
 import { CompleteYourTripPanel } from './components/CompleteYourTripPanel';
 import { TripSummaryModal } from './components/TripSummaryModal';
 import { TripAttachPrompt } from './components/TripAttachPrompt';
+import { RequestServiceModal } from './components/RequestServiceModal';
+import { UNCOVERED_STATES } from './data/nigerianStates';
 import { getVehicleById, type Vehicle } from './data/cars';
 import type { RecommendationItem } from './types/assistant';
 import type { PartnerListing } from './types/partnerListing';
@@ -134,6 +136,8 @@ export default function App() {
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
   const [selectedCategory, setSelectedCategory] = useState<Category>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [showMoreCarLocations, setShowMoreCarLocations] = useState(false);
+  const [showMoreStayLocations, setShowMoreStayLocations] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
   const [selectedShortlet, setSelectedShortlet] = useState<any | null>(null);
   const [selectedCar, setSelectedCar] = useState<Vehicle | null>(null);
@@ -203,16 +207,22 @@ export default function App() {
 
   const getFilteredHotels = () => {
     const query = searchQuery.trim().toLowerCase();
-    const staticHotels = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+    const loc = selectedLocation?.toLowerCase() || '';
+    const isPortHarcourt = loc.includes('port harcourt') || loc.includes('rivers');
+    const staticHotels = loc.includes('lagos')
       ? lagosHotels
-      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      : loc.includes('abuja') || loc.includes('fct')
       ? abujaHotels
-      : phHotels;
-    const cityLabel = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+      : isPortHarcourt
+      ? phHotels
+      : [];
+    const cityLabel = loc.includes('lagos')
       ? 'Lagos'
-      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      : loc.includes('abuja') || loc.includes('fct')
       ? 'Abuja'
-      : 'Port Harcourt';
+      : isPortHarcourt
+      ? 'Port Harcourt'
+      : '';
     const partnerHotels = approvedPartnerHotels
       .filter((l) => l.city === cityLabel)
       .map((l) => ({ id: l.id, name: l.name, location: l.location, price: l.price, images: l.images, description: l.description, tiers: l.tiers, note: l.note }));
@@ -231,16 +241,22 @@ export default function App() {
 
   const getFilteredShortlets = () => {
     const query = searchQuery.trim().toLowerCase();
-    const staticShortlets = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+    const loc = selectedLocation?.toLowerCase() || '';
+    const isPortHarcourt = loc.includes('port harcourt') || loc.includes('rivers');
+    const staticShortlets = loc.includes('lagos')
       ? lagosShortlets
-      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      : loc.includes('abuja') || loc.includes('fct')
       ? abujaShortlets
-      : phShortlets;
-    const cityLabel = selectedLocation && selectedLocation.toLowerCase().includes('lagos')
+      : isPortHarcourt
+      ? phShortlets
+      : [];
+    const cityLabel = loc.includes('lagos')
       ? 'Lagos'
-      : selectedLocation && selectedLocation.toLowerCase().includes('abuja')
+      : loc.includes('abuja') || loc.includes('fct')
       ? 'Abuja'
-      : 'Port Harcourt';
+      : isPortHarcourt
+      ? 'Port Harcourt'
+      : '';
     const partnerShortlets = approvedPartnerShortlets
       .filter((l) => l.city === cityLabel)
       .map((l) => ({ id: l.id, name: l.name, location: l.location, price: l.price, cautionFee: l.cautionFee, features: l.features || [], images: l.images, description: l.description }));
@@ -269,7 +285,7 @@ export default function App() {
       <div className="w-full mb-10 bg-white border border-charcoal/5 rounded-[2rem] p-6 md:p-8 shadow-2xl shadow-gold/5 font-sans">
         <div className="flex flex-col gap-4">
           <label className="block text-[10px] uppercase tracking-[0.25em] font-medium text-gold mb-1">
-            Search {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : selectedLocation && selectedLocation.includes('Abuja') ? 'Abuja' : 'Port Harcourt'} Listings
+            Search {selectedLocation && selectedLocation.includes('Lagos') ? 'Lagos' : selectedLocation && selectedLocation.includes('Abuja') ? 'Abuja' : selectedLocation && (selectedLocation.includes('Port Harcourt') || selectedLocation.includes('Rivers')) ? 'Port Harcourt' : (selectedLocation ? selectedLocation.split(',')[0] : '')} Listings
           </label>
           <div className="relative w-full">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-charcoal/40" />
@@ -832,6 +848,16 @@ export default function App() {
     seedType: ServiceType; seedDetails: Record<string, any>; seedSummary: string;
     customer: { name: string; phone: string; email: string }; location: string;
   } | null>(null);
+
+  // Universal "Request a Service" fallback — opened from the homepage,
+  // category CTAs, empty-states, and (eventually) the AI assistants, all
+  // funneling into the same RequestServiceModal instance.
+  const [requestServiceConfig, setRequestServiceConfig] = useState<{
+    defaultCategory?: ServiceType; prefillText?: string; prefillLocation?: string; source: string;
+  } | null>(null);
+  const openRequestService = (config: { defaultCategory?: ServiceType; prefillText?: string; prefillLocation?: string; source: string }) => {
+    setRequestServiceConfig(config);
+  };
 
   // Fires once, when "Submit Trip Request" is clicked — a single consolidated
   // notification covering every service on the trip, rather than one email
@@ -3742,6 +3768,20 @@ Best regards.`;
                   </motion.div>
                 ))}
               </div>
+
+              <div className="mt-16 text-center border-t border-charcoal/10 pt-10">
+                <p className="text-charcoal font-serif text-xl mb-1.5">Looking for Something Specific?</p>
+                <p className="text-charcoal/50 text-sm max-w-md mx-auto mb-5">
+                  If you don't see the hotel, vehicle, location or service you need, share a few details and our team will source it through our partner network.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openRequestService({ source: 'Homepage' })}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-gold/40 text-charcoal text-[11px] uppercase tracking-[0.25em] font-bold hover:bg-gold/10 hover:border-gold transition-all cursor-pointer"
+                >
+                  Request a Service
+                </button>
+              </div>
             </motion.section>
           ) : (selectedCategory === 'jets') ? (
             <motion.section
@@ -4008,7 +4048,6 @@ Best regards.`;
                       { label: 'Lagos', value: 'Lagos, Lagos State' },
                       { label: 'Abuja', value: 'Abuja, Federal Capital Territory' },
                       { label: 'Port Harcourt', value: 'Port Harcourt, Rivers State' },
-                      { label: 'Other Locations', value: 'Other Locations' },
                     ].map((loc) => (
                       <motion.button
                         key={loc.label}
@@ -4021,7 +4060,41 @@ Best regards.`;
                         <span className="text-white/30 text-[9px] uppercase tracking-[0.2em] group-hover:text-blue-300 transition-colors">View Fleet</span>
                       </motion.button>
                     ))}
+                    <motion.button
+                      whileHover={{ y: -4 }}
+                      onClick={() => setShowMoreCarLocations((v) => !v)}
+                      className="flex flex-col items-center justify-center gap-3 bg-white/5 border border-white/10 hover:border-blue-500/50 hover:bg-white/[0.08] rounded-2xl px-4 py-8 text-center transition-all cursor-pointer group"
+                    >
+                      <MapPin className="w-5 h-5 text-blue-400" />
+                      <span className="text-white text-sm font-serif">Other Locations</span>
+                      <span className="text-white/30 text-[9px] uppercase tracking-[0.2em] group-hover:text-blue-300 transition-colors">We'll Find It</span>
+                    </motion.button>
                   </div>
+
+                  {showMoreCarLocations && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-5 bg-white/5 border border-white/10 rounded-2xl p-5"
+                    >
+                      <label className="block text-[10px] uppercase tracking-[0.2em] text-white/50 font-bold mb-2.5">Select your state</label>
+                      <select
+                        defaultValue=""
+                        onChange={(e) => {
+                          if (e.target.value) setSelectedLocation(e.target.value);
+                        }}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors [color-scheme:dark]"
+                      >
+                        <option value="" disabled>Choose a state</option>
+                        {UNCOVERED_STATES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                      <p className="text-white/30 text-[11px] mt-3">
+                        We don't currently have a fleet based there — share the details and our team will source a vehicle through our partner network.
+                      </p>
+                    </motion.div>
+                  )}
                 </div>
               </div>
             </motion.section>
@@ -4124,13 +4197,38 @@ Best regards.`;
                 </motion.div>
               </div>
 
-              <div className="mt-16 grid grid-cols-1 gap-6 opacity-30 pointer-events-none max-w-[280px] mx-auto">
-                {['Enugu'].map(city => (
-                  <div key={city} className="border border-charcoal/10 rounded-2xl p-8 text-center grayscale">
-                    <span className="text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2 block">Coming Soon</span>
-                    <h4 className="text-xl font-serif text-charcoal/60">{city}</h4>
-                  </div>
-                ))}
+              <div className="mt-16 max-w-md mx-auto text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowMoreStayLocations((v) => !v)}
+                  className="text-charcoal/50 text-[11px] uppercase tracking-[0.25em] font-bold hover:text-gold transition-colors cursor-pointer"
+                >
+                  Looking for another state?
+                </button>
+                {showMoreStayLocations && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 bg-white border border-charcoal/10 rounded-2xl p-5 shadow-sm"
+                  >
+                    <label className="block text-[10px] uppercase tracking-[0.2em] text-charcoal/50 font-bold mb-2.5">Select your state</label>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) setSelectedLocation(e.target.value);
+                      }}
+                      className="w-full bg-cream/40 border border-charcoal/15 rounded-xl px-4 py-3 text-sm text-charcoal outline-none focus:border-gold transition-colors"
+                    >
+                      <option value="" disabled>Choose a state</option>
+                      {UNCOVERED_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <p className="text-charcoal/40 text-[11px] mt-3">
+                      We don't currently have listings there — share the details and our team will source one through our partner network.
+                    </p>
+                  </motion.div>
+                )}
               </div>
             </motion.section>
           ) : (selectedCategory === 'stays' && selectedLocation && !selectedHotel) ? (
@@ -4165,11 +4263,22 @@ Best regards.`;
 
               {getFilteredHotels().length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-[2rem] border border-charcoal/5 shadow-2xl shadow-gold/5 font-sans mb-12">
-                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50 animate-pulse" />
-                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">No Matching Hotels Found</h1>
-                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4">
-                    We couldn&rsquo;t find any hotels matching &ldquo;{searchQuery}&rdquo;. Try using other search keywords or explore other categories below.
+                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50" />
+                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">
+                    {searchQuery.trim() ? 'No Matching Hotels Found' : `No Hotels Listed${selectedLocation ? ` in ${selectedLocation.split(',')[0]}` : ''} Yet`}
+                  </h1>
+                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4 mb-6">
+                    {searchQuery.trim()
+                      ? <>We couldn&rsquo;t find a hotel matching &ldquo;{searchQuery}&rdquo;{selectedLocation ? ` in ${selectedLocation.split(',')[0]}` : ''}. Share a few details and our team will source it through our partner network.</>
+                      : <>We don&rsquo;t currently have hotels listed{selectedLocation ? ` in ${selectedLocation.split(',')[0]}` : ' this area'}. Tell us what you&rsquo;re looking for and our team will source it through our partner network.</>}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => openRequestService({ defaultCategory: 'Hotel', prefillText: searchQuery, prefillLocation: selectedLocation || undefined, source: 'Hotels Empty Search' })}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gold text-charcoal text-[11px] uppercase tracking-[0.25em] font-bold hover:bg-gold/90 transition-all cursor-pointer"
+                  >
+                    Request This Hotel
+                  </button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-12">
@@ -4319,6 +4428,19 @@ Best regards.`;
                 </div>
               )}
 
+              {getFilteredHotels().length > 0 && (
+                <div className="text-center mt-10 mb-2">
+                  <p className="text-charcoal/50 text-sm mb-3">Looking for a specific hotel?</p>
+                  <button
+                    type="button"
+                    onClick={() => openRequestService({ defaultCategory: 'Hotel', prefillLocation: selectedLocation || undefined, source: 'Hotels Category CTA' })}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gold/40 text-charcoal text-[10px] uppercase tracking-[0.25em] font-bold hover:bg-gold/10 hover:border-gold transition-all cursor-pointer"
+                  >
+                    Request a Hotel
+                  </button>
+                </div>
+              )}
+
               {renderOtherCategoryMatches('stays')}
             </motion.section>
           ) : (selectedCategory === 'homes' && selectedLocation && !selectedShortlet) ? (
@@ -4353,11 +4475,22 @@ Best regards.`;
 
               {getFilteredShortlets().length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-[2rem] border border-charcoal/5 shadow-2xl shadow-gold/5 font-sans mb-12">
-                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50 animate-pulse" />
-                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">No Matching Shortlets Found</h1>
-                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4">
-                    We couldn&rsquo;t find any shortlets matching &ldquo;{searchQuery}&rdquo;. Try using other search keywords or explore other categories below.
+                  <Search className="w-10 h-10 text-gold mx-auto mb-4 opacity-50" />
+                  <h1 className="text-2xl font-serif text-charcoal mb-2 font-light">
+                    {searchQuery.trim() ? 'No Matching Shortlets Found' : `No Shortlets Listed${selectedLocation ? ` in ${selectedLocation.split(',')[0]}` : ''} Yet`}
+                  </h1>
+                  <p className="text-sm text-charcoal/50 max-w-md mx-auto px-4 mb-6">
+                    {searchQuery.trim()
+                      ? <>We couldn&rsquo;t find a shortlet matching &ldquo;{searchQuery}&rdquo;{selectedLocation ? ` in ${selectedLocation.split(',')[0]}` : ''}. Share a few details and our team will source it through our partner network.</>
+                      : <>We don&rsquo;t currently have shortlets listed{selectedLocation ? ` in ${selectedLocation.split(',')[0]}` : ' this area'}. Tell us what you&rsquo;re looking for and our team will source it through our partner network.</>}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => openRequestService({ defaultCategory: 'Shortlet', prefillText: searchQuery, prefillLocation: selectedLocation || undefined, source: 'Shortlets Empty Search' })}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gold text-charcoal text-[11px] uppercase tracking-[0.25em] font-bold hover:bg-gold/90 transition-all cursor-pointer"
+                  >
+                    Request This Shortlet
+                  </button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-12">
@@ -4432,6 +4565,19 @@ Best regards.`;
                 </div>
               )}
 
+              {getFilteredShortlets().length > 0 && (
+                <div className="text-center mt-10 mb-2">
+                  <p className="text-charcoal/50 text-sm mb-3">Looking for a specific shortlet?</p>
+                  <button
+                    type="button"
+                    onClick={() => openRequestService({ defaultCategory: 'Shortlet', prefillLocation: selectedLocation || undefined, source: 'Shortlets Category CTA' })}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gold/40 text-charcoal text-[10px] uppercase tracking-[0.25em] font-bold hover:bg-gold/10 hover:border-gold transition-all cursor-pointer"
+                  >
+                    Request a Shortlet
+                  </button>
+                </div>
+              )}
+
               {renderOtherCategoryMatches('homes')}
             </motion.section>
           ) : (selectedCategory === 'drive' && selectedLocation && !selectedCar) ? (
@@ -4444,6 +4590,7 @@ Best regards.`;
               }}
               onSelectVehicle={(vehicle) => setSelectedCar(vehicle)}
               partnerVehicles={approvedPartnerVehicles}
+              onRequestCar={() => { setCarRequestVehicle(null); setShowCarRequestForm(true); }}
             />
           ) : (selectedCategory === 'drive' && selectedLocation && selectedCar) ? (
             <CarDetailView
@@ -5115,6 +5262,15 @@ Best regards.`;
           }
           setPendingTripAttach(null);
         }}
+      />
+
+      <RequestServiceModal
+        isOpen={!!requestServiceConfig}
+        onClose={() => setRequestServiceConfig(null)}
+        defaultCategory={requestServiceConfig?.defaultCategory}
+        prefillText={requestServiceConfig?.prefillText}
+        prefillLocation={requestServiceConfig?.prefillLocation}
+        source={requestServiceConfig?.source || 'Unknown'}
       />
 
       {/* My Trip — full trip summary, add-service, and concierge box */}

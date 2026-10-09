@@ -650,6 +650,11 @@ export async function handleDiscoveryRequest(requestBody: any): Promise<Discover
         tier: result.tier,
         hasMore: result.hasMore,
         pendingOffer: newPendingOffer,
+        // Discovery's search can never truly return zero results (it always
+        // relaxes down to a "popular" tier) — any non-"exact" tier is the
+        // closest signal that what's shown isn't really what was asked for,
+        // which is what the "Request this instead" fallback keys off of.
+        notQuiteRight: result.tier !== "exact",
         nextStep: "Want me to go deeper on any of these, or narrow things further?",
       },
     };
