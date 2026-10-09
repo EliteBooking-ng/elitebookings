@@ -4026,7 +4026,8 @@ Best regards.`;
                 <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> Back to selection
               </button>
 
-              <div className="relative rounded-[2.5rem] overflow-hidden bg-[#0A0A0A] border border-white/10 p-8 sm:p-12 md:p-16 shadow-2xl">
+              <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-[#0A0A0A] overflow-hidden">
+                <div className="max-w-6xl mx-auto p-8 sm:p-12 md:p-16">
                 <div className="text-center max-w-2xl mx-auto mb-14">
                   <span className="inline-flex items-center gap-2 text-blue-400 text-[11px] uppercase tracking-[0.5em] font-bold mb-6">
                     <Car className="w-3.5 h-3.5" /> Car Rentals
@@ -4041,7 +4042,7 @@ Best regards.`;
 
                 <div className="max-w-3xl mx-auto">
                   <p className="text-center text-white/40 text-[11px] uppercase tracking-[0.3em] font-bold mb-6">Where do you need a car?</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                     {[
                       { label: 'Lagos', value: 'Lagos, Lagos State' },
                       { label: 'Abuja', value: 'Abuja, Federal Capital Territory' },
@@ -4083,6 +4084,7 @@ Best regards.`;
                       Tell us what you need and our team will source a vehicle through our partner network.
                     </p>
                   </div>
+                </div>
                 </div>
               </div>
             </motion.section>
